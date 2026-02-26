@@ -17,7 +17,7 @@ export default function Footer() {
           {/* Col 1 – Brand */}
           <div>
             <div className="flex items-center gap-3 mb-4">
-              <img src={logoSquare} alt={company_name} className="h-14 w-14 rounded-lg" />
+              <img src={logoSquare} alt={company_name} className="h-[80px] w-auto rounded-lg" />
               <span className="font-bold text-lg">{company_name}</span>
             </div>
             <p className="text-sm text-white/70 leading-relaxed">{t('footer.description')}</p>
