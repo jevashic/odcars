@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Tag, Percent, Clock, Gift } from 'lucide-react';
 import { useLang } from '@/contexts/LanguageContext';
+import { useLangPath } from '@/hooks/useLangNavigate';
 
 const cards = [
   { icon: Percent, pct: '-30%', title: 'Reserva anticipada', desc: 'Reserva con más de 30 días y ahorra' },
@@ -10,6 +11,7 @@ const cards = [
 
 export default function OffersSection() {
   const { t } = useLang();
+  const lp = useLangPath();
 
   return (
     <section className="section-padding bg-[#0F172A]">
@@ -25,7 +27,7 @@ export default function OffersSection() {
           </span>
           <h3 className="text-2xl md:text-3xl font-bold text-white mb-2">Semana Santa en Gran Canaria</h3>
           <p className="text-white/60 mb-6 max-w-lg">Reserva tu coche para Semana Santa con precios exclusivos. Seguro premium y kilómetros ilimitados incluidos.</p>
-          <Link to="/ofertas" className="inline-block bg-cta text-cta-foreground font-bold px-6 py-3 rounded-lg hover:opacity-90 transition-opacity">
+          <Link to={lp('/ofertas')} className="inline-block bg-cta text-cta-foreground font-bold px-6 py-3 rounded-lg hover:opacity-90 transition-opacity">
             {t('offers.see_all')} →
           </Link>
         </div>

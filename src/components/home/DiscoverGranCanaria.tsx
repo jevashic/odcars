@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLang } from '@/contexts/LanguageContext';
+import { useLangPath } from '@/hooks/useLangNavigate';
 
 interface Place { slug: string; name: string; short_description: string; cover: string; }
 
@@ -17,6 +18,7 @@ const fallbackPlaces: Place[] = [
 
 export default function DiscoverGranCanaria() {
   const { t, lang } = useLang();
+  const lp = useLangPath();
   const [places, setPlaces] = useState<Place[]>(fallbackPlaces);
 
   useEffect(() => {
@@ -55,7 +57,7 @@ export default function DiscoverGranCanaria() {
           {places.map((place) => (
             <Link
               key={place.slug}
-              to={`/conoce-gran-canaria/${place.slug}`}
+              to={lp(`/conoce-gran-canaria/${place.slug}`)}
               className="group rounded-2xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.08)] hover:shadow-lg transition-shadow"
             >
               <div className="relative aspect-[4/3] overflow-hidden">
@@ -75,7 +77,7 @@ export default function DiscoverGranCanaria() {
         </div>
 
         <div className="text-center mt-10">
-          <Link to="/conoce-gran-canaria" className="inline-flex items-center gap-2 bg-cta text-cta-foreground font-bold px-6 py-3 rounded-lg hover:opacity-90 transition-opacity">
+          <Link to={lp('/conoce-gran-canaria')} className="inline-flex items-center gap-2 bg-cta text-cta-foreground font-bold px-6 py-3 rounded-lg hover:opacity-90 transition-opacity">
             {t('discover.see_all')} <ArrowRight className="h-4 w-4" />
           </Link>
         </div>

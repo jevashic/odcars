@@ -2,9 +2,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ConfigProvider } from "@/contexts/ConfigContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import '@/i18n';
 
 import Index from "./pages/Index";
 import Fleet from "./pages/Fleet";
@@ -32,63 +33,74 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+function LangRoutes() {
+  return (
+    <LanguageProvider>
+      <Routes>
+        <Route index element={<Index />} />
+        <Route path="flota" element={<Fleet />} />
+        <Route path="ofertas" element={<OffersPage />} />
+        <Route path="conoce-gran-canaria" element={<DiscoverGC />} />
+        <Route path="conoce-gran-canaria/:slug" element={<PlaceDetail />} />
+        <Route path="contacto" element={<Contact />} />
+        <Route path="mis-reservas" element={<MyReservations />} />
+
+        {/* Booking flow */}
+        <Route path="reservar" element={<SearchResults />} />
+        <Route path="reservar/detalle/:categoryId" element={<VehicleDetail />} />
+        <Route path="reservar/extras" element={<Extras />} />
+        <Route path="reservar/resumen" element={<Summary />} />
+        <Route path="reservar/pago" element={<Payment />} />
+        <Route path="reservar/confirmacion" element={<Confirmation />} />
+
+        {/* Legal */}
+        <Route path="legal/:type" element={<LegalPage />} />
+
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </LanguageProvider>
+  );
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ConfigProvider>
-      <LanguageProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              {/* Public */}
-              <Route path="/" element={<Index />} />
-              <Route path="/flota" element={<Fleet />} />
-              <Route path="/ofertas" element={<OffersPage />} />
-              <Route path="/conoce-gran-canaria" element={<DiscoverGC />} />
-              <Route path="/conoce-gran-canaria/:slug" element={<PlaceDetail />} />
-              <Route path="/contacto" element={<Contact />} />
-              <Route path="/mis-reservas" element={<MyReservations />} />
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            {/* Redirect root to /es/ */}
+            <Route path="/" element={<Navigate to="/es" replace />} />
 
-              {/* Booking flow */}
-              <Route path="/reservar" element={<SearchResults />} />
-              <Route path="/reservar/detalle/:categoryId" element={<VehicleDetail />} />
-              <Route path="/reservar/extras" element={<Extras />} />
-              <Route path="/reservar/resumen" element={<Summary />} />
-              <Route path="/reservar/pago" element={<Payment />} />
-              <Route path="/reservar/confirmacion" element={<Confirmation />} />
+            {/* Lang-prefixed public routes */}
+            <Route path="/:lang/*" element={<LangRoutes />} />
 
-              {/* Legal */}
-              <Route path="/legal/:type" element={<LegalPage />} />
-
-              {/* Admin */}
-              <Route path="/admin" element={<AdminLogin />} />
-              <Route element={<AdminLayout />}>
-                <Route path="/admin/dashboard" element={<AdminDashboard />} />
-                <Route path="/admin/reservas" element={<AdminStub />} />
-                <Route path="/admin/vehiculos" element={<AdminStub />} />
-                <Route path="/admin/categorias" element={<AdminStub />} />
-                <Route path="/admin/precios" element={<AdminStub />} />
-                <Route path="/admin/extras" element={<AdminStub />} />
-                <Route path="/admin/descuentos" element={<AdminStub />} />
-                <Route path="/admin/clientes" element={<AdminStub />} />
-                <Route path="/admin/oficinas" element={<AdminStub />} />
-                <Route path="/admin/usuarios" element={<AdminStub />} />
-                <Route path="/admin/contenido/*" element={<AdminStub />} />
-                <Route path="/admin/chat" element={<AdminStub />} />
-                <Route path="/admin/seguros" element={<AdminStub />} />
-                <Route path="/admin/newsletter" element={<AdminStub />} />
-                <Route path="/admin/branding" element={<AdminStub />} />
-                <Route path="/admin/configuracion" element={<AdminStub />} />
-                <Route path="/admin/informes" element={<AdminStub />} />
-                <Route path="/admin/facturacion" element={<AdminStub />} />
-              </Route>
-
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </LanguageProvider>
+            {/* Admin routes (no lang prefix) */}
+            <Route path="/admin" element={<AdminLogin />} />
+            <Route element={<AdminLayout />}>
+              <Route path="/admin/dashboard" element={<AdminDashboard />} />
+              <Route path="/admin/reservas" element={<AdminStub />} />
+              <Route path="/admin/vehiculos" element={<AdminStub />} />
+              <Route path="/admin/categorias" element={<AdminStub />} />
+              <Route path="/admin/precios" element={<AdminStub />} />
+              <Route path="/admin/extras" element={<AdminStub />} />
+              <Route path="/admin/descuentos" element={<AdminStub />} />
+              <Route path="/admin/clientes" element={<AdminStub />} />
+              <Route path="/admin/oficinas" element={<AdminStub />} />
+              <Route path="/admin/usuarios" element={<AdminStub />} />
+              <Route path="/admin/contenido/*" element={<AdminStub />} />
+              <Route path="/admin/chat" element={<AdminStub />} />
+              <Route path="/admin/seguros" element={<AdminStub />} />
+              <Route path="/admin/newsletter" element={<AdminStub />} />
+              <Route path="/admin/branding" element={<AdminStub />} />
+              <Route path="/admin/configuracion" element={<AdminStub />} />
+              <Route path="/admin/informes" element={<AdminStub />} />
+              <Route path="/admin/facturacion" element={<AdminStub />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
     </ConfigProvider>
   </QueryClientProvider>
 );

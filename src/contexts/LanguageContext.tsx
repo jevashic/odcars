@@ -1,8 +1,7 @@
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { esFallback } from '@/i18n/es';
-
-type Lang = 'es' | 'en' | 'de';
+import { createContext, useContext, useCallback, ReactNode, useEffect } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import i18n, { isSupportedLang, type Lang } from '@/i18n';
 
 interface LangCtx {
   lang: Lang;
@@ -13,41 +12,44 @@ interface LangCtx {
 const LanguageContext = createContext<LangCtx>({
   lang: 'es',
   setLang: () => {},
-  t: (k) => esFallback[k] ?? k,
+  t: (k) => k,
 });
 
 export const useLang = () => useContext(LanguageContext);
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [lang, setLangState] = useState<Lang>('es');
-  const [translations, setTranslations] = useState<Record<string, string>>(esFallback);
+  const { lang: paramLang } = useParams<{ lang: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { t: i18t } = useTranslation();
 
-  const setLang = useCallback((l: Lang) => {
-    setLangState(l);
-    document.documentElement.lang = l;
-  }, []);
+  const lang: Lang = paramLang && isSupportedLang(paramLang) ? paramLang : 'es';
 
+  // Sync i18next language with URL param
   useEffect(() => {
-    if (lang === 'es') {
-      setTranslations(esFallback);
-      return;
+    if (i18n.language !== lang) {
+      i18n.changeLanguage(lang);
     }
-    supabase
-      .from('translations')
-      .select('key, value')
-      .eq('lang', lang)
-      .then(({ data }) => {
-        if (data && data.length > 0) {
-          const map: Record<string, string> = {};
-          data.forEach((r: any) => { map[r.key] = r.value; });
-          setTranslations({ ...esFallback, ...map });
-        } else {
-          setTranslations(esFallback);
-        }
-      });
+    document.documentElement.lang = lang;
   }, [lang]);
 
-  const t = useCallback((key: string) => translations[key] ?? esFallback[key] ?? key, [translations]);
+  const setLang = useCallback(
+    (newLang: Lang) => {
+      // Replace /:oldLang/ with /:newLang/ in current path
+      const currentPath = location.pathname;
+      const rest = currentPath.replace(/^\/(es|en|de)/, '');
+      navigate(`/${newLang}${rest || '/'}${location.search}`, { replace: true });
+    },
+    [navigate, location],
+  );
+
+  const t = useCallback(
+    (key: string) => {
+      const val = i18t(key);
+      return val === key ? key : val;
+    },
+    [i18t],
+  );
 
   return (
     <LanguageContext.Provider value={{ lang, setLang, t }}>

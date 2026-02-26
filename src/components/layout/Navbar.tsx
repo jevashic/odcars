@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, Globe } from 'lucide-react';
 import { useLang } from '@/contexts/LanguageContext';
+import { useLangPath } from '@/hooks/useLangNavigate';
 import logoHorizontal from '@/assets/logo-horizontal.png';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
@@ -14,8 +15,9 @@ const NAV_LINKS = [
 
 export default function Navbar() {
   const { t, lang, setLang } = useLang();
+  const lp = useLangPath();
   const location = useLocation();
-  const isHome = location.pathname === '/';
+  const isHome = location.pathname === `/${lang}` || location.pathname === `/${lang}/`;
   const [scrolled, setScrolled] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
 
@@ -44,7 +46,7 @@ export default function Navbar() {
     >
       <nav className="container h-full flex items-center justify-between gap-4">
         {/* Logo */}
-        <Link to="/" className="shrink-0">
+        <Link to={lp('/')} className="shrink-0">
           <img src={logoHorizontal} alt="Ocean Drive Rent a Car" className="h-[50px] md:h-[76px]" />
         </Link>
 
@@ -53,7 +55,7 @@ export default function Navbar() {
           {NAV_LINKS.map((l) => (
             <Link
               key={l.to}
-              to={l.to}
+              to={lp(l.to)}
               className={`text-sm font-medium transition-colors hover:text-cta ${textColor}`}
             >
               {t(l.key)}
@@ -88,7 +90,7 @@ export default function Navbar() {
           </div>
 
           <Link
-            to="/mis-reservas"
+            to={lp('/mis-reservas')}
             className="bg-cta text-cta-foreground font-semibold text-sm h-9 px-4 rounded-lg hover:opacity-90 transition-opacity inline-flex items-center"
           >
             {t('nav.my_reservations')}
@@ -105,11 +107,11 @@ export default function Navbar() {
           <SheetContent side="right" className="w-72 p-6">
             <div className="flex flex-col gap-4 mt-8">
               {NAV_LINKS.map((l) => (
-                <Link key={l.to} to={l.to} className="text-base font-medium text-foreground hover:text-cta py-2">
+                <Link key={l.to} to={lp(l.to)} className="text-base font-medium text-foreground hover:text-cta py-2">
                   {t(l.key)}
                 </Link>
               ))}
-              <Link to="/mis-reservas" className="bg-cta text-cta-foreground font-bold text-sm px-5 py-2.5 rounded-lg text-center mt-2">
+              <Link to={lp('/mis-reservas')} className="bg-cta text-cta-foreground font-bold text-sm px-5 py-2.5 rounded-lg text-center mt-2">
                 {t('nav.my_reservations')}
               </Link>
               <div className="flex gap-2 mt-4">

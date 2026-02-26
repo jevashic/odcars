@@ -1,11 +1,13 @@
 import { Link } from 'react-router-dom';
 import { useLang } from '@/contexts/LanguageContext';
+import { useLangPath } from '@/hooks/useLangNavigate';
 import { useConfig } from '@/contexts/ConfigContext';
 import { Phone, Mail, MapPin, Facebook, Instagram, Twitter } from 'lucide-react';
 import logoSquare from '@/assets/logo-square.png';
 
 export default function Footer() {
   const { t } = useLang();
+  const lp = useLangPath();
   const { company_name, company_phone, company_email } = useConfig();
 
   return (
@@ -38,7 +40,7 @@ export default function Footer() {
                 { label: t('nav.discover'), to: '/conoce-gran-canaria' },
                 { label: t('nav.contact'), to: '/contacto' },
               ].map((l) => (
-                <li key={l.to}><Link to={l.to} className="text-white/70 hover:text-cta transition-colors">{l.label}</Link></li>
+                <li key={l.to}><Link to={lp(l.to)} className="text-white/70 hover:text-cta transition-colors">{l.label}</Link></li>
               ))}
             </ul>
           </div>
@@ -52,7 +54,7 @@ export default function Footer() {
                 { label: t('footer.cookies'), to: '/legal/cookies' },
                 { label: t('footer.terms'), to: '/legal/terminos' },
               ].map((l) => (
-                <li key={l.to}><Link to={l.to} className="text-white/70 hover:text-cta transition-colors">{l.label}</Link></li>
+                <li key={l.to}><Link to={lp(l.to)} className="text-white/70 hover:text-cta transition-colors">{l.label}</Link></li>
               ))}
             </ul>
           </div>
