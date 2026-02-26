@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLangNavigate } from '@/hooks/useLangNavigate';
 import { Calendar as CalendarIcon, MapPin, Search } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,7 +18,7 @@ interface Branch { id: string; name: string; show_surcharge_warning: boolean; su
 
 export default function SearchBar() {
   const { t, lang } = useLang();
-  const navigate = useNavigate();
+  const navigate = useLangNavigate();
   const [branches, setBranches] = useState<Branch[]>([]);
   const [pickup, setPickup] = useState('');
   const [dropoff, setDropoff] = useState('');
