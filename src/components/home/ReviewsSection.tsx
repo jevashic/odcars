@@ -26,7 +26,15 @@ export default function ReviewsSection() {
       .order('sort_order')
       .limit(6)
       .then(({ data }) => {
-        if (data && data.length > 0) setReviews(data as any);
+        if (data && data.length > 0) {
+          setReviews(data.map((d: any) => ({
+            id: d.id,
+            name: d.name ?? d.author_name ?? 'Anónimo',
+            text: d.text ?? d.review_text ?? '',
+            rating: d.rating ?? 5,
+            date: d.date ?? d.created_at ?? '',
+          })));
+        }
       });
   }, []);
 
