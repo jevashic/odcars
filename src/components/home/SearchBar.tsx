@@ -28,8 +28,6 @@ export default function SearchBar() {
   const [pickupTime, setPickupTime] = useState('10:00');
   const [returnTime, setReturnTime] = useState('10:00');
   const [age, setAge] = useState('+30');
-  const [group, setGroup] = useState('all');
-  const [fuel, setFuel] = useState('all');
   const [address, setAddress] = useState('');
   const [dropAddress, setDropAddress] = useState('');
   const [errors, setErrors] = useState<Record<string, boolean>>({});
@@ -78,8 +76,6 @@ export default function SearchBar() {
       pickupTime,
       returnTime,
       age,
-      ...(group !== 'all' && { group }),
-      ...(fuel !== 'all' && { fuel }),
       ...(isOtherPickup && { address }),
       ...(differentReturn && { dropoff }),
       ...(differentReturn && isOtherDrop && { dropAddress }),
@@ -108,7 +104,7 @@ export default function SearchBar() {
         <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_auto] gap-3">
           {/* Location */}
           <div>
-            <label className="text-xs text-white/60 mb-1 block">{t('search.where')}</label>
+            <label className="text-xs text-white/60 mb-1 block">Lugar de recogida y devolución</label>
             <div className="relative">
               <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50" />
               <select
@@ -228,31 +224,7 @@ export default function SearchBar() {
             <span className="text-sm text-white">{t('search.different_return')}</span>
           </label>
 
-          <div className="h-6 w-px bg-white/20 hidden md:block" />
-
-          {/* Group chips */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-white/60">{t('search.group')}:</span>
-            {[
-              { v: 'all', l: t('search.all') },
-              { v: 'economic', l: t('search.economic') },
-              { v: 'standard', l: t('search.standard') },
-              { v: 'premium', l: t('search.premium') },
-            ].map(c => <Chip key={c.v} value={c.v} current={group} onChange={setGroup} label={c.l} />)}
-          </div>
-
-          <div className="h-6 w-px bg-white/20 hidden md:block" />
-
-          {/* Fuel chips */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-white/60">{t('search.fuel')}:</span>
-            {[
-              { v: 'all', l: t('search.all') },
-              { v: 'gasoline', l: t('search.gasoline') },
-              { v: 'hybrid', l: t('search.hybrid') },
-              { v: 'electric', l: t('search.electric') },
-            ].map(c => <Chip key={c.v} value={c.v} current={fuel} onChange={setFuel} label={c.l} />)}
-          </div>
+          
 
           <div className="h-6 w-px bg-white/20 hidden md:block" />
 
