@@ -5,9 +5,17 @@ import { supabase } from '@/integrations/supabase/client';
 import PublicLayout from '@/components/layout/PublicLayout';
 import InsuranceBadges from '@/components/InsuranceBadges';
 import { useLang } from '@/contexts/LanguageContext';
+import { useLangPath } from '@/hooks/useLangNavigate';
+
+const FALLBACK_CATEGORIES = [
+  { id: 'eco-1', name: 'Fiat Panda', image_url: 'https://images.unsplash.com/photo-1502877338535-766e1452684a?w=600', seats_min: 4, seats_max: 5, transmission_note: 'Manual', energy_type: 'Gasolina', is_active: true },
+  { id: 'std-1', name: 'Seat León', image_url: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0afa?w=600', seats_min: 5, seats_max: 5, transmission_note: 'Manual', energy_type: 'Gasolina', is_active: true },
+  { id: 'pre-1', name: 'VW T-Roc', image_url: 'https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?w=600', seats_min: 5, seats_max: 5, transmission_note: 'Automático', energy_type: 'Híbrido', is_active: true },
+];
 
 export default function SearchResults() {
   const { t } = useLang();
+  const lp = useLangPath();
   const [params] = useSearchParams();
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -15,30 +23,43 @@ export default function SearchResults() {
   useEffect(() => {
     const loadResults = async () => {
       setLoading(true);
-      const { data: categories } = await supabase.from('vehicle_categories').select('*').eq('is_active', true).order('sort_order');
-      if (!categories) { setLoading(false); return; }
+      const { data: categories } = await supabase
+        .from('vehicle_categories')
+        .select('*')
+        .eq('is_active', true)
+        .order('sort_order');
+
+      const cats = categories && categories.length > 0 ? categories : FALLBACK_CATEGORIES;
 
       const startDate = params.get('pickupDate');
       const endDate = params.get('returnDate');
 
-      const enriched = await Promise.all(categories.map(async (cat: any) => {
-        const { data: avail } = await supabase.rpc('check_availability', {
-          p_category_id: cat.id,
-          p_start_date: startDate,
-          p_end_date: endDate,
-        });
-        const { data: quote } = await supabase.rpc('get_quote', {
-          p_category_id: cat.id,
-          p_start_date: startDate,
-          p_end_date: endDate,
-          p_pickup_branch_id: params.get('pickup'),
-          p_return_branch_id: params.get('dropoff') || params.get('pickup'),
-          p_driver_age: params.get('age') || '+30',
-        });
-        return { ...cat, available: avail ?? false, quote };
-      }));
-
-      setResults(enriched);
+      // If dates are present, try to enrich with availability/quote
+      if (startDate && endDate) {
+        const enriched = await Promise.all(cats.map(async (cat: any) => {
+          try {
+            const { data: avail } = await supabase.rpc('check_availability', {
+              p_category_id: cat.id,
+              p_start_date: startDate,
+              p_end_date: endDate,
+            });
+            const { data: quote } = await supabase.rpc('get_quote', {
+              p_category_id: cat.id,
+              p_start_date: startDate,
+              p_end_date: endDate,
+              p_pickup_branch_id: params.get('pickup') || '',
+              p_return_branch_id: params.get('dropoff') || params.get('pickup') || '',
+              p_driver_age: params.get('age') || '+30',
+            });
+            return { ...cat, available: avail ?? true, quote };
+          } catch {
+            return { ...cat, available: true, quote: null };
+          }
+        }));
+        setResults(enriched);
+      } else {
+        setResults(cats.map((c: any) => ({ ...c, available: true, quote: null })));
+      }
       setLoading(false);
     };
     loadResults();
@@ -50,11 +71,13 @@ export default function SearchResults() {
         <div className="container">
           <div className="flex items-center justify-between mb-8">
             <h1 className="text-2xl font-bold text-primary">Resultados de búsqueda</h1>
-            <Link to="/" className="text-sm text-cta font-bold hover:underline">Modificar búsqueda</Link>
+            <Link to={lp('/')} className="text-sm text-cta font-bold hover:underline">Modificar búsqueda</Link>
           </div>
 
           {loading ? (
             <p className="text-center text-muted-foreground py-20">Buscando vehículos disponibles...</p>
+          ) : results.length === 0 ? (
+            <p className="text-center text-muted-foreground py-20">No se encontraron vehículos disponibles.</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {results.map((cat) => (
@@ -76,7 +99,7 @@ export default function SearchResults() {
                       <p className="mt-4 text-2xl font-bold text-primary">€{cat.quote.total_amount}</p>
                     )}
                     {cat.available ? (
-                      <Link to={`/reservar/detalle/${cat.id}?${params.toString()}`} className="mt-4 block w-full bg-cta text-cta-foreground font-bold text-sm text-center py-3 rounded-lg hover:opacity-90 transition-opacity">
+                      <Link to={lp(`/reservar/detalle/${cat.id}?${params.toString()}`)} className="mt-4 block w-full bg-cta text-cta-foreground font-bold text-sm text-center py-3 rounded-lg hover:opacity-90 transition-opacity">
                         Seleccionar →
                       </Link>
                     ) : (
