@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLang } from '@/contexts/LanguageContext';
+import heroPlaceholder from '@/assets/hero-placeholder.jpg';
 
 interface HeroData {
   title_line1: string;
@@ -33,7 +34,7 @@ export default function HeroSection() {
     title_line2: t('hero.title2'),
     subtitle: t('hero.subtitle'),
     cta_text: t('hero.cta'),
-    media_url: 'https://images.unsplash.com/photo-1500375592092-40eb2168fd21?w=1920&q=80',
+    media_url: heroPlaceholder,
     media_type: 'image',
     overlay_opacity: 0.45,
   };
