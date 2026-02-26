@@ -1,0 +1,298 @@
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Calendar as CalendarIcon, MapPin, Search } from 'lucide-react';
+import { format } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
+import { useLang } from '@/contexts/LanguageContext';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
+
+const TIMES = Array.from({ length: 48 }, (_, i) => {
+  const h = String(Math.floor(i / 2)).padStart(2, '0');
+  const m = i % 2 === 0 ? '00' : '30';
+  return `${h}:${m}`;
+});
+
+interface Branch { id: string; name: string; show_surcharge_warning: boolean; surcharge_label_es?: string; surcharge_label_en?: string; surcharge_label_de?: string; }
+
+export default function SearchBar() {
+  const { t, lang } = useLang();
+  const navigate = useNavigate();
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [pickup, setPickup] = useState('');
+  const [dropoff, setDropoff] = useState('');
+  const [differentReturn, setDifferentReturn] = useState(false);
+  const [pickupDate, setPickupDate] = useState<Date>();
+  const [returnDate, setReturnDate] = useState<Date>();
+  const [pickupTime, setPickupTime] = useState('10:00');
+  const [returnTime, setReturnTime] = useState('10:00');
+  const [age, setAge] = useState('+30');
+  const [group, setGroup] = useState('all');
+  const [fuel, setFuel] = useState('all');
+  const [address, setAddress] = useState('');
+  const [dropAddress, setDropAddress] = useState('');
+  const [errors, setErrors] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    supabase.from('branches').select('*').eq('is_active', true).order('sort_order').then(({ data }) => {
+      if (data) setBranches(data as any);
+    });
+  }, []);
+
+  // fallback branches
+  const branchOptions = branches.length > 0 ? branches : [
+    { id: 'maspalomas', name: 'Oficina Maspalomas', show_surcharge_warning: false },
+    { id: 'airport', name: 'Aeropuerto de Gran Canaria', show_surcharge_warning: true, surcharge_label_es: 'Servicio de entrega en aeropuerto (suplemento puede aplicar)' },
+    { id: 'other', name: 'Otro lugar / hotel', show_surcharge_warning: true, surcharge_label_es: 'Servicio de entrega a domicilio (suplemento puede aplicar)' },
+  ] as Branch[];
+
+  const selectedBranch = branchOptions.find(b => b.id === pickup);
+  const selectedDropBranch = branchOptions.find(b => b.id === dropoff);
+  const surchargeKey = `surcharge_label_${lang}` as keyof Branch;
+  const isOtherPickup = selectedBranch?.name?.toLowerCase().includes('otro');
+  const isOtherDrop = selectedDropBranch?.name?.toLowerCase().includes('otro');
+
+  // Set default pickup
+  useEffect(() => {
+    if (branchOptions.length > 0 && !pickup) {
+      const airport = branchOptions.find(b => b.name?.toLowerCase().includes('aeropuerto'));
+      setPickup(airport?.id ?? branchOptions[0].id);
+    }
+  }, [branchOptions, pickup]);
+
+  const handleSearch = () => {
+    const errs: Record<string, boolean> = {};
+    if (!pickup) errs.pickup = true;
+    if (!pickupDate) errs.pickupDate = true;
+    if (!returnDate) errs.returnDate = true;
+    if (isOtherPickup && !address) errs.address = true;
+    if (differentReturn && isOtherDrop && !dropAddress) errs.dropAddress = true;
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) return;
+
+    const params = new URLSearchParams({
+      pickup,
+      pickupDate: pickupDate!.toISOString(),
+      returnDate: returnDate!.toISOString(),
+      pickupTime,
+      returnTime,
+      age,
+      ...(group !== 'all' && { group }),
+      ...(fuel !== 'all' && { fuel }),
+      ...(isOtherPickup && { address }),
+      ...(differentReturn && { dropoff }),
+      ...(differentReturn && isOtherDrop && { dropAddress }),
+    });
+    navigate(`/reservar?${params.toString()}`);
+  };
+
+  const Chip = ({ value, current, onChange, label }: { value: string; current: string; onChange: (v: string) => void; label: string }) => (
+    <button
+      onClick={() => onChange(value)}
+      className={cn(
+        'px-4 py-2 rounded-lg text-sm font-medium transition-colors border',
+        current === value
+          ? 'bg-cta text-cta-foreground border-cta'
+          : 'border-white/20 text-white hover:border-white/40'
+      )}
+    >
+      {label}
+    </button>
+  );
+
+  return (
+    <section id="search-bar" className="bg-primary py-8 px-4">
+      <div className="container max-w-6xl">
+        {/* Row 1 */}
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_auto] gap-3">
+          {/* Location */}
+          <div>
+            <label className="text-xs text-white/60 mb-1 block">{t('search.where')}</label>
+            <div className="relative">
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50" />
+              <select
+                value={pickup}
+                onChange={(e) => setPickup(e.target.value)}
+                className={cn(
+                  'w-full pl-10 pr-3 py-3 rounded-lg bg-white/10 border text-white text-sm appearance-none',
+                  errors.pickup ? 'border-red-500' : 'border-white/20 focus:border-cta'
+                )}
+              >
+                {branchOptions.map(b => (
+                  <option key={b.id} value={b.id} className="text-foreground">{b.name}</option>
+                ))}
+              </select>
+            </div>
+            {selectedBranch?.show_surcharge_warning && (
+              <div className="mt-2 text-xs bg-cta/20 text-cta px-3 py-1.5 rounded-full inline-block">
+                ⚠️ {(selectedBranch as any)[surchargeKey] || selectedBranch.surcharge_label_es || 'Suplemento puede aplicar'}
+              </div>
+            )}
+            {isOtherPickup && (
+              <input
+                value={address}
+                onChange={e => setAddress(e.target.value)}
+                placeholder={t('search.address_placeholder')}
+                className={cn(
+                  'w-full mt-2 px-3 py-2.5 rounded-lg bg-white/10 border text-white text-sm placeholder:text-white/40',
+                  errors.address ? 'border-red-500' : 'border-white/20 focus:border-cta'
+                )}
+              />
+            )}
+          </div>
+
+          {/* Pickup date + time */}
+          <div>
+            <label className="text-xs text-white/60 mb-1 block">{t('search.pickup_date')}</label>
+            <div className="flex gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className={cn(
+                    'flex-1 flex items-center gap-2 px-3 py-3 rounded-lg bg-white/10 border text-sm text-white',
+                    errors.pickupDate ? 'border-red-500' : 'border-white/20'
+                  )}>
+                    <CalendarIcon className="h-4 w-4 text-white/50" />
+                    {pickupDate ? format(pickupDate, 'dd/MM/yyyy') : 'dd/mm/aaaa'}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single" selected={pickupDate} onSelect={setPickupDate}
+                    disabled={(d) => d < new Date(new Date().setHours(0,0,0,0))}
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+              <select
+                value={pickupTime} onChange={e => setPickupTime(e.target.value)}
+                className="w-24 px-2 py-3 rounded-lg bg-white/10 border border-white/20 text-white text-sm appearance-none focus:border-cta"
+              >
+                {TIMES.map(t => <option key={t} value={t} className="text-foreground">{t}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* Return date + time */}
+          <div>
+            <label className="text-xs text-white/60 mb-1 block">{t('search.return_date')}</label>
+            <div className="flex gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className={cn(
+                    'flex-1 flex items-center gap-2 px-3 py-3 rounded-lg bg-white/10 border text-sm text-white',
+                    errors.returnDate ? 'border-red-500' : 'border-white/20'
+                  )}>
+                    <CalendarIcon className="h-4 w-4 text-white/50" />
+                    {returnDate ? format(returnDate, 'dd/MM/yyyy') : 'dd/mm/aaaa'}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single" selected={returnDate} onSelect={setReturnDate}
+                    disabled={(d) => d < (pickupDate ?? new Date())}
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+              <select
+                value={returnTime} onChange={e => setReturnTime(e.target.value)}
+                className="w-24 px-2 py-3 rounded-lg bg-white/10 border border-white/20 text-white text-sm appearance-none focus:border-cta"
+              >
+                {TIMES.map(t => <option key={t} value={t} className="text-foreground">{t}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* Search button */}
+          <div className="flex items-end">
+            <button
+              onClick={handleSearch}
+              className="w-full md:w-auto bg-cta text-cta-foreground font-bold uppercase px-8 py-3 rounded-lg hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+            >
+              <Search className="h-4 w-4" />
+              {t('search.button')}
+            </button>
+          </div>
+        </div>
+
+        {/* Row 2 - Filters */}
+        <div className="mt-4 flex flex-wrap items-center gap-4">
+          {/* Different return toggle */}
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox" checked={differentReturn}
+              onChange={e => setDifferentReturn(e.target.checked)}
+              className="w-4 h-4 rounded accent-cta"
+            />
+            <span className="text-sm text-white">{t('search.different_return')}</span>
+          </label>
+
+          <div className="h-6 w-px bg-white/20 hidden md:block" />
+
+          {/* Group chips */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-white/60">{t('search.group')}:</span>
+            {[
+              { v: 'all', l: t('search.all') },
+              { v: 'economic', l: t('search.economic') },
+              { v: 'standard', l: t('search.standard') },
+              { v: 'premium', l: t('search.premium') },
+            ].map(c => <Chip key={c.v} value={c.v} current={group} onChange={setGroup} label={c.l} />)}
+          </div>
+
+          <div className="h-6 w-px bg-white/20 hidden md:block" />
+
+          {/* Fuel chips */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-white/60">{t('search.fuel')}:</span>
+            {[
+              { v: 'all', l: t('search.all') },
+              { v: 'gasoline', l: t('search.gasoline') },
+              { v: 'hybrid', l: t('search.hybrid') },
+              { v: 'electric', l: t('search.electric') },
+            ].map(c => <Chip key={c.v} value={c.v} current={fuel} onChange={setFuel} label={c.l} />)}
+          </div>
+
+          <div className="h-6 w-px bg-white/20 hidden md:block" />
+
+          {/* Age chips */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-white/60">{t('search.age')}:</span>
+            {[
+              { v: '21-24', l: '21-24' },
+              { v: '25-29', l: '25-29' },
+              { v: '+30', l: '+30' },
+            ].map(c => <Chip key={c.v} value={c.v} current={age} onChange={setAge} label={c.l} />)}
+          </div>
+        </div>
+
+        {/* Different return selector */}
+        {differentReturn && (
+          <div className="mt-3 max-w-md">
+            <label className="text-xs text-white/60 mb-1 block">Lugar de devolución</label>
+            <select
+              value={dropoff} onChange={e => setDropoff(e.target.value)}
+              className="w-full px-3 py-3 rounded-lg bg-white/10 border border-white/20 text-white text-sm appearance-none focus:border-cta"
+            >
+              <option value="" className="text-foreground">Seleccionar...</option>
+              {branchOptions.map(b => (
+                <option key={b.id} value={b.id} className="text-foreground">{b.name}</option>
+              ))}
+            </select>
+            {isOtherDrop && (
+              <input
+                value={dropAddress} onChange={e => setDropAddress(e.target.value)}
+                placeholder={t('search.address_placeholder')}
+                className={cn(
+                  'w-full mt-2 px-3 py-2.5 rounded-lg bg-white/10 border text-white text-sm placeholder:text-white/40',
+                  errors.dropAddress ? 'border-red-500' : 'border-white/20 focus:border-cta'
+                )}
+              />
+            )}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
