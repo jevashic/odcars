@@ -11,7 +11,7 @@ export default function Fleet() {
   const [categories, setCategories] = useState<any[]>([]);
 
   useEffect(() => {
-    supabase.from('vehicle_categories').select('*').eq('is_active', true).order('sort_order').then(({ data }) => {
+    supabase.from('vehicle_categories').select('*').eq('is_active', true).order('price_per_day').then(({ data }) => {
       if (data) setCategories(data);
     });
   }, []);

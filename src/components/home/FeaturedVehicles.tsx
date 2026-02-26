@@ -32,7 +32,7 @@ export default function FeaturedVehicles() {
       .from('vehicle_categories')
       .select('*')
       .eq('is_active', true)
-      .order('sort_order')
+      .order('price_per_day')
       .limit(4)
       .then(({ data }) => {
         if (data && data.length > 0) setCategories(data as any);
