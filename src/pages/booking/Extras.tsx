@@ -1,21 +1,27 @@
-import { useEffect, useState } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { Navigation, Baby } from 'lucide-react';
 import PublicLayout from '@/components/layout/PublicLayout';
+import { useLangNavigate } from '@/hooks/useLangNavigate';
+
+const EXTRAS_LIST = [
+  { id: 'gps', name: 'GPS Navegador', description: 'Navegador GPS con mapas actualizados de Gran Canaria', price: 5, icon: Navigation },
+  { id: 'baby-seat', name: 'Silla de bebé', description: 'Silla homologada grupo 0+/1 (0-18 kg)', price: 7, icon: Baby },
+];
 
 export default function Extras() {
   const [params] = useSearchParams();
-  const [extras, setExtras] = useState<any[]>([]);
+  const navigate = useLangNavigate();
   const [selected, setSelected] = useState<string[]>([]);
-
-  useEffect(() => {
-    supabase.from('extras').select('*').eq('is_active', true).order('name').then(({ data }) => {
-      if (data) setExtras(data);
-    });
-  }, []);
 
   const toggle = (id: string) => {
     setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const handleContinue = () => {
+    const p = new URLSearchParams(params);
+    if (selected.length > 0) p.set('extras', selected.join(','));
+    navigate(`/reservar/resumen?${p.toString()}`);
   };
 
   return (
@@ -26,24 +32,36 @@ export default function Extras() {
           <div className="w-[60px] h-[3px] bg-cta rounded-full mb-8" />
 
           <div className="space-y-4">
-            {extras.map((ext) => (
-              <div key={ext.id} className={`bg-card rounded-xl p-5 flex items-center justify-between shadow-sm border-2 transition-colors cursor-pointer ${selected.includes(ext.id) ? 'border-cta' : 'border-transparent'}`} onClick={() => toggle(ext.id)}>
-                <div>
-                  <h3 className="font-bold text-foreground">{ext.name}</h3>
-                  {ext.description && <p className="text-sm text-muted-foreground mt-1">{ext.description}</p>}
+            {EXTRAS_LIST.map((ext) => (
+              <div
+                key={ext.id}
+                onClick={() => toggle(ext.id)}
+                className={`bg-card rounded-xl p-5 flex items-center justify-between shadow-sm border-2 transition-colors cursor-pointer ${selected.includes(ext.id) ? 'border-cta' : 'border-transparent'}`}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <ext.icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-foreground">{ext.name}</h3>
+                    <p className="text-sm text-muted-foreground mt-0.5">{ext.description}</p>
+                  </div>
                 </div>
                 <div className="text-right shrink-0 ml-4">
-                  <p className="font-bold text-primary">+€{ext.price}</p>
-                  <p className="text-xs text-muted-foreground">/reserva</p>
+                  <p className="font-bold text-primary">+{ext.price} €</p>
+                  <p className="text-xs text-muted-foreground">/día</p>
                 </div>
               </div>
             ))}
           </div>
 
           <div className="mt-8 flex gap-4">
-            <Link to={`/reservar/resumen?${params.toString()}&extras=${selected.join(',')}`} className="flex-1 bg-cta text-cta-foreground font-bold text-center py-3.5 rounded-lg hover:opacity-90 transition-opacity">
+            <button onClick={() => navigate(-1 as any)} className="px-6 py-3.5 border-2 border-primary text-primary font-bold rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors">
+              ← Atrás
+            </button>
+            <button onClick={handleContinue} className="flex-1 bg-cta text-cta-foreground font-bold text-center py-3.5 rounded-lg hover:opacity-90 transition-opacity">
               Continuar →
-            </Link>
+            </button>
           </div>
         </div>
       </div>
