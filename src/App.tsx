@@ -29,6 +29,7 @@ import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminStub from "./pages/admin/AdminStub";
 
+import AdminInsurance from "./pages/admin/Insurance";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -91,7 +92,7 @@ const App = () => (
               <Route path="/admin/usuarios" element={<AdminStub />} />
               <Route path="/admin/contenido/*" element={<AdminStub />} />
               <Route path="/admin/chat" element={<AdminStub />} />
-              <Route path="/admin/seguros" element={<AdminStub />} />
+              <Route path="/admin/seguros" element={<AdminInsurance />} />
               <Route path="/admin/newsletter" element={<AdminStub />} />
               <Route path="/admin/branding" element={<AdminStub />} />
               <Route path="/admin/configuracion" element={<AdminStub />} />
