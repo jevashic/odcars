@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import logoSquare from '@/assets/logo-square.png';
 
+const ALLOWED_ROLES = ['admin', 'manager'];
+
 export default function AdminLogin() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
@@ -20,11 +22,17 @@ export default function AdminLogin() {
       setLoading(false);
       return;
     }
-    // Verify internal user
-    const { data: internal } = await supabase.from('internal_users').select('*').eq('auth_user_id', data.user.id).eq('is_active', true).single();
-    if (!internal) {
+    // Verify internal user with allowed role
+    const { data: internal } = await supabase
+      .from('internal_users')
+      .select('role')
+      .eq('auth_user_id', data.user.id)
+      .eq('is_active', true)
+      .single();
+
+    if (!internal || !ALLOWED_ROLES.includes(internal.role)) {
       await supabase.auth.signOut();
-      setError('Acceso no autorizado.');
+      setError('Acceso no autorizado. Se requiere rol admin o manager.');
       setLoading(false);
       return;
     }

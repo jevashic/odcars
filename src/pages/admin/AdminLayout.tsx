@@ -1,9 +1,9 @@
-import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, CalendarDays, Car, Layers, DollarSign, Package, Percent, Users, MapPin, UserCog,
   FileText, MessageCircle, Shield, Mail, Palette, Settings, BarChart3, Receipt, LogOut,
 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { AdminAuthProvider, useAdminAuth } from '@/contexts/AdminAuthContext';
 import logoSquare from '@/assets/logo-square.png';
 
 const links = [
@@ -27,14 +27,9 @@ const links = [
   { to: '/admin/facturacion', icon: Receipt, label: 'Facturación' },
 ];
 
-export default function AdminLayout() {
+function AdminLayoutInner() {
   const location = useLocation();
-  const navigate = useNavigate();
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/admin');
-  };
+  const { user, logout } = useAdminAuth();
 
   return (
     <div className="flex min-h-screen bg-[#F1F5F9]">
@@ -42,7 +37,12 @@ export default function AdminLayout() {
       <aside className="w-60 bg-white border-r border-[#E2E8F0] flex flex-col shrink-0">
         <div className="p-4 flex items-center gap-3 border-b border-[#E2E8F0]">
           <img src={logoSquare} alt="Ocean Drive" className="h-8 w-8 rounded" />
-          <span className="font-bold text-sm text-primary">Ocean Drive</span>
+          <div className="flex flex-col">
+            <span className="font-bold text-sm text-primary">Ocean Drive</span>
+            {user && (
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{user.role}</span>
+            )}
+          </div>
         </div>
         <nav className="flex-1 py-2 overflow-y-auto">
           {links.map((l) => {
@@ -59,9 +59,12 @@ export default function AdminLayout() {
             );
           })}
         </nav>
-        <button onClick={handleLogout} className="flex items-center gap-3 px-4 py-3 text-sm text-destructive hover:bg-destructive/5 border-t border-[#E2E8F0]">
-          <LogOut className="h-4 w-4" /> Cerrar sesión
-        </button>
+        <div className="border-t border-[#E2E8F0] px-4 py-2">
+          {user && <p className="text-xs text-muted-foreground truncate mb-1">{user.display_name || user.email}</p>}
+          <button onClick={logout} className="flex items-center gap-3 py-2 text-sm text-destructive hover:opacity-80">
+            <LogOut className="h-4 w-4" /> Cerrar sesión
+          </button>
+        </div>
       </aside>
 
       {/* Content */}
@@ -69,5 +72,13 @@ export default function AdminLayout() {
         <Outlet />
       </div>
     </div>
+  );
+}
+
+export default function AdminLayout() {
+  return (
+    <AdminAuthProvider>
+      <AdminLayoutInner />
+    </AdminAuthProvider>
   );
 }
