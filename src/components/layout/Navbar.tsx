@@ -40,12 +40,12 @@ export default function Navbar() {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 h-16 transition-all duration-300 ${bgClass}`}
+      className={`fixed top-0 left-0 right-0 z-50 h-20 transition-all duration-300 ${bgClass}`}
     >
       <nav className="container h-full flex items-center justify-between gap-4">
         {/* Logo */}
         <Link to="/" className="shrink-0">
-          <img src={logoHorizontal} alt="Ocean Drive Rent a Car" className="h-[46px] md:h-[68px]" />
+          <img src={logoHorizontal} alt="Ocean Drive Rent a Car" className="h-[50px] md:h-[76px]" />
         </Link>
 
         {/* Desktop links */}
