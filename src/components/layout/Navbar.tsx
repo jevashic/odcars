@@ -45,7 +45,7 @@ export default function Navbar() {
       <nav className="container h-full flex items-center justify-between gap-4">
         {/* Logo */}
         <Link to="/" className="shrink-0">
-          <img src={logoHorizontal} alt="Ocean Drive Rent a Car" className="h-10" />
+          <img src={logoHorizontal} alt="Ocean Drive Rent a Car" className="h-11 md:h-14" />
         </Link>
 
         {/* Desktop links */}
