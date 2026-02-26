@@ -5,9 +5,11 @@ import { supabase } from '@/integrations/supabase/client';
 import PublicLayout from '@/components/layout/PublicLayout';
 import InsuranceBadges from '@/components/InsuranceBadges';
 import { useLang } from '@/contexts/LanguageContext';
+import { useLangPath } from '@/hooks/useLangNavigate';
 
 export default function Fleet() {
   const { t } = useLang();
+  const lp = useLangPath();
   const [categories, setCategories] = useState<any[]>([]);
 
   useEffect(() => {
@@ -36,7 +38,7 @@ export default function Fleet() {
                     <span className="flex items-center gap-1.5"><Fuel className="h-4 w-4" />{cat.energy_type}</span>
                   </div>
                   <p className="mt-4 text-xl font-bold text-primary">Desde €{cat.price_per_day}/día</p>
-                  <Link to="/reservar" className="mt-4 block w-full bg-cta text-cta-foreground font-bold text-sm text-center py-3 rounded-lg hover:opacity-90 transition-opacity">
+                  <Link to={lp('/reservar')} className="mt-4 block w-full bg-cta text-cta-foreground font-bold text-sm text-center py-3 rounded-lg hover:opacity-90 transition-opacity">
                     {t('vehicles.book')} →
                   </Link>
                 </div>

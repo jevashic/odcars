@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Users, Settings2, Fuel, ArrowRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLang } from '@/contexts/LanguageContext';
+import { useLangPath } from '@/hooks/useLangNavigate';
 import InsuranceBadges from '@/components/InsuranceBadges';
 
 interface Category {
@@ -25,6 +26,7 @@ const fallback: Category[] = [
 
 export default function FeaturedVehicles() {
   const { t } = useLang();
+  const lp = useLangPath();
   const [categories, setCategories] = useState<Category[]>([]);
 
   useEffect(() => {
@@ -70,7 +72,7 @@ export default function FeaturedVehicles() {
                   {t('vehicles.from')} €{cat.price_per_day}{t('vehicles.per_day')}
                 </p>
                 <Link
-                  to="/reservar"
+                  to={lp('/reservar')}
                   className="mt-4 block w-full bg-cta text-cta-foreground font-bold text-sm text-center py-3 rounded-lg hover:opacity-90 transition-opacity"
                 >
                   {t('vehicles.book')} →
@@ -81,7 +83,7 @@ export default function FeaturedVehicles() {
         </div>
 
         <div className="text-center mt-10">
-          <Link to="/flota" className="inline-flex items-center gap-2 border-2 border-primary text-primary font-bold px-6 py-3 rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors">
+          <Link to={lp('/flota')} className="inline-flex items-center gap-2 border-2 border-primary text-primary font-bold px-6 py-3 rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors">
             {t('vehicles.see_all')} <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
