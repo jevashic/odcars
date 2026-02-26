@@ -72,7 +72,7 @@ export default function FeaturedVehicles() {
                   {t('vehicles.from')} €{cat.price_per_day}{t('vehicles.per_day')}
                 </p>
                 <Link
-                  to={lp('/reservar')}
+                  to={lp(`/reservar/detalle/${cat.id}`)}
                   className="mt-4 block w-full bg-cta text-cta-foreground font-bold text-sm text-center py-3 rounded-lg hover:opacity-90 transition-opacity"
                 >
                   {t('vehicles.book')} →
