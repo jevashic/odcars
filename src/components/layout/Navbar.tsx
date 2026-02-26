@@ -45,7 +45,7 @@ export default function Navbar() {
       <nav className="container h-full flex items-center justify-between gap-4">
         {/* Logo */}
         <Link to="/" className="shrink-0">
-          <img src={logoHorizontal} alt="Ocean Drive Rent a Car" className="h-[46px] md:h-[60px]" />
+          <img src={logoHorizontal} alt="Ocean Drive Rent a Car" className="h-[46px] md:h-[68px]" />
         </Link>
 
         {/* Desktop links */}
@@ -89,7 +89,7 @@ export default function Navbar() {
 
           <Link
             to="/mis-reservas"
-            className="bg-cta text-cta-foreground font-bold text-sm px-5 py-2.5 rounded-lg hover:opacity-90 transition-opacity"
+            className="bg-cta text-cta-foreground font-semibold text-sm h-9 px-4 rounded-lg hover:opacity-90 transition-opacity inline-flex items-center"
           >
             {t('nav.my_reservations')}
           </Link>
