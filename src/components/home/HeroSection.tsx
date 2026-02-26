@@ -29,14 +29,14 @@ export default function HeroSection() {
       });
   }, [lang]);
 
-  const h = hero ?? {
-    title_line1: t('hero.title1'),
-    title_line2: t('hero.title2'),
-    subtitle: t('hero.subtitle'),
-    cta_text: t('hero.cta'),
-    media_url: heroPlaceholder,
-    media_type: 'image',
-    overlay_opacity: 0.45,
+  const h = {
+    title_line1: hero?.title_line1 || t('hero.title1'),
+    title_line2: hero?.title_line2 || t('hero.title2'),
+    subtitle: hero?.subtitle || t('hero.subtitle'),
+    cta_text: hero?.cta_text || t('hero.cta'),
+    media_url: hero?.media_url || heroPlaceholder,
+    media_type: hero?.media_type || 'image',
+    overlay_opacity: hero?.overlay_opacity ?? 0.45,
   };
 
   const scrollToSearch = () => {
