@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLang } from '@/contexts/LanguageContext';
+import { useLangNavigate } from '@/hooks/useLangNavigate';
 import heroPlaceholder from '@/assets/hero-placeholder.jpg';
 
 interface HeroData {
@@ -39,9 +40,8 @@ export default function HeroSection() {
     overlay_opacity: hero?.overlay_opacity ?? 0.45,
   };
 
-  const scrollToSearch = () => {
-    document.getElementById('search-bar')?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const navigate = useLangNavigate();
+  const goToBooking = () => navigate('/reservar');
 
   return (
     <section className="relative h-screen w-full overflow-hidden">
@@ -69,7 +69,7 @@ export default function HeroSection() {
           </h1>
           <p className="mt-4 text-lg md:text-xl text-white/80 max-w-xl">{h.subtitle}</p>
           <button
-            onClick={scrollToSearch}
+            onClick={goToBooking}
             className="mt-8 bg-cta text-cta-foreground font-bold text-lg px-8 py-4 rounded-[10px] hover:opacity-90 transition-opacity"
           >
             {h.cta_text}
@@ -78,7 +78,7 @@ export default function HeroSection() {
       </div>
 
       <button
-        onClick={scrollToSearch}
+        onClick={goToBooking}
         className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 text-white animate-bounce-down"
       >
         <ChevronDown className="h-8 w-8" />

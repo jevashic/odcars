@@ -16,20 +16,25 @@ const TIMES = Array.from({ length: 48 }, (_, i) => {
 
 interface Branch { id: string; name: string; show_surcharge_warning: boolean; surcharge_label_es?: string; surcharge_label_en?: string; surcharge_label_de?: string; }
 
-export default function SearchBar() {
+interface SearchBarProps {
+  onSearch?: (params: URLSearchParams) => void;
+  initialParams?: URLSearchParams;
+}
+
+export default function SearchBar({ onSearch, initialParams }: SearchBarProps) {
   const { t, lang } = useLang();
   const navigate = useLangNavigate();
   const [branches, setBranches] = useState<Branch[]>([]);
-  const [pickup, setPickup] = useState('');
-  const [dropoff, setDropoff] = useState('');
-  const [differentReturn, setDifferentReturn] = useState(false);
-  const [pickupDate, setPickupDate] = useState<Date>();
-  const [returnDate, setReturnDate] = useState<Date>();
-  const [pickupTime, setPickupTime] = useState('10:00');
-  const [returnTime, setReturnTime] = useState('10:00');
-  const [age, setAge] = useState('+30');
-  const [address, setAddress] = useState('');
-  const [dropAddress, setDropAddress] = useState('');
+  const [pickup, setPickup] = useState(initialParams?.get('pickup') || '');
+  const [dropoff, setDropoff] = useState(initialParams?.get('dropoff') || '');
+  const [differentReturn, setDifferentReturn] = useState(!!initialParams?.get('dropoff'));
+  const [pickupDate, setPickupDate] = useState<Date>(initialParams?.get('pickupDate') ? new Date(initialParams.get('pickupDate')!) : undefined as any);
+  const [returnDate, setReturnDate] = useState<Date>(initialParams?.get('returnDate') ? new Date(initialParams.get('returnDate')!) : undefined as any);
+  const [pickupTime, setPickupTime] = useState(initialParams?.get('pickupTime') || '10:00');
+  const [returnTime, setReturnTime] = useState(initialParams?.get('returnTime') || '10:00');
+  const [age, setAge] = useState(initialParams?.get('age') || '+30');
+  const [address, setAddress] = useState(initialParams?.get('address') || '');
+  const [dropAddress, setDropAddress] = useState(initialParams?.get('dropAddress') || '');
   const [errors, setErrors] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -80,7 +85,12 @@ export default function SearchBar() {
       ...(differentReturn && { dropoff }),
       ...(differentReturn && isOtherDrop && { dropAddress }),
     });
-    navigate(`/reservar?${params.toString()}`);
+
+    if (onSearch) {
+      onSearch(params);
+    } else {
+      navigate(`/reservar?${params.toString()}`);
+    }
   };
 
   const Chip = ({ value, current, onChange, label }: { value: string; current: string; onChange: (v: string) => void; label: string }) => (
