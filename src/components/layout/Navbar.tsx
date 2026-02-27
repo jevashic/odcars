@@ -34,10 +34,13 @@ export default function Navbar() {
     ? 'bg-transparent'
     : 'bg-white shadow-[0_2px_20px_rgba(0,0,0,0.06)]';
 
-  const langs: Array<{ code: 'es' | 'en' | 'de'; label: string }> = [
+  const langs: Array<{ code: 'es' | 'en' | 'de' | 'sv' | 'no' | 'fr'; label: string }> = [
     { code: 'es', label: 'ES' },
     { code: 'en', label: 'EN' },
     { code: 'de', label: 'DE' },
+    { code: 'sv', label: 'SV' },
+    { code: 'no', label: 'NO' },
+    { code: 'fr', label: 'FR' },
   ];
 
   return (
