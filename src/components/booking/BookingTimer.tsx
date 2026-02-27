@@ -48,11 +48,11 @@ export default function BookingTimer() {
   return (
     <>
       {/* Timer banner */}
-      <div className="bg-primary text-primary-foreground py-3 px-4">
+      <div className="bg-primary text-primary-foreground py-3 px-4 sticky top-0 z-50">
         <div className="container max-w-6xl flex items-center justify-center gap-3">
           <Clock className="h-5 w-5" />
           <span className="font-semibold text-sm md:text-base">
-            Tu reserva está reservada por: <span className="font-mono text-lg">{mins}:{secs}</span>
+            Tu reserva está activa por: <span className="font-mono text-lg">{mins}:{secs}</span>
           </span>
         </div>
       </div>
