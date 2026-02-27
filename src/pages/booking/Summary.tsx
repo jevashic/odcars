@@ -4,6 +4,7 @@ import { format, differenceInDays } from 'date-fns';
 import { Lock, Check } from 'lucide-react';
 import { Elements, useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
 import PublicLayout from '@/components/layout/PublicLayout';
+import BookingTimer from '@/components/booking/BookingTimer';
 import { useLangNavigate } from '@/hooks/useLangNavigate';
 import { supabase } from '@/integrations/supabase/client';
 import { stripePromise } from '@/integrations/stripe/client';
@@ -161,7 +162,10 @@ function SummaryForm() {
 
   return (
     <PublicLayout>
-      <div className="pt-20 section-padding min-h-screen bg-accent">
+      <div className="pt-20">
+        <BookingTimer />
+      </div>
+      <div className="section-padding min-h-screen bg-accent">
         <div className="container max-w-5xl">
           <h1 className="text-2xl font-bold text-primary mb-2">Resumen de tu reserva</h1>
           <div className="w-[60px] h-[3px] bg-cta rounded-full mb-8" />
