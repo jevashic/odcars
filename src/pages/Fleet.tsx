@@ -37,7 +37,7 @@ export default function Fleet() {
                     <span className="flex items-center gap-1.5"><Settings2 className="h-4 w-4" />{cat.transmission_note}</span>
                     <span className="flex items-center gap-1.5"><Fuel className="h-4 w-4" />{cat.energy_type}</span>
                   </div>
-                  <p className="mt-4 text-xl font-bold text-primary">Desde €{cat.price_per_day}/día</p>
+                  <p className="mt-4 text-xl font-bold text-primary">{t('vehicles.from')} €{cat.price_per_day}{t('vehicles.per_day')}</p>
                   <Link to={lp(`/reservar/detalle/${cat.id}`)} className="mt-4 block w-full bg-cta text-cta-foreground font-bold text-sm text-center py-3 rounded-lg hover:opacity-90 transition-opacity">
                     {t('vehicles.book')} →
                   </Link>
@@ -45,7 +45,7 @@ export default function Fleet() {
               </div>
             ))}
           </div>
-          {categories.length === 0 && <p className="text-center text-muted-foreground mt-10">Cargando flota...</p>}
+          {categories.length === 0 && <p className="text-center text-muted-foreground mt-10">{t('vehicles.loading')}</p>}
         </div>
       </div>
     </PublicLayout>

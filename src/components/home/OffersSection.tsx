@@ -3,15 +3,15 @@ import { Tag, Percent, Clock, Gift } from 'lucide-react';
 import { useLang } from '@/contexts/LanguageContext';
 import { useLangPath } from '@/hooks/useLangNavigate';
 
-const cards = [
-  { icon: Percent, pct: '-30%', title: 'Reserva anticipada', desc: 'Reserva con más de 30 días y ahorra' },
-  { icon: Clock, pct: '-20%', title: 'Última hora', desc: 'Ofertas para salidas en menos de 48h' },
-  { icon: Gift, pct: '-15%', title: 'Larga estancia', desc: 'Descuentos para alquileres de +7 días' },
-];
-
 export default function OffersSection() {
   const { t } = useLang();
   const lp = useLangPath();
+
+  const cards = [
+    { icon: Percent, pct: '-30%', titleKey: 'offers.early_title', descKey: 'offers.early_desc' },
+    { icon: Clock, pct: '-20%', titleKey: 'offers.lastminute_title', descKey: 'offers.lastminute_desc' },
+    { icon: Gift, pct: '-15%', titleKey: 'offers.longstay_title', descKey: 'offers.longstay_desc' },
+  ];
 
   return (
     <section className="section-padding bg-[#0F172A]">
@@ -25,8 +25,8 @@ export default function OffersSection() {
           <span className="inline-flex items-center gap-1.5 bg-cta text-cta-foreground text-xs font-bold uppercase px-3 py-1 rounded-full mb-4">
             <Tag className="h-3.5 w-3.5" /> {t('offers.special')}
           </span>
-          <h3 className="text-2xl md:text-3xl font-bold text-white mb-2">Semana Santa en Gran Canaria</h3>
-          <p className="text-white/60 mb-6 max-w-lg">Reserva tu coche para Semana Santa con precios exclusivos. Seguro premium y kilómetros ilimitados incluidos.</p>
+          <h3 className="text-2xl md:text-3xl font-bold text-white mb-2">{t('offers.banner_title')}</h3>
+          <p className="text-white/60 mb-6 max-w-lg">{t('offers.banner_desc')}</p>
           <Link to={lp('/ofertas')} className="inline-block bg-cta text-cta-foreground font-bold px-6 py-3 rounded-lg hover:opacity-90 transition-opacity">
             {t('offers.see_all')} →
           </Link>
@@ -40,8 +40,8 @@ export default function OffersSection() {
                 <c.icon className="h-5 w-5 text-cta" />
               </div>
               <p className="text-3xl font-extrabold text-cta mb-1">{c.pct}</p>
-              <h4 className="text-white font-bold text-lg mb-1">{c.title}</h4>
-              <p className="text-white/50 text-sm">{c.desc}</p>
+              <h4 className="text-white font-bold text-lg mb-1">{t(c.titleKey)}</h4>
+              <p className="text-white/50 text-sm">{t(c.descKey)}</p>
             </div>
           ))}
         </div>

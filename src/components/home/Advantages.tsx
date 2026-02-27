@@ -2,14 +2,14 @@ import { ShieldCheck, BadgeCheck, Gauge, X, Users, PlaneTakeoff, Leaf, Phone } f
 import { useLang } from '@/contexts/LanguageContext';
 
 const items = [
-  { icon: ShieldCheck, text: 'Seguro Premium a Todo Riesgo incluido' },
-  { icon: BadgeCheck, text: '0€ Fianza — Sin sorpresas al devolver' },
-  { icon: Gauge, text: 'Kilómetros ilimitados' },
-  { icon: X, text: 'Cancelación gratuita hasta 48h antes' },
-  { icon: Users, text: 'Conductor adicional gratis' },
-  { icon: PlaneTakeoff, text: 'Entrega en aeropuerto y en tu hotel' },
-  { icon: Leaf, text: 'Flota ecológica disponible' },
-  { icon: Phone, text: 'Atención personalizada 7 días' },
+  { icon: ShieldCheck, key: 'advantages.insurance' },
+  { icon: BadgeCheck, key: 'advantages.deposit' },
+  { icon: Gauge, key: 'advantages.km' },
+  { icon: X, key: 'advantages.cancel' },
+  { icon: Users, key: 'advantages.driver' },
+  { icon: PlaneTakeoff, key: 'advantages.delivery' },
+  { icon: Leaf, key: 'advantages.eco' },
+  { icon: Phone, key: 'advantages.support' },
 ];
 
 export default function Advantages() {
@@ -31,7 +31,7 @@ export default function Advantages() {
               <div className="w-11 h-11 rounded-[10px] bg-cta flex items-center justify-center mb-4">
                 <item.icon className="h-5 w-5 text-cta-foreground" />
               </div>
-              <p className="text-white font-bold text-[15px] leading-snug">{item.text}</p>
+              <p className="text-white font-bold text-[15px] leading-snug">{t(item.key)}</p>
             </div>
           ))}
         </div>

@@ -18,7 +18,7 @@ export default function Contact() {
             <div className="space-y-4 text-muted-foreground">
               <p className="flex items-center gap-3"><Phone className="h-5 w-5 text-cta" /><a href={`tel:${company_phone}`} className="hover:text-cta">{company_phone}</a></p>
               <p className="flex items-center gap-3"><Mail className="h-5 w-5 text-cta" /><a href={`mailto:${company_email}`} className="hover:text-cta">{company_email}</a></p>
-              <p className="flex items-center gap-3"><MapPin className="h-5 w-5 text-cta" />Gran Canaria, España</p>
+              <p className="flex items-center gap-3"><MapPin className="h-5 w-5 text-cta" />{t('contact.location')}</p>
             </div>
           </div>
         </div>

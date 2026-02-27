@@ -114,7 +114,7 @@ export default function SearchBar({ onSearch, initialParams }: SearchBarProps) {
         <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_auto] gap-3">
           {/* Location */}
           <div>
-            <label className="text-xs text-white/60 mb-1 block">Lugar de recogida y devolución</label>
+            <label className="text-xs text-white/60 mb-1 block">{t('search.pickup_location')}</label>
             <div className="relative">
               <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50" />
               <select
@@ -159,7 +159,7 @@ export default function SearchBar({ onSearch, initialParams }: SearchBarProps) {
                     errors.pickupDate ? 'border-red-500' : 'border-white/20'
                   )}>
                     <CalendarIcon className="h-4 w-4 text-white/50" />
-                    {pickupDate ? format(pickupDate, 'dd/MM/yyyy') : 'dd/mm/aaaa'}
+                    {pickupDate ? format(pickupDate, 'dd/MM/yyyy') : t('search.date_placeholder')}
                   </button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -190,7 +190,7 @@ export default function SearchBar({ onSearch, initialParams }: SearchBarProps) {
                     errors.returnDate ? 'border-red-500' : 'border-white/20'
                   )}>
                     <CalendarIcon className="h-4 w-4 text-white/50" />
-                    {returnDate ? format(returnDate, 'dd/MM/yyyy') : 'dd/mm/aaaa'}
+                    {returnDate ? format(returnDate, 'dd/MM/yyyy') : t('search.date_placeholder')}
                   </button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -252,12 +252,12 @@ export default function SearchBar({ onSearch, initialParams }: SearchBarProps) {
         {/* Different return selector */}
         {differentReturn && (
           <div className="mt-3 max-w-md">
-            <label className="text-xs text-white/60 mb-1 block">Lugar de devolución</label>
+            <label className="text-xs text-white/60 mb-1 block">{t('search.return_location')}</label>
             <select
               value={dropoff} onChange={e => setDropoff(e.target.value)}
               className="w-full px-3 py-3 rounded-lg bg-white/10 border border-white/20 text-white text-sm appearance-none focus:border-cta"
             >
-              <option value="" className="text-foreground">Seleccionar...</option>
+              <option value="" className="text-foreground">{t('search.select')}</option>
               {branchOptions.map(b => (
                 <option key={b.id} value={b.id} className="text-foreground">{b.name}</option>
               ))}

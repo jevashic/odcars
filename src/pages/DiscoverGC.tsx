@@ -48,7 +48,7 @@ export default function DiscoverGC() {
               );
             })}
           </div>
-          {places.length === 0 && <p className="text-center text-muted-foreground mt-10">Cargando lugares...</p>}
+          {places.length === 0 && <p className="text-center text-muted-foreground mt-10">{t('discover.loading')}</p>}
         </div>
       </div>
     </PublicLayout>

@@ -15,7 +15,7 @@ export default function MyReservations() {
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (attempts >= 3) { setError('Demasiados intentos. Espera 15 minutos.'); return; }
+    if (attempts >= 3) { setError(t('reservations.too_many')); return; }
     setLoading(true);
     setError('');
     const { data, error: err } = await supabase.functions.invoke('validate_customer_zone', {
@@ -24,7 +24,7 @@ export default function MyReservations() {
     setLoading(false);
     if (err || !data) {
       setAttempts(a => a + 1);
-      setError('Reserva no encontrada. Verifica los datos.');
+      setError(t('reservations.not_found'));
     } else {
       setReservation(data);
     }
@@ -47,11 +47,11 @@ export default function MyReservations() {
 
           {!reservation ? (
             <form onSubmit={handleSearch} className="bg-card rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.08)] p-8 space-y-4">
-              <input value={code} onChange={e => setCode(e.target.value)} placeholder="Número de reserva (OD-XXXX-XXXX)" required className="w-full px-4 py-3 rounded-lg border border-border focus:border-primary outline-none" />
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" required className="w-full px-4 py-3 rounded-lg border border-border focus:border-primary outline-none" />
+              <input value={code} onChange={e => setCode(e.target.value)} placeholder={t('reservations.search_placeholder')} required className="w-full px-4 py-3 rounded-lg border border-border focus:border-primary outline-none" />
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t('reservations.email_placeholder')} required className="w-full px-4 py-3 rounded-lg border border-border focus:border-primary outline-none" />
               {error && <p className="text-destructive text-sm flex items-center gap-1"><AlertCircle className="h-4 w-4" />{error}</p>}
               <button type="submit" disabled={loading} className="w-full bg-cta text-cta-foreground font-bold py-3 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2">
-                <Search className="h-4 w-4" /> Buscar reserva
+                <Search className="h-4 w-4" /> {t('reservations.search_button')}
               </button>
             </form>
           ) : (
@@ -63,13 +63,13 @@ export default function MyReservations() {
                 </span>
               </div>
               <div className="space-y-2 text-sm text-muted-foreground">
-                <p><strong>Recogida:</strong> {reservation.pickup_date} {reservation.pickup_time}</p>
-                <p><strong>Devolución:</strong> {reservation.return_date} {reservation.return_time}</p>
-                <p><strong>Vehículo:</strong> {reservation.category_name}</p>
-                <p className="text-2xl font-bold text-primary mt-4">Total: €{reservation.total_amount}</p>
+                <p><strong>{t('reservations.pickup')}</strong> {reservation.pickup_date} {reservation.pickup_time}</p>
+                <p><strong>{t('reservations.return')}</strong> {reservation.return_date} {reservation.return_time}</p>
+                <p><strong>{t('reservations.vehicle')}</strong> {reservation.category_name}</p>
+                <p className="text-2xl font-bold text-primary mt-4">{t('reservations.total')} €{reservation.total_amount}</p>
               </div>
               <button onClick={() => setReservation(null)} className="mt-6 w-full border-2 border-primary text-primary font-bold py-2.5 rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors">
-                Buscar otra reserva
+                {t('reservations.search_another')}
               </button>
             </div>
           )}
