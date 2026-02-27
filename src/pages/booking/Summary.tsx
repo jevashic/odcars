@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { format } from 'date-fns';
-import { differenceInDays } from 'date-fns';
+import { format, differenceInDays } from 'date-fns';
+import { Lock, Check, CreditCard } from 'lucide-react';
 import PublicLayout from '@/components/layout/PublicLayout';
 import { useLangNavigate } from '@/hooks/useLangNavigate';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,19 +14,27 @@ const EXTRAS_MAP: Record<string, { name: string; pricePerDay: number }> = {
 export default function Summary() {
   const [params] = useSearchParams();
   const navigate = useLangNavigate();
-  const [form, setForm] = useState({ firstName: '', lastName: '', email: '', emailConfirm: '', phone: '', licenseNumber: '', licenseExpiry: '', discountCode: '' });
+  const paymentMode = params.get('paymentMode') || 'office';
+  const isOffice = paymentMode === 'office';
+
+  const [form, setForm] = useState({
+    firstName: '', lastName: '', email: '', phone: '',
+    address: '', city: '', postalCode: '', country: '',
+    licenseNumber: '', licenseExpiry: '', discountCode: '',
+  });
+  const [accepted, setAccepted] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [branchName, setBranchName] = useState('');
   const [hasSurcharge, setHasSurcharge] = useState(false);
 
-  const _categoryId = params.get('categoryId') || '';
-  const paymentMode = params.get('paymentMode') || 'office';
   const startDate = params.get('pickupDate');
   const endDate = params.get('returnDate');
   const days = startDate && endDate ? Math.max(differenceInDays(new Date(endDate), new Date(startDate)), 1) : 1;
   const extrasParam = params.get('extras') || '';
   const selectedExtras = extrasParam ? extrasParam.split(',') : [];
+  const _categoryId = params.get('categoryId') || '';
 
-  const baseTotal = 39 * days; // fallback
+  const baseTotal = 39 * days;
   const extrasTotal = selectedExtras.reduce((sum, id) => sum + (EXTRAS_MAP[id]?.pricePerDay || 0) * days, 0);
   const surchargeAmount = hasSurcharge ? 15 : 0;
   const subtotal = baseTotal + extrasTotal + surchargeAmount;
@@ -47,93 +55,161 @@ export default function Summary() {
 
   const update = (key: string, val: string) => setForm(prev => ({ ...prev, [key]: val }));
 
-  const handleContinue = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (form.email !== form.emailConfirm) return;
-    const p = new URLSearchParams(params);
-    Object.entries(form).forEach(([k, v]) => { if (v) p.set(k, v); });
-    navigate(`/reservar/pago?${p.toString()}`);
+    if (isOffice) {
+      // Office flow: confirm reservation directly (Stripe SetupIntent placeholder)
+      if (!accepted) return;
+      setLoading(true);
+      setTimeout(() => {
+        navigate('/reservar/confirmacion');
+      }, 1500);
+    } else {
+      // Online flow: go to payment page
+      const p = new URLSearchParams(params);
+      Object.entries(form).forEach(([k, v]) => { if (v) p.set(k, v); });
+      navigate(`/reservar/pago?${p.toString()}`);
+    }
   };
 
-  const inputCls = 'w-full px-4 py-3 rounded-lg border border-border focus:border-primary outline-none text-sm';
+  const inputCls = 'w-full px-4 py-3 rounded-lg border border-border focus:border-primary outline-none text-sm bg-background';
+
+  /* ── Breakdown sidebar (shared) ── */
+  const Breakdown = () => (
+    <div className="bg-card rounded-2xl shadow-sm p-6">
+      <h2 className="font-bold text-lg mb-4">Resumen de la reserva</h2>
+      {branchName && <p className="text-xs text-muted-foreground mb-3">📍 {branchName}</p>}
+      {startDate && endDate && (
+        <p className="text-xs text-muted-foreground mb-4">
+          {format(new Date(startDate), 'dd/MM/yyyy')} → {format(new Date(endDate), 'dd/MM/yyyy')} · {days} día{days > 1 ? 's' : ''}
+        </p>
+      )}
+      <div className="space-y-2 text-sm">
+        <div className="flex justify-between">
+          <span>Alquiler ({days} días)</span>
+          <span className="font-medium">{baseTotal} €</span>
+        </div>
+        {selectedExtras.map(id => EXTRAS_MAP[id] && (
+          <div key={id} className="flex justify-between">
+            <span>{EXTRAS_MAP[id].name}</span>
+            <span className="font-medium">{EXTRAS_MAP[id].pricePerDay * days} €</span>
+          </div>
+        ))}
+        {hasSurcharge && (
+          <div className="flex justify-between text-cta">
+            <span>Suplemento entrega</span>
+            <span className="font-medium">{surchargeAmount} €</span>
+          </div>
+        )}
+        {discount > 0 && (
+          <div className="flex justify-between text-emerald-600">
+            <span>Descuento online (−15%)</span>
+            <span className="font-medium">−{discount} €</span>
+          </div>
+        )}
+        <div className="border-t border-border pt-2 flex justify-between font-bold text-base">
+          <span>Total</span>
+          <span className="text-primary">{total} €</span>
+        </div>
+      </div>
+      <p className="text-[10px] text-muted-foreground mt-3 text-center">IGIC (7%) incluido · Sin cargos ocultos</p>
+    </div>
+  );
 
   return (
     <PublicLayout>
       <div className="pt-20 section-padding min-h-screen bg-accent">
-        <div className="container max-w-4xl">
+        <div className="container max-w-5xl">
           <h1 className="text-2xl font-bold text-primary mb-2">Resumen de tu reserva</h1>
           <div className="w-[60px] h-[3px] bg-cta rounded-full mb-8" />
 
-          <form onSubmit={handleContinue} className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8">
-            {/* Left: form */}
-            <div className="bg-card rounded-2xl shadow-sm p-6 space-y-4">
-              <h2 className="font-bold text-lg">Datos del conductor</h2>
-              <div className="grid grid-cols-2 gap-4">
-                <input placeholder="Nombre *" required value={form.firstName} onChange={e => update('firstName', e.target.value)} className={inputCls} />
-                <input placeholder="Apellidos *" required value={form.lastName} onChange={e => update('lastName', e.target.value)} className={inputCls} />
-              </div>
-              <input type="email" placeholder="Email *" required value={form.email} onChange={e => update('email', e.target.value)} className={inputCls} />
-              <input type="email" placeholder="Confirmar email *" required value={form.emailConfirm} onChange={e => update('emailConfirm', e.target.value)} className={inputCls} />
-              <input type="tel" placeholder="Teléfono" value={form.phone} onChange={e => update('phone', e.target.value)} className={inputCls} />
-              <input placeholder="Nº licencia de conducir *" required value={form.licenseNumber} onChange={e => update('licenseNumber', e.target.value)} className={inputCls} />
-              <input type="date" placeholder="Fecha caducidad carnet *" required value={form.licenseExpiry} onChange={e => update('licenseExpiry', e.target.value)} className={inputCls} />
-
-              <div>
-                <h2 className="font-bold text-lg mt-4 mb-2">Código descuento</h2>
-                <div className="flex gap-2">
-                  <input placeholder="Código" value={form.discountCode} onChange={e => update('discountCode', e.target.value)} className={`flex-1 ${inputCls}`} />
-                  <button type="button" className="px-4 py-3 bg-primary text-primary-foreground font-bold rounded-lg text-sm">Aplicar</button>
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8">
+            {/* LEFT column */}
+            <div className="space-y-6">
+              {/* Block 1: Billing data */}
+              <div className="bg-card rounded-2xl shadow-sm p-6 space-y-4">
+                <h2 className="font-bold text-lg">Datos de facturación</h2>
+                <div className="grid grid-cols-2 gap-4">
+                  <input placeholder="Nombre *" required value={form.firstName} onChange={e => update('firstName', e.target.value)} className={inputCls} />
+                  <input placeholder="Apellidos *" required value={form.lastName} onChange={e => update('lastName', e.target.value)} className={inputCls} />
                 </div>
+                <input type="email" placeholder="Email *" required value={form.email} onChange={e => update('email', e.target.value)} className={inputCls} />
+                <input type="tel" placeholder="Teléfono" value={form.phone} onChange={e => update('phone', e.target.value)} className={inputCls} />
+                <input placeholder="Dirección" value={form.address} onChange={e => update('address', e.target.value)} className={inputCls} />
+                <div className="grid grid-cols-3 gap-4">
+                  <input placeholder="Ciudad" value={form.city} onChange={e => update('city', e.target.value)} className={inputCls} />
+                  <input placeholder="Código postal" value={form.postalCode} onChange={e => update('postalCode', e.target.value)} className={inputCls} />
+                  <input placeholder="País" value={form.country} onChange={e => update('country', e.target.value)} className={inputCls} />
+                </div>
+                <input placeholder="Nº licencia de conducir *" required value={form.licenseNumber} onChange={e => update('licenseNumber', e.target.value)} className={inputCls} />
+                <input type="date" required value={form.licenseExpiry} onChange={e => update('licenseExpiry', e.target.value)} className={inputCls} />
               </div>
+
+              {/* Block 2: Guarantee (office) or Discount code (online) */}
+              {isOffice ? (
+                <div className="bg-card rounded-2xl shadow-sm p-6 space-y-5">
+                  <div className="flex items-center gap-2">
+                    <Lock className="h-5 w-5 text-primary" />
+                    <h2 className="font-bold text-lg">Garantiza tu reserva</h2>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    No se realizará ningún cargo hasta que recojas el vehículo.
+                  </p>
+
+                  {/* Stripe CardElement placeholder */}
+                  <div className="border border-border rounded-lg p-4 bg-background">
+                    <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                      <CreditCard className="h-4 w-4" />
+                      <span className="text-sm">Stripe Card Element</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground text-center mt-1">Pago seguro · Powered by Stripe</p>
+                  </div>
+
+                  <ul className="space-y-2">
+                    {[
+                      'Sin cargos ahora',
+                      'Tu tarjeta cubre posibles extras: combustible, multas o daños',
+                      'Nunca almacenamos los datos de tu tarjeta',
+                    ].map(t => (
+                      <li key={t} className="flex items-center gap-2 text-sm text-foreground">
+                        <Check className="h-4 w-4 text-cta shrink-0" />
+                        {t}
+                      </li>
+                    ))}
+                  </ul>
+
+                  <label className="flex items-start gap-2 text-sm cursor-pointer">
+                    <input type="checkbox" checked={accepted} onChange={e => setAccepted(e.target.checked)} className="mt-0.5 accent-primary" />
+                    <span>Acepto las condiciones de garantía</span>
+                  </label>
+
+                  <button
+                    type="submit"
+                    disabled={!accepted || loading}
+                    className="w-full bg-primary text-primary-foreground font-bold py-4 rounded-lg text-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+                  >
+                    {loading ? 'Procesando…' : 'CONFIRMAR RESERVA'}
+                  </button>
+                </div>
+              ) : (
+                <div className="bg-card rounded-2xl shadow-sm p-6">
+                  <h2 className="font-bold text-lg mb-2">Código descuento</h2>
+                  <div className="flex gap-2">
+                    <input placeholder="Código" value={form.discountCode} onChange={e => update('discountCode', e.target.value)} className={`flex-1 ${inputCls}`} />
+                    <button type="button" className="px-4 py-3 bg-primary text-primary-foreground font-bold rounded-lg text-sm">Aplicar</button>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Right: breakdown */}
+            {/* RIGHT column: breakdown + CTA */}
             <div className="space-y-4">
-              <div className="bg-card rounded-2xl shadow-sm p-6">
-                <h2 className="font-bold text-lg mb-4">Desglose</h2>
-                {branchName && (
-                  <p className="text-xs text-muted-foreground mb-3">📍 {branchName}</p>
-                )}
-                {startDate && endDate && (
-                  <p className="text-xs text-muted-foreground mb-4">
-                    {format(new Date(startDate), 'dd/MM/yyyy')} → {format(new Date(endDate), 'dd/MM/yyyy')} · {days} día{days > 1 ? 's' : ''}
-                  </p>
-                )}
-
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span>Alquiler ({days} días)</span>
-                    <span className="font-medium">{baseTotal} €</span>
-                  </div>
-                  {selectedExtras.map(id => EXTRAS_MAP[id] && (
-                    <div key={id} className="flex justify-between">
-                      <span>{EXTRAS_MAP[id].name}</span>
-                      <span className="font-medium">{EXTRAS_MAP[id].pricePerDay * days} €</span>
-                    </div>
-                  ))}
-                  {hasSurcharge && (
-                    <div className="flex justify-between text-cta">
-                      <span>Suplemento entrega</span>
-                      <span className="font-medium">{surchargeAmount} €</span>
-                    </div>
-                  )}
-                  {discount > 0 && (
-                    <div className="flex justify-between text-emerald-600">
-                      <span>Descuento online (−15%)</span>
-                      <span className="font-medium">−{discount} €</span>
-                    </div>
-                  )}
-                  <div className="border-t border-border pt-2 flex justify-between font-bold text-base">
-                    <span>Total</span>
-                    <span className="text-primary">{total} €</span>
-                  </div>
-                </div>
-                <p className="text-[10px] text-muted-foreground mt-3 text-center">IGIC (7%) incluido · Sin cargos ocultos</p>
-              </div>
-
-              <button type="submit" className="w-full bg-cta text-cta-foreground font-bold py-4 rounded-lg text-lg hover:opacity-90 transition-opacity">
-                Ir al pago →
-              </button>
+              <Breakdown />
+              {!isOffice && (
+                <button type="submit" className="w-full bg-cta text-cta-foreground font-bold py-4 rounded-lg text-lg hover:opacity-90 transition-opacity">
+                  Ir al pago →
+                </button>
+              )}
             </div>
           </form>
         </div>
