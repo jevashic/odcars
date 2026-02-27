@@ -87,6 +87,45 @@ export default function PlaceDetail() {
               <Car className="h-4 w-4" /> RESERVA TU COCHE
             </Link>
           </div>
+
+          {/* Banner 1 – Reservar */}
+          <Link
+            to={lp('/reservar')}
+            className="block mt-8 rounded-xl p-8 text-primary-foreground no-underline hover:opacity-95 transition-opacity"
+            style={{ background: 'linear-gradient(135deg, hsl(var(--primary)), #0F2A38)' }}
+          >
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">🚗</span>
+                <div>
+                  <p className="font-bold text-lg text-white">¿Listo para explorar Gran Canaria?</p>
+                  <p className="text-white/70 text-sm mt-1">Reserva tu coche y descubre la isla a tu ritmo</p>
+                </div>
+              </div>
+              <span className="inline-flex items-center justify-center bg-cta text-cta-foreground font-bold px-6 py-3 rounded-lg whitespace-nowrap shrink-0">
+                RESERVAR AHORA
+              </span>
+            </div>
+          </Link>
+
+          {/* Banner 2 – Ver flota */}
+          <Link
+            to={lp('/flota')}
+            className="block mt-4 rounded-xl p-8 bg-cta no-underline hover:opacity-95 transition-opacity"
+          >
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">🛡️</span>
+                <div>
+                  <p className="font-bold text-lg text-cta-foreground">Seguro Premium incluido · 0€ Fianza · Km ilimitados</p>
+                  <p className="text-cta-foreground/70 text-sm mt-1">Sin sorpresas. El precio que ves es el precio final.</p>
+                </div>
+              </div>
+              <span className="inline-flex items-center justify-center bg-primary text-primary-foreground font-bold px-6 py-3 rounded-lg whitespace-nowrap shrink-0">
+                VER FLOTA
+              </span>
+            </div>
+          </Link>
         </div>
       </div>
     </PublicLayout>
