@@ -37,7 +37,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     (newLang: Lang) => {
       // Replace /:oldLang/ with /:newLang/ in current path
       const currentPath = location.pathname;
-      const rest = currentPath.replace(/^\/(es|en|de)/, '');
+      const rest = currentPath.replace(/^\/(es|en|de|sv|no|fr)/, '');
       navigate(`/${newLang}${rest || '/'}${location.search}`, { replace: true });
     },
     [navigate, location],

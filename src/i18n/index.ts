@@ -3,8 +3,11 @@ import { initReactI18next } from 'react-i18next';
 import { es } from './es';
 import { en } from './en';
 import { de } from './de';
+import { sv } from './sv';
+import { no } from './no';
+import { fr } from './fr';
 
-const SUPPORTED_LANGS = ['es', 'en', 'de'] as const;
+const SUPPORTED_LANGS = ['es', 'en', 'de', 'sv', 'no', 'fr'] as const;
 export type Lang = (typeof SUPPORTED_LANGS)[number];
 export const isSupportedLang = (l: string): l is Lang => (SUPPORTED_LANGS as readonly string[]).includes(l);
 
@@ -22,6 +25,9 @@ i18n
       es: { translation: es },
       en: { translation: en },
       de: { translation: de },
+      sv: { translation: sv },
+      no: { translation: no },
+      fr: { translation: fr },
     },
   });
 
