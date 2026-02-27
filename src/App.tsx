@@ -31,6 +31,7 @@ import AdminStub from "./pages/admin/AdminStub";
 
 import AdminInsurance from "./pages/admin/Insurance";
 import NotFound from "./pages/NotFound";
+import ScrollToTop from "./components/ScrollToTop";
 
 const queryClient = new QueryClient();
 
@@ -70,6 +71,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <ScrollToTop />
           <Routes>
             {/* Redirect root to /es/ */}
             <Route path="/" element={<Navigate to="/es" replace />} />
