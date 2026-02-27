@@ -4,6 +4,7 @@ import { Lock, CreditCard } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { Elements, useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
 import PublicLayout from '@/components/layout/PublicLayout';
+import BookingTimer from '@/components/booking/BookingTimer';
 import { useLangNavigate } from '@/hooks/useLangNavigate';
 import { stripePromise } from '@/integrations/stripe/client';
 import StripeCardInput from '@/components/stripe/StripeCardInput';
@@ -82,7 +83,10 @@ function PaymentForm() {
 
   return (
     <PublicLayout>
-      <div className="pt-20 section-padding min-h-screen bg-accent">
+      <div className="pt-20">
+        <BookingTimer />
+      </div>
+      <div className="section-padding min-h-screen bg-accent">
         <div className="container max-w-xl">
           <div className="bg-card rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.08)] p-8">
             {/* Compact summary */}
