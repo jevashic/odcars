@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { format, differenceInDays } from 'date-fns';
-import { Lock, Check, CreditCard } from 'lucide-react';
+import { Lock, Check } from 'lucide-react';
+import { Elements } from '@stripe/react-stripe-js';
 import PublicLayout from '@/components/layout/PublicLayout';
 import { useLangNavigate } from '@/hooks/useLangNavigate';
 import { supabase } from '@/integrations/supabase/client';
+import { stripePromise } from '@/integrations/stripe/client';
+import StripeCardInput from '@/components/stripe/StripeCardInput';
 
 const EXTRAS_MAP: Record<string, { name: string; pricePerDay: number }> = {
   gps: { name: 'GPS Navegador', pricePerDay: 5 },
@@ -117,103 +120,98 @@ export default function Summary() {
   );
 
   return (
-    <PublicLayout>
-      <div className="pt-20 section-padding min-h-screen bg-accent">
-        <div className="container max-w-5xl">
-          <h1 className="text-2xl font-bold text-primary mb-2">Resumen de tu reserva</h1>
-          <div className="w-[60px] h-[3px] bg-cta rounded-full mb-8" />
+    <Elements stripe={stripePromise}>
+      <PublicLayout>
+        <div className="pt-20 section-padding min-h-screen bg-accent">
+          <div className="container max-w-5xl">
+            <h1 className="text-2xl font-bold text-primary mb-2">Resumen de tu reserva</h1>
+            <div className="w-[60px] h-[3px] bg-cta rounded-full mb-8" />
 
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8">
-            {/* LEFT column */}
-            <div className="space-y-6">
-              {/* Block 1: Billing data */}
-              <div className="bg-card rounded-2xl shadow-sm p-6 space-y-4">
-                <h2 className="font-bold text-lg">Datos de facturación</h2>
-                <div className="grid grid-cols-2 gap-4">
-                  <input placeholder="Nombre *" required value={form.firstName} onChange={e => update('firstName', e.target.value)} className={inputCls} />
-                  <input placeholder="Apellidos *" required value={form.lastName} onChange={e => update('lastName', e.target.value)} className={inputCls} />
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8">
+              {/* LEFT column */}
+              <div className="space-y-6">
+                {/* Block 1: Billing data */}
+                <div className="bg-card rounded-2xl shadow-sm p-6 space-y-4">
+                  <h2 className="font-bold text-lg">Datos de facturación</h2>
+                  <div className="grid grid-cols-2 gap-4">
+                    <input placeholder="Nombre *" required value={form.firstName} onChange={e => update('firstName', e.target.value)} className={inputCls} />
+                    <input placeholder="Apellidos *" required value={form.lastName} onChange={e => update('lastName', e.target.value)} className={inputCls} />
+                  </div>
+                  <input type="email" placeholder="Email *" required value={form.email} onChange={e => update('email', e.target.value)} className={inputCls} />
+                  <input type="tel" placeholder="Teléfono" value={form.phone} onChange={e => update('phone', e.target.value)} className={inputCls} />
+                  <input placeholder="Dirección" value={form.address} onChange={e => update('address', e.target.value)} className={inputCls} />
+                  <div className="grid grid-cols-3 gap-4">
+                    <input placeholder="Ciudad" value={form.city} onChange={e => update('city', e.target.value)} className={inputCls} />
+                    <input placeholder="Código postal" value={form.postalCode} onChange={e => update('postalCode', e.target.value)} className={inputCls} />
+                    <input placeholder="País" value={form.country} onChange={e => update('country', e.target.value)} className={inputCls} />
+                  </div>
+                  <input placeholder="Nº licencia de conducir *" required value={form.licenseNumber} onChange={e => update('licenseNumber', e.target.value)} className={inputCls} />
+                  <input type="date" required value={form.licenseExpiry} onChange={e => update('licenseExpiry', e.target.value)} className={inputCls} />
                 </div>
-                <input type="email" placeholder="Email *" required value={form.email} onChange={e => update('email', e.target.value)} className={inputCls} />
-                <input type="tel" placeholder="Teléfono" value={form.phone} onChange={e => update('phone', e.target.value)} className={inputCls} />
-                <input placeholder="Dirección" value={form.address} onChange={e => update('address', e.target.value)} className={inputCls} />
-                <div className="grid grid-cols-3 gap-4">
-                  <input placeholder="Ciudad" value={form.city} onChange={e => update('city', e.target.value)} className={inputCls} />
-                  <input placeholder="Código postal" value={form.postalCode} onChange={e => update('postalCode', e.target.value)} className={inputCls} />
-                  <input placeholder="País" value={form.country} onChange={e => update('country', e.target.value)} className={inputCls} />
-                </div>
-                <input placeholder="Nº licencia de conducir *" required value={form.licenseNumber} onChange={e => update('licenseNumber', e.target.value)} className={inputCls} />
-                <input type="date" required value={form.licenseExpiry} onChange={e => update('licenseExpiry', e.target.value)} className={inputCls} />
+
+                {/* Block 2: Guarantee (office) or Discount code (online) */}
+                {isOffice ? (
+                  <div className="bg-card rounded-2xl shadow-sm p-6 space-y-5">
+                    <div className="flex items-center gap-2">
+                      <Lock className="h-5 w-5 text-primary" />
+                      <h2 className="font-bold text-lg">Garantiza tu reserva</h2>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      No se realizará ningún cargo hasta que recojas el vehículo.
+                    </p>
+
+                    <StripeCardInput />
+
+                    <ul className="space-y-2">
+                      {[
+                        'Sin cargos ahora',
+                        'Tu tarjeta cubre posibles extras: combustible, multas o daños',
+                        'Nunca almacenamos los datos de tu tarjeta',
+                      ].map(t => (
+                        <li key={t} className="flex items-center gap-2 text-sm text-foreground">
+                          <Check className="h-4 w-4 text-cta shrink-0" />
+                          {t}
+                        </li>
+                      ))}
+                    </ul>
+
+                    <label className="flex items-start gap-2 text-sm cursor-pointer">
+                      <input type="checkbox" checked={accepted} onChange={e => setAccepted(e.target.checked)} className="mt-0.5 accent-primary" />
+                      <span>Acepto las condiciones de garantía</span>
+                    </label>
+
+                    <button
+                      type="submit"
+                      disabled={!accepted || loading}
+                      className="w-full bg-primary text-primary-foreground font-bold py-4 rounded-lg text-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+                    >
+                      {loading ? 'Procesando…' : 'CONFIRMAR RESERVA'}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="bg-card rounded-2xl shadow-sm p-6">
+                    <h2 className="font-bold text-lg mb-2">Código descuento</h2>
+                    <div className="flex gap-2">
+                      <input placeholder="Código" value={form.discountCode} onChange={e => update('discountCode', e.target.value)} className={`flex-1 ${inputCls}`} />
+                      <button type="button" className="px-4 py-3 bg-primary text-primary-foreground font-bold rounded-lg text-sm">Aplicar</button>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Block 2: Guarantee (office) or Discount code (online) */}
-              {isOffice ? (
-                <div className="bg-card rounded-2xl shadow-sm p-6 space-y-5">
-                  <div className="flex items-center gap-2">
-                    <Lock className="h-5 w-5 text-primary" />
-                    <h2 className="font-bold text-lg">Garantiza tu reserva</h2>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    No se realizará ningún cargo hasta que recojas el vehículo.
-                  </p>
-
-                  {/* Stripe CardElement placeholder */}
-                  <div className="border border-border rounded-lg p-4 bg-background">
-                    <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                      <CreditCard className="h-4 w-4" />
-                      <span className="text-sm">Stripe Card Element</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground text-center mt-1">Pago seguro · Powered by Stripe</p>
-                  </div>
-
-                  <ul className="space-y-2">
-                    {[
-                      'Sin cargos ahora',
-                      'Tu tarjeta cubre posibles extras: combustible, multas o daños',
-                      'Nunca almacenamos los datos de tu tarjeta',
-                    ].map(t => (
-                      <li key={t} className="flex items-center gap-2 text-sm text-foreground">
-                        <Check className="h-4 w-4 text-cta shrink-0" />
-                        {t}
-                      </li>
-                    ))}
-                  </ul>
-
-                  <label className="flex items-start gap-2 text-sm cursor-pointer">
-                    <input type="checkbox" checked={accepted} onChange={e => setAccepted(e.target.checked)} className="mt-0.5 accent-primary" />
-                    <span>Acepto las condiciones de garantía</span>
-                  </label>
-
-                  <button
-                    type="submit"
-                    disabled={!accepted || loading}
-                    className="w-full bg-primary text-primary-foreground font-bold py-4 rounded-lg text-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
-                  >
-                    {loading ? 'Procesando…' : 'CONFIRMAR RESERVA'}
+              {/* RIGHT column: breakdown + CTA */}
+              <div className="space-y-4">
+                <Breakdown />
+                {!isOffice && (
+                  <button type="submit" className="w-full bg-cta text-cta-foreground font-bold py-4 rounded-lg text-lg hover:opacity-90 transition-opacity">
+                    Ir al pago →
                   </button>
-                </div>
-              ) : (
-                <div className="bg-card rounded-2xl shadow-sm p-6">
-                  <h2 className="font-bold text-lg mb-2">Código descuento</h2>
-                  <div className="flex gap-2">
-                    <input placeholder="Código" value={form.discountCode} onChange={e => update('discountCode', e.target.value)} className={`flex-1 ${inputCls}`} />
-                    <button type="button" className="px-4 py-3 bg-primary text-primary-foreground font-bold rounded-lg text-sm">Aplicar</button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* RIGHT column: breakdown + CTA */}
-            <div className="space-y-4">
-              <Breakdown />
-              {!isOffice && (
-                <button type="submit" className="w-full bg-cta text-cta-foreground font-bold py-4 rounded-lg text-lg hover:opacity-90 transition-opacity">
-                  Ir al pago →
-                </button>
-              )}
-            </div>
-          </form>
+                )}
+              </div>
+            </form>
+          </div>
         </div>
-      </div>
-    </PublicLayout>
+      </PublicLayout>
+    </Elements>
   );
 }
