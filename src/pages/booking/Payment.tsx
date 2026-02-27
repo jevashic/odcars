@@ -1,19 +1,32 @@
 import { useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Lock, CreditCard, Building2 } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Lock, CreditCard } from 'lucide-react';
+import { format, differenceInDays } from 'date-fns';
 import PublicLayout from '@/components/layout/PublicLayout';
+import { useLangNavigate } from '@/hooks/useLangNavigate';
 
 export default function Payment() {
   const [params] = useSearchParams();
-  const navigate = useNavigate();
-  const [option, setOption] = useState<'online' | 'office'>('online');
-  const [accepted, setAccepted] = useState(false);
+  const navigate = useLangNavigate();
   const [loading, setLoading] = useState(false);
 
-  const handleConfirm = async () => {
-    if (!accepted) return;
+  const startDate = params.get('pickupDate');
+  const endDate = params.get('returnDate');
+  const days = startDate && endDate ? Math.max(differenceInDays(new Date(endDate), new Date(startDate)), 1) : 1;
+
+  const baseTotal = 39 * days;
+  const extrasParam = params.get('extras') || '';
+  const selectedExtras = extrasParam ? extrasParam.split(',') : [];
+  const extrasTotal = selectedExtras.reduce((sum, id) => {
+    const prices: Record<string, number> = { gps: 5, 'baby-seat': 7 };
+    return sum + (prices[id] || 0) * days;
+  }, 0);
+  const subtotal = baseTotal + extrasTotal;
+  const total = Math.round(subtotal * 0.85);
+
+  const handlePay = async () => {
     setLoading(true);
-    // Stripe integration placeholder — will use stripe.confirmPayment / confirmSetup
+    // Stripe PaymentIntent placeholder
     setTimeout(() => {
       navigate('/reservar/confirmacion');
     }, 1500);
@@ -24,66 +37,43 @@ export default function Payment() {
       <div className="pt-20 section-padding min-h-screen bg-accent">
         <div className="container max-w-xl">
           <div className="bg-card rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.08)] p-8">
-            <div className="flex items-center gap-2 mb-6">
-              <Lock className="h-5 w-5 text-primary" />
-              <h1 className="text-xl font-bold text-primary">Tu reserva está protegida</h1>
+            {/* Compact summary */}
+            <div className="bg-accent rounded-xl p-4 mb-6 text-sm space-y-1">
+              {startDate && endDate && (
+                <p className="text-muted-foreground">
+                  📅 {format(new Date(startDate), 'dd/MM/yyyy')} → {format(new Date(endDate), 'dd/MM/yyyy')} · {days} día{days > 1 ? 's' : ''}
+                </p>
+              )}
+              {selectedExtras.length > 0 && (
+                <p className="text-muted-foreground">
+                  ✚ Extras: {selectedExtras.join(', ')}
+                </p>
+              )}
+              <p className="font-bold text-primary text-lg mt-2">Total: {total} €</p>
+              <p className="text-[10px] text-muted-foreground">IGIC incluido · Descuento −15% aplicado</p>
             </div>
 
-            {/* Option A */}
-            <button
-              onClick={() => setOption('online')}
-              className={`w-full text-left p-5 rounded-xl border-2 mb-4 transition-colors ${option === 'online' ? 'border-cta bg-cta/5' : 'border-border'}`}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <CreditCard className="h-5 w-5 text-cta" />
-                  <div>
-                    <p className="font-bold text-foreground">Pagar ahora y ahorrar 15%</p>
-                    <p className="text-sm text-muted-foreground">Pago seguro con tarjeta</p>
-                  </div>
-                </div>
-                {option === 'online' && <span className="text-xs bg-emerald-100 text-emerald-700 font-bold px-2 py-1 rounded-full">RECOMENDADO</span>}
-              </div>
-            </button>
-
-            {/* Option B */}
-            <button
-              onClick={() => setOption('office')}
-              className={`w-full text-left p-5 rounded-xl border-2 mb-6 transition-colors ${option === 'office' ? 'border-primary bg-primary/5' : 'border-border'}`}
-            >
-              <div className="flex items-center gap-3">
-                <Building2 className="h-5 w-5 text-primary" />
-                <div>
-                  <p className="font-bold text-foreground">Pagar en oficina al recoger</p>
-                  <p className="text-sm text-muted-foreground">Tu tarjeta se vincula solo como garantía</p>
-                </div>
-              </div>
-            </button>
-
-            {option === 'office' && (
-              <p className="text-xs text-muted-foreground bg-accent p-3 rounded-lg mb-4">
-                Tu tarjeta se vincula únicamente como garantía para la reserva y posibles extras al recoger o devolver (combustible, multas, daños). No se realizará ningún cargo sin tu autorización expresa.
-              </p>
-            )}
-
-            {/* Stripe Card Element placeholder */}
-            <div className="border border-border rounded-lg p-4 mb-4 bg-white">
+            {/* Stripe CardElement placeholder */}
+            <div className="flex items-center gap-2 mb-4">
+              <CreditCard className="h-5 w-5 text-primary" />
+              <h2 className="font-bold text-lg">Introduce tu tarjeta</h2>
+            </div>
+            <div className="border border-border rounded-lg p-4 mb-6 bg-background">
               <p className="text-sm text-muted-foreground text-center">💳 Stripe Card Element</p>
               <p className="text-xs text-muted-foreground text-center mt-1">Pago seguro · Powered by Stripe</p>
             </div>
 
-            <label className="flex items-start gap-2 text-sm cursor-pointer mb-6">
-              <input type="checkbox" checked={accepted} onChange={e => setAccepted(e.target.checked)} className="mt-0.5 accent-cta" />
-              <span>He leído y acepto las condiciones de garantía y gestión de cargos</span>
-            </label>
-
             <button
-              onClick={handleConfirm}
-              disabled={!accepted || loading}
+              onClick={handlePay}
+              disabled={loading}
               className="w-full bg-cta text-cta-foreground font-bold py-4 rounded-lg text-lg hover:opacity-90 transition-opacity disabled:opacity-50"
             >
-              {loading ? 'Procesando...' : 'CONFIRMAR RESERVA'}
+              {loading ? 'Procesando…' : `PAGAR ${total} € AHORA`}
             </button>
+
+            <p className="text-xs text-muted-foreground text-center mt-4 flex items-center justify-center gap-1">
+              <Lock className="h-3 w-3" /> Pago seguro con Stripe. Sin cargos ocultos.
+            </p>
           </div>
         </div>
       </div>
