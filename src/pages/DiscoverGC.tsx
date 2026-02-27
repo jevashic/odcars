@@ -3,9 +3,11 @@ import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import PublicLayout from '@/components/layout/PublicLayout';
 import { useLang } from '@/contexts/LanguageContext';
+import { useLangPath } from '@/hooks/useLangNavigate';
 
 export default function DiscoverGC() {
   const { t, lang } = useLang();
+  const lp = useLangPath();
   const [places, setPlaces] = useState<any[]>([]);
 
   useEffect(() => {
@@ -34,7 +36,7 @@ export default function DiscoverGC() {
               const tr = p.tourist_place_translations?.find((t: any) => t.lang === lang) ?? p.tourist_place_translations?.[0];
               const cover = p.tourist_place_photos?.find((ph: any) => ph.is_cover)?.url ?? p.tourist_place_photos?.[0]?.url;
               return (
-                <Link key={p.id} to={`/conoce-gran-canaria/${p.slug}`} className="group rounded-2xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.08)] bg-card hover:shadow-lg transition-shadow">
+                <Link key={p.id} to={lp(`/conoce-gran-canaria/${p.slug}`)} className="group rounded-2xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.08)] bg-card hover:shadow-lg transition-shadow">
                   <div className="aspect-[4/3] overflow-hidden">
                     <img src={cover} alt={tr?.name ?? p.slug} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
                   </div>
