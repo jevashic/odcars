@@ -7,6 +7,7 @@ import SearchBar from '@/components/home/SearchBar';
 import { useLang } from '@/contexts/LanguageContext';
 import { useLangPath } from '@/hooks/useLangNavigate';
 import { differenceInDays } from 'date-fns';
+import { getVehicleTranslation } from '@/utils/vehicleTranslation';
 
 const FALLBACK_CATEGORIES = [
   { id: 'eco-1', name: 'Económico', example_model: 'Fiat Panda', image_url: 'https://images.unsplash.com/photo-1502877338535-766e1452684a?w=600', seats_min: 4, seats_max: 5, doors: 5, transmission_note: 'Manual', energy_type: 'Gasolina', has_ac: true, is_active: true, base_price_per_day: 29, sort_order: 1 },
@@ -15,7 +16,7 @@ const FALLBACK_CATEGORIES = [
 ];
 
 export default function SearchResults() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const lp = useLangPath();
   const [params, setParams] = useSearchParams();
   const [results, setResults] = useState<any[]>([]);
@@ -49,7 +50,7 @@ export default function SearchResults() {
     setHasSearched(true);
     const { data: categories } = await supabase
       .from('vehicle_categories')
-      .select('*')
+      .select('*, vehicle_category_translations(*)')
       .eq('is_active', true)
       .order('sort_order');
 
@@ -138,6 +139,7 @@ export default function SearchResults() {
                     const pricePerDayOnline = Math.round(totalOnline / days);
                     const savings = totalOffice - totalOnline;
                     const isRecommended = idx === 0;
+                    const tr = getVehicleTranslation(cat, lang);
 
                     return (
                       <div key={cat.id} className={`bg-card rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.08)] overflow-hidden relative ${!cat.available ? 'opacity-50 pointer-events-none' : ''}`}>
@@ -156,16 +158,16 @@ export default function SearchResults() {
                         <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr_auto] gap-0">
                           <div className="p-5 flex flex-col">
                             {cat.image_url && (
-                              <img src={cat.image_url} alt={cat.name} className="w-full aspect-[4/3] object-cover rounded-xl mb-4" loading="lazy" />
+                              <img src={cat.image_url} alt={tr.name} className="w-full aspect-[4/3] object-cover rounded-xl mb-4" loading="lazy" />
                             )}
-                            <h3 className="font-bold text-lg text-foreground">{cat.name}</h3>
-                            <p className="text-xs text-muted-foreground mb-3">{t('booking.example')} {cat.example_model || cat.name} {t('booking.or_similar')}</p>
+                            <h3 className="font-bold text-lg text-foreground">{tr.name}</h3>
+                            <p className="text-xs text-muted-foreground mb-3">{t('booking.example')} {cat.example_model || tr.name} {t('booking.or_similar')}</p>
                             <div className="grid grid-cols-3 gap-x-3 gap-y-2 text-xs text-muted-foreground">
-                              <span className="flex items-center gap-1"><Car className="h-3.5 w-3.5" />{cat.name}</span>
+                              <span className="flex items-center gap-1"><Car className="h-3.5 w-3.5" />{tr.name}</span>
                               <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{cat.seats_min ?? 5}p</span>
                               <span className="flex items-center gap-1"><DoorOpen className="h-3.5 w-3.5" />{cat.doors ?? 5}p</span>
-                              <span className="flex items-center gap-1"><Settings2 className="h-3.5 w-3.5" />{cat.transmission_note ?? 'Manual'}</span>
-                              <span className="flex items-center gap-1"><Fuel className="h-3.5 w-3.5" />{cat.energy_type ?? 'Gasolina'}</span>
+                              <span className="flex items-center gap-1"><Settings2 className="h-3.5 w-3.5" />{tr.transmission_note}</span>
+                              <span className="flex items-center gap-1"><Fuel className="h-3.5 w-3.5" />{tr.energy_type}</span>
                               <span className="flex items-center gap-1"><Wind className="h-3.5 w-3.5" />{cat.has_ac !== false ? 'A/C' : '—'}</span>
                             </div>
                           </div>
