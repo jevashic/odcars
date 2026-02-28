@@ -1,6 +1,5 @@
-import { supabase } from './client';
-
 const FUNCTION_URL = 'https://sqmganbjiisitgumsztv.supabase.co/functions/v1/create_reservation';
+const ANON_KEY = 'sb_publishable_BqU8oLRueee_zMv1ayiJSw_5nr1VwxB';
 
 export interface ReservationPayload {
   customer: {
@@ -27,14 +26,12 @@ export interface ReservationPayload {
 }
 
 export async function createReservation(payload: ReservationPayload) {
-  const { data: sessionData } = await supabase.auth.getSession();
-  const accessToken = sessionData?.session?.access_token || '';
-
   const res = await fetch(FUNCTION_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`,
+      'Authorization': `Bearer ${ANON_KEY}`,
+      'apikey': ANON_KEY,
     },
     body: JSON.stringify(payload),
   });
