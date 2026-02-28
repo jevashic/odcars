@@ -6,6 +6,7 @@ import PublicLayout from '@/components/layout/PublicLayout';
 import InsuranceBadges from '@/components/InsuranceBadges';
 import { useLang } from '@/contexts/LanguageContext';
 import { useLangPath } from '@/hooks/useLangNavigate';
+import { getVehicleTranslation } from '@/utils/vehicleTranslation';
 
 const FALLBACK_CATEGORY = {
   id: 'demo', name: 'Seat Ibiza o similar',
@@ -19,7 +20,7 @@ const FALLBACK_QUOTE = { days: 7, rental_amount: 210, delivery_surcharge: 0, tot
 export default function VehicleDetail() {
   const { categoryId } = useParams();
   const [params] = useSearchParams();
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const lp = useLangPath();
   const [category, setCategory] = useState<any>(null);
   const [quote, setQuote] = useState<any>(null);
@@ -29,7 +30,7 @@ export default function VehicleDetail() {
     if (!categoryId) { setCategory(FALLBACK_CATEGORY); setQuote(FALLBACK_QUOTE); setLoading(false); return; }
     const loadData = async () => {
       setLoading(true);
-      const { data: cat } = await supabase.from('vehicle_categories').select('*').eq('id', categoryId).maybeSingle();
+      const { data: cat } = await supabase.from('vehicle_categories').select('*, vehicle_category_translations(*)').eq('id', categoryId).maybeSingle();
       setCategory(cat || FALLBACK_CATEGORY);
       const { data: q } = await supabase.rpc('get_quote', {
         p_category_id: categoryId, p_start_date: params.get('pickupDate'), p_end_date: params.get('returnDate'),
@@ -39,12 +40,13 @@ export default function VehicleDetail() {
       setLoading(false);
     };
     loadData();
-  }, [categoryId, params]);
+  }, [categoryId, params, lang]);
 
   if (loading) return <PublicLayout><div className="pt-24 text-center min-h-screen text-muted-foreground">{t('booking.loading_vehicle')}</div></PublicLayout>;
 
   const cat = category || FALLBACK_CATEGORY;
   const q = quote || FALLBACK_QUOTE;
+  const tr = getVehicleTranslation(cat, lang);
 
   return (
     <PublicLayout>
@@ -52,16 +54,16 @@ export default function VehicleDetail() {
         <div className="container">
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8">
             <div>
-              {cat.image_url && <img src={cat.image_url} alt={cat.name} className="w-full rounded-2xl mb-6 aspect-video object-cover" />}
-              <h1 className="text-3xl font-bold text-primary">{cat.name}</h1>
+              {cat.image_url && <img src={cat.image_url} alt={tr.name} className="w-full rounded-2xl mb-6 aspect-video object-cover" />}
+              <h1 className="text-3xl font-bold text-primary">{tr.name}</h1>
               <p className="text-muted-foreground mt-1">{t('vehicles.or_similar')}</p>
               <div className="flex flex-wrap gap-4 mt-5 text-sm text-muted-foreground">
                 {cat.seats_min && <span className="flex items-center gap-1.5"><Users className="h-4 w-4" />{cat.seats_min}-{cat.seats_max} {t('vehicles.seats')}</span>}
-                {cat.transmission_note && <span className="flex items-center gap-1.5"><Settings2 className="h-4 w-4" />{cat.transmission_note}</span>}
-                {cat.energy_type && <span className="flex items-center gap-1.5"><Fuel className="h-4 w-4" />{cat.energy_type}</span>}
+                {cat.transmission_note && <span className="flex items-center gap-1.5"><Settings2 className="h-4 w-4" />{tr.transmission_note}</span>}
+                {cat.energy_type && <span className="flex items-center gap-1.5"><Fuel className="h-4 w-4" />{tr.energy_type}</span>}
               </div>
               <InsuranceBadges className="mt-4" />
-              {cat.description && <p className="mt-6 text-foreground leading-relaxed">{cat.description}</p>}
+              {tr.description && <p className="mt-6 text-foreground leading-relaxed">{tr.description}</p>}
             </div>
 
             <div className="lg:sticky lg:top-24 self-start">

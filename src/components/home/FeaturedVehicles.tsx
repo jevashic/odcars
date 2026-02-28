@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useLang } from '@/contexts/LanguageContext';
 import { useLangPath } from '@/hooks/useLangNavigate';
 import InsuranceBadges from '@/components/InsuranceBadges';
+import { getVehicleTranslation } from '@/utils/vehicleTranslation';
 
 interface Category {
   id: string;
@@ -25,14 +26,14 @@ const fallback: Category[] = [
 ];
 
 export default function FeaturedVehicles() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const lp = useLangPath();
   const [categories, setCategories] = useState<Category[]>([]);
 
   useEffect(() => {
     supabase
       .from('vehicle_categories')
-      .select('*')
+      .select('*, vehicle_category_translations(*)')
       .eq('is_active', true)
       .order('price_per_day')
       .limit(4)
@@ -40,7 +41,7 @@ export default function FeaturedVehicles() {
         if (data && data.length > 0) setCategories(data as any);
         else setCategories(fallback);
       });
-  }, []);
+  }, [lang]);
 
   const items = categories.length > 0 ? categories : fallback;
 
@@ -52,21 +53,23 @@ export default function FeaturedVehicles() {
         <p className="section-subtitle mb-10">{t('vehicles.subtitle')}</p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {items.map((cat) => (
+          {items.map((cat) => {
+            const tr = getVehicleTranslation(cat, lang);
+            return (
             <div key={cat.id} className="bg-card rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.08)] overflow-hidden hover:shadow-lg hover:scale-[1.02] transition-all duration-300 group">
               <div className="relative aspect-video">
-                <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover" loading="lazy" />
+                <img src={cat.image_url} alt={tr.name} className="w-full h-full object-cover" loading="lazy" />
                 <span className="absolute top-3 right-3 bg-cta text-cta-foreground text-xs font-bold px-3 py-1.5 rounded-full">
-                  {cat.energy_type}
+                  {tr.energy_type}
                 </span>
               </div>
               <div className="p-5">
                 <InsuranceBadges className="mb-3" />
-                <h3 className="font-bold text-lg text-foreground">{cat.name}</h3>
+                <h3 className="font-bold text-lg text-foreground">{tr.name}</h3>
                 <div className="grid grid-cols-2 gap-2 mt-3 text-sm text-muted-foreground">
                   <span className="flex items-center gap-1.5"><Users className="h-4 w-4" />{cat.seats_min}-{cat.seats_max}p</span>
-                  <span className="flex items-center gap-1.5"><Settings2 className="h-4 w-4" />{cat.transmission_note}</span>
-                  <span className="flex items-center gap-1.5"><Fuel className="h-4 w-4" />{cat.energy_type}</span>
+                  <span className="flex items-center gap-1.5"><Settings2 className="h-4 w-4" />{tr.transmission_note}</span>
+                  <span className="flex items-center gap-1.5"><Fuel className="h-4 w-4" />{tr.energy_type}</span>
                 </div>
                 <p className="mt-4 text-xl font-bold text-primary">
                   {t('vehicles.from')} €{cat.price_per_day}{t('vehicles.per_day')}
@@ -79,7 +82,8 @@ export default function FeaturedVehicles() {
                 </Link>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="text-center mt-10">
