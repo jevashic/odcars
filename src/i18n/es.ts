@@ -32,7 +32,7 @@ export const es: Record<string, string> = {
   'search.premium': 'Premium',
   'search.gasoline': 'Gasolina',
   'search.hybrid': 'Híbrido',
-  'search.electric': 'Eléctrico',
+  
   'search.address_placeholder': 'Introduce la dirección exacta (hotel, apartamento...)',
   'search.date_placeholder': 'dd/mm/aaaa',
 
