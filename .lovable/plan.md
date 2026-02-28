@@ -1,97 +1,33 @@
 
 
-## Traducir datos dinamicos de Supabase segun el idioma
+## Corregir error "Failed to fetch" en la llamada a create_reservation
 
-### Problema actual
-Los datos que vienen de Supabase (nombres de vehiculos, tipo de combustible, transmision, etc.) se muestran siempre en espanol porque estan guardados directamente en la tabla `vehicle_categories` sin traducciones.
+### Causa raiz
 
-### Solucion: Tabla de traducciones por entidad
+La Anon Key almacenada en `createReservation.ts` y en `client.ts` es `sb_publishable_BqU8oLRueee_zMv1ayiJSw_5nr1VwxB`, que no es una Supabase Anon Key valida. Las Anon Keys de Supabase son tokens JWT que comienzan con `eyJ...`.
 
-Ya existe un patron funcionando en el proyecto: **`tourist_place_translations`** tiene columnas `lang`, `name`, `short_description`, etc. y el frontend filtra por el idioma activo. Aplicaremos el mismo patron a los vehiculos.
+El valor actual parece ser un placeholder o una clave de otro servicio. Cuando la Edge Function recibe esta clave invalida, rechaza la peticion o falla en la validacion, lo que causa el error "Failed to fetch" (tipicamente un problema de CORS cuando el servidor no responde correctamente).
 
----
+### Solucion
 
-### Paso 1 — Crear tabla `vehicle_category_translations` en Supabase
+1. **Obtener la Anon Key correcta** de tu proyecto Supabase:
+   - Ve a https://supabase.com/dashboard → tu proyecto → Settings → API
+   - Copia la clave `anon` / `public` (empieza con `eyJhbGciOi...`)
 
-Estructura de la tabla:
+2. **Actualizar `src/integrations/supabase/client.ts`** — reemplazar `SUPABASE_ANON_KEY` con la clave correcta
 
-```text
-vehicle_category_translations
-├── id (uuid, PK)
-├── category_id (uuid, FK -> vehicle_categories.id)
-├── lang (text: es, en, de, sv, no, fr)
-├── name (text) — ej: "Fiat 500 or similar"
-├── transmission_note (text) — ej: "Manual" / "Automatic"
-├── energy_type (text) — ej: "Gasoline" / "Hybrid"
-├── description (text, nullable)
-└── UNIQUE(category_id, lang)
-```
+3. **Actualizar `src/integrations/supabase/createReservation.ts`** — reemplazar `ANON_KEY` con la misma clave correcta
 
-Se creara mediante una migracion SQL.
+4. **Centralizar la clave** — en vez de duplicar la key en dos archivos, importar la key desde `client.ts` en `createReservation.ts` para evitar inconsistencias futuras
 
-### Paso 2 — Insertar traducciones iniciales
+### Cambios tecnicos
 
-Se insertaran filas para cada categoria existente en los 6 idiomas (es, en, de, sv, no, fr) con las traducciones de:
-- Nombre del vehiculo (ej: "o similar" -> "or similar" / "oder ahnlich")
-- Tipo de transmision (Manual / Automatico)
-- Tipo de energia (Gasolina / Hibrido / Electrico)
+| Archivo | Cambio |
+|---------|--------|
+| `src/integrations/supabase/client.ts` | Actualizar `SUPABASE_ANON_KEY` con la clave real |
+| `src/integrations/supabase/createReservation.ts` | Importar la key desde `client.ts` en vez de duplicarla |
 
-### Paso 3 — Modificar las consultas del frontend
+### Nota importante
 
-En los 4 archivos que consultan `vehicle_categories`, cambiar el `select('*')` para incluir las traducciones y filtrar por idioma:
-
-**Archivos a modificar:**
-- `src/components/home/FeaturedVehicles.tsx`
-- `src/pages/Fleet.tsx`
-- `src/pages/booking/SearchResults.tsx`
-- `src/pages/booking/VehicleDetail.tsx`
-
-Cambio tipico:
-
-```typescript
-// ANTES
-supabase.from('vehicle_categories').select('*')
-
-// DESPUES
-supabase.from('vehicle_categories')
-  .select('*, vehicle_category_translations(*)')
-```
-
-Luego al renderizar:
-
-```typescript
-const tr = cat.vehicle_category_translations?.find(
-  (t: any) => t.lang === lang
-) ?? cat.vehicle_category_translations?.[0];
-
-// Usar tr?.name en vez de cat.name
-// Usar tr?.transmission_note en vez de cat.transmission_note
-// Usar tr?.energy_type en vez de cat.energy_type
-```
-
-Si no hay traduccion disponible, se usa el valor original de `vehicle_categories` como fallback (espanol).
-
-### Paso 4 — Pasar `lang` como dependencia
-
-En los `useEffect` que cargan categorias, agregar `lang` al array de dependencias para que recargue los datos al cambiar idioma:
-
-```typescript
-const { lang } = useLang();
-useEffect(() => { /* fetch */ }, [lang]);
-```
-
----
-
-### Resumen de cambios
-
-| Tipo | Archivo / Recurso |
-|------|-------------------|
-| Migracion SQL | Crear tabla `vehicle_category_translations` |
-| Datos SQL | Insertar traducciones para 6 idiomas |
-| Frontend | `FeaturedVehicles.tsx` — usar traducciones |
-| Frontend | `Fleet.tsx` — usar traducciones |
-| Frontend | `SearchResults.tsx` — usar traducciones |
-| Frontend | `VehicleDetail.tsx` — usar traducciones |
-
-Los lugares turisticos (`tourist_places`) ya funcionan con este patron — no necesitan cambios.
+Necesitare que me proporciones la Anon Key correcta de tu proyecto Supabase (la que empieza con `eyJ...`). Sin ella, la Edge Function seguira rechazando las peticiones.
 
