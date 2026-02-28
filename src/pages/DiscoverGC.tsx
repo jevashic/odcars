@@ -19,7 +19,7 @@ export default function DiscoverGC() {
       .then(({ data }) => {
         if (data) setPlaces(data);
       });
-  }, [lang]);
+  }, []);
 
   return (
     <PublicLayout>
