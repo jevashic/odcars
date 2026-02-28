@@ -24,9 +24,19 @@ export default function HeroSection() {
       .from('hero_config')
       .select('*')
       .eq('lang', lang)
-      .single()
-      .then(({ data }) => {
-        if (data) setHero(data as any);
+      .maybeSingle()
+      .then(async ({ data }) => {
+        if (data) {
+          setHero(data as any);
+        } else {
+          // Fallback to Spanish
+          const { data: fallback } = await supabase
+            .from('hero_config')
+            .select('*')
+            .eq('lang', 'es')
+            .maybeSingle();
+          if (fallback) setHero(fallback as any);
+        }
       });
   }, [lang]);
 

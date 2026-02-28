@@ -24,16 +24,15 @@ export default function DiscoverGranCanaria() {
   useEffect(() => {
     supabase
       .from('tourist_places')
-      .select('slug, tourist_place_translations!inner(name, short_description, lang), tourist_place_photos(url, is_cover)')
+      .select('slug, tourist_place_translations(name, short_description, lang), tourist_place_photos(url, is_cover)')
       .eq('is_featured', true)
       .eq('is_active', true)
-      .eq('tourist_place_translations.lang', lang)
       .order('sort_order')
       .limit(6)
       .then(({ data }) => {
         if (data && data.length > 0) {
           setPlaces(data.map((p: any) => {
-            const tr = p.tourist_place_translations?.[0];
+            const tr = p.tourist_place_translations?.find((t: any) => t.lang === lang) ?? p.tourist_place_translations?.[0];
             const coverPhoto = p.tourist_place_photos?.find((ph: any) => ph.is_cover) ?? p.tourist_place_photos?.[0];
             return {
               slug: p.slug,
