@@ -1,5 +1,6 @@
-const FUNCTION_URL = 'https://sqmganbjiisitgumsztv.supabase.co/functions/v1/create_reservation';
-const ANON_KEY = 'sb_publishable_BqU8oLRueee_zMv1ayiJSw_5nr1VwxB';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './client';
+
+const FUNCTION_URL = `${SUPABASE_URL}/functions/v1/create_reservation`;
 
 export interface ReservationPayload {
   customer: {
@@ -30,8 +31,8 @@ export async function createReservation(payload: ReservationPayload) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${ANON_KEY}`,
-      'apikey': ANON_KEY,
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'apikey': SUPABASE_ANON_KEY,
     },
     body: JSON.stringify(payload),
   });
