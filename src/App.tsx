@@ -28,6 +28,7 @@ import AdminLogin from "./pages/admin/Login";
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminStub from "./pages/admin/AdminStub";
+import AdminCategories from "./pages/admin/Categories";
 
 import AdminInsurance from "./pages/admin/Insurance";
 import NotFound from "./pages/NotFound";
@@ -85,7 +86,7 @@ const App = () => (
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
               <Route path="/admin/reservas" element={<AdminStub />} />
               <Route path="/admin/vehiculos" element={<AdminStub />} />
-              <Route path="/admin/categorias" element={<AdminStub />} />
+              <Route path="/admin/categorias" element={<AdminCategories />} />
               <Route path="/admin/precios" element={<AdminStub />} />
               <Route path="/admin/extras" element={<AdminStub />} />
               <Route path="/admin/descuentos" element={<AdminStub />} />
