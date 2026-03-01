@@ -1,5 +1,16 @@
 import { useState } from "react";
-import { Link, Outlet, useLocation } from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import {
   CalendarDays,
   Car,
@@ -89,6 +100,41 @@ function AdminLayoutInner() {
   // Check if any config link is active to auto-expand
   const configActive = configLinks.some((l) => location.pathname.startsWith(l.to));
 
+  // Search modal state
+  const navigate = useNavigate();
+  const [searchModalOpen, setSearchModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState("");
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    setSearching(true);
+    setSearchError("");
+    try {
+      // Search by reservation code or client email
+      const q = searchQuery.trim();
+      const { data, error } = await supabase
+        .from("reservations")
+        .select("id, reservation_code, customer_email")
+        .or(`reservation_code.ilike.%${q}%,customer_email.ilike.%${q}%`)
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      if (data) {
+        setSearchModalOpen(false);
+        setSearchQuery("");
+        navigate(`/admin/reservas/${data.id}`);
+      } else {
+        setSearchError("No se encontró ninguna reserva con ese dato");
+      }
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    } finally {
+      setSearching(false);
+    }
+  };
+
   return (
     <div className="flex min-h-screen bg-[#F1F5F9]">
       {/* Sidebar */}
@@ -157,10 +203,55 @@ function AdminLayoutInner() {
         </div>
       </aside>
 
-      {/* Content */}
-      <div className="flex-1 p-8 overflow-y-auto">
-        <Outlet />
+      {/* Main area */}
+      <div className="flex-1 flex flex-col overflow-y-auto">
+        {/* Top bar with quick actions */}
+        <header className="bg-white border-b border-[#E2E8F0] px-8 py-3 flex items-center justify-end gap-3 shrink-0">
+          <Button
+            onClick={() => navigate("/admin/reservas/nueva")}
+            className="h-10 px-6 rounded-lg text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            🚗 NUEVA RESERVA
+          </Button>
+          <Button
+            onClick={() => { setSearchModalOpen(true); setSearchError(""); setSearchQuery(""); }}
+            variant="outline"
+            className="h-10 px-6 rounded-lg text-sm font-bold border-primary text-primary hover:bg-primary/5"
+          >
+            🔍 CONSULTAR RESERVA
+          </Button>
+        </header>
+
+        {/* Page content */}
+        <div className="flex-1 p-8">
+          <Outlet />
+        </div>
       </div>
+
+      {/* Search reservation modal */}
+      <Dialog open={searchModalOpen} onOpenChange={setSearchModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Consultar reserva</DialogTitle>
+            <DialogDescription>Busca por número de reserva o email del cliente.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <Input
+              placeholder="Número de reserva o email del cliente"
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); setSearchError(""); }}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              autoFocus
+            />
+            {searchError && (
+              <p className="text-sm text-destructive">{searchError}</p>
+            )}
+            <Button onClick={handleSearch} disabled={searching || !searchQuery.trim()} className="w-full font-bold">
+              {searching ? "Buscando…" : "BUSCAR"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
