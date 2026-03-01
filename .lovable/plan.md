@@ -1,33 +1,61 @@
 
 
-## Corregir error "Failed to fetch" en la llamada a create_reservation
+## Corregir bucle de login en el panel de administracion
 
 ### Causa raiz
 
-La Anon Key almacenada en `createReservation.ts` y en `client.ts` es `sb_publishable_BqU8oLRueee_zMv1ayiJSw_5nr1VwxB`, que no es una Supabase Anon Key valida. Las Anon Keys de Supabase son tokens JWT que comienzan con `eyJ...`.
+El problema es una **race condition** entre `onAuthStateChange` y `getSession` en `AdminAuthContext.tsx`, combinada con el uso de `.single()` que lanza error si no encuentra fila.
 
-El valor actual parece ser un placeholder o una clave de otro servicio. Cuando la Edge Function recibe esta clave invalida, rechaza la peticion o falla en la validacion, lo que causa el error "Failed to fetch" (tipicamente un problema de CORS cuando el servidor no responde correctamente).
+El flujo actual:
+1. Login.tsx: login exitoso -> navigate("/admin/dashboard")
+2. AdminLayout monta -> AdminAuthProvider monta
+3. `onAuthStateChange` dispara evento SIGNED_IN -> llama `verifyRole()`
+4. `getSession()` tambien llama `verifyRole()` en paralelo
+5. Mientras tanto, `onAuthStateChange` puede disparar sin sesion -> ejecuta `navigate('/admin')` (linea 64), devolviendo al usuario al login
 
-### Solucion
+Ademas, `.single()` lanza un error (no devuelve null) cuando no hay filas o hay mas de una, lo que hace que `internal` sea null incluso si es un problema transitorio.
 
-1. **Obtener la Anon Key correcta** de tu proyecto Supabase:
-   - Ve a https://supabase.com/dashboard → tu proyecto → Settings → API
-   - Copia la clave `anon` / `public` (empieza con `eyJhbGciOi...`)
+### Cambios
 
-2. **Actualizar `src/integrations/supabase/client.ts`** — reemplazar `SUPABASE_ANON_KEY` con la clave correcta
+#### 1. `src/contexts/AdminAuthContext.tsx`
 
-3. **Actualizar `src/integrations/supabase/createReservation.ts`** — reemplazar `ANON_KEY` con la misma clave correcta
+- Reemplazar `.single()` por `.maybeSingle()` para manejar correctamente el caso sin resultados
+- Capturar errores de la query y NO hacer signOut si es error de red/RLS (solo si realmente no tiene rol)
+- Eliminar el `navigate('/admin')` dentro de `onAuthStateChange` cuando no hay sesion (no debe redirigir en el evento inicial)
+- Usar un flag para evitar que `onAuthStateChange` y `getSession` ejecuten `verifyRole` concurrentemente
+- Solo verificar rol una vez al montar (via `getSession`), y en `onAuthStateChange` solo reaccionar a SIGNED_OUT
 
-4. **Centralizar la clave** — en vez de duplicar la key en dos archivos, importar la key desde `client.ts` en `createReservation.ts` para evitar inconsistencias futuras
+#### 2. `src/pages/admin/Login.tsx`
 
-### Cambios tecnicos
+- Eliminar `console.log` inalcanzable en linea 38 (despues de `return`)
+- Usar `.maybeSingle()` en vez de `.single()`
+
+### Detalle tecnico
+
+```text
+Flujo corregido:
+
+Login exitoso
+    |
+    v
+navigate("/admin/dashboard")
+    |
+    v
+AdminAuthProvider monta
+    |
+    v
+getSession() -> session existe -> verifyRole()
+    |
+    +-- Query OK, rol valido -> setUser() -> renderiza dashboard
+    +-- Query OK, sin rol -> signOut() + redirect (correcto)
+    +-- Query ERROR -> log error, NO signOut (puede ser transitorio)
+    |
+onAuthStateChange:
+    +-- SIGNED_OUT -> setUser(null) (sin navigate, ya esta en /admin)
+    +-- SIGNED_IN -> ignorar (ya verificado por getSession)
+```
 
 | Archivo | Cambio |
-|---------|--------|
-| `src/integrations/supabase/client.ts` | Actualizar `SUPABASE_ANON_KEY` con la clave real |
-| `src/integrations/supabase/createReservation.ts` | Importar la key desde `client.ts` en vez de duplicarla |
-
-### Nota importante
-
-Necesitare que me proporciones la Anon Key correcta de tu proyecto Supabase (la que empieza con `eyJ...`). Sin ella, la Edge Function seguira rechazando las peticiones.
-
+|---|---|
+| `src/contexts/AdminAuthContext.tsx` | Usar `.maybeSingle()`, eliminar race condition, no redirigir en `onAuthStateChange` sin sesion, capturar errores de query |
+| `src/pages/admin/Login.tsx` | Usar `.maybeSingle()`, eliminar codigo muerto |
