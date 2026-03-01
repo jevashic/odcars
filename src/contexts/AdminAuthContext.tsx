@@ -31,17 +31,23 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const verifyRole = async (authUserId: string, email: string) => {
-    const { data: internal } = await supabase
+    const { data: internal, error } = await supabase
       .from("internal_users")
       .select("id, role, display_name")
       .eq("auth_user_id", authUserId)
       .eq("is_active", true)
       .maybeSingle();
 
+    if (error) {
+      console.error("Error querying internal_users:", error);
+      setLoading(false);
+      return;
+    }
+
     if (!internal || !ALLOWED_ROLES.includes(internal.role)) {
       await supabase.auth.signOut();
-      navigate("/admin", { replace: true });
       setUser(null);
+      setLoading(false);
       return;
     }
 
@@ -51,28 +57,25 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
       role: internal.role,
       display_name: internal.display_name,
     });
+    setLoading(false);
   };
 
   useEffect(() => {
-    // Listen for auth changes first
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        await verifyRole(session.user.id, session.user.email ?? "");
-      } else {
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") {
         setUser(null);
-        navigate("/admin", { replace: true });
+        setLoading(false);
       }
-      setLoading(false);
     });
 
-    // Then check current session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
         await verifyRole(session.user.id, session.user.email ?? "");
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -93,7 +96,10 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  if (!user) return null;
+  if (!user) {
+    navigate("/admin", { replace: true });
+    return null;
+  }
 
   return <AdminAuthContext.Provider value={{ user, loading, logout }}>{children}</AdminAuthContext.Provider>;
 }
