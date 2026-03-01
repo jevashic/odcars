@@ -1,6 +1,4 @@
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './client';
-
-const FUNCTION_URL = `${SUPABASE_URL}/functions/v1/create_reservation`;
+import { supabase } from './client';
 
 export interface ReservationPayload {
   customer: {
@@ -14,6 +12,7 @@ export interface ReservationPayload {
   category_id: string;
   pickup_branch_id: string;
   return_branch_id: string;
+  sale_branch_id?: string;
   start_date: string;
   end_date: string;
   start_time: string;
@@ -27,20 +26,22 @@ export interface ReservationPayload {
 }
 
 export async function createReservation(payload: ReservationPayload) {
-  const res = await fetch(FUNCTION_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-      'apikey': SUPABASE_ANON_KEY,
-    },
-    body: JSON.stringify(payload),
-  });
+  const body = {
+    ...payload,
+    sale_branch_id: payload.sale_branch_id || payload.pickup_branch_id,
+  };
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'Error desconocido' }));
-    throw new Error(err.error || err.message || `Error ${res.status}`);
+  const { data, error } = await supabase.functions.invoke('create_reservation', { body });
+
+  if (error) {
+    console.error('Error reserva:', error);
+    throw new Error(error.message || 'Error al crear la reserva');
   }
 
-  return res.json() as Promise<{ reservation_number: string }>;
+  if (!data?.reservation_number) {
+    console.error('Respuesta inesperada:', data);
+    throw new Error('No se recibió número de reserva');
+  }
+
+  return data as { reservation_number: string };
 }
