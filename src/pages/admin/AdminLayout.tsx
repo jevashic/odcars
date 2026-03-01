@@ -44,6 +44,7 @@ const mainLinks: NavItem[] = [
   { to: "/admin/precios", icon: DollarSign, label: "Precios", roles: ["manager", "admin"] },
   { to: "/admin/extras", icon: Package, label: "Extras", roles: ["manager", "admin"] },
   { to: "/admin/descuentos", icon: Percent, label: "Descuentos", roles: ["manager", "admin"] },
+  { to: "/admin/facturacion", icon: Receipt, label: "Facturación", roles: ["manager", "admin"] },
   { to: "/admin/informes", icon: BarChart3, label: "Informes", roles: ["manager", "admin"] },
 ];
 
