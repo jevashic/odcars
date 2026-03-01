@@ -1,61 +1,68 @@
 
 
-## Corregir bucle de login en el panel de administracion
+## Corregir el bucle de login en AdminAuthContext
 
-### Causa raiz
+### Problema
 
-El problema es una **race condition** entre `onAuthStateChange` y `getSession` en `AdminAuthContext.tsx`, combinada con el uso de `.single()` que lanza error si no encuentra fila.
+El archivo `AdminAuthContext.tsx` tiene dos fallos que causan el bucle:
 
-El flujo actual:
-1. Login.tsx: login exitoso -> navigate("/admin/dashboard")
-2. AdminLayout monta -> AdminAuthProvider monta
-3. `onAuthStateChange` dispara evento SIGNED_IN -> llama `verifyRole()`
-4. `getSession()` tambien llama `verifyRole()` en paralelo
-5. Mientras tanto, `onAuthStateChange` puede disparar sin sesion -> ejecuta `navigate('/admin')` (linea 64), devolviendo al usuario al login
+1. `onAuthStateChange` se dispara al montar el componente. Si en ese momento aun no hay sesion (porque `getSession` no ha resuelto), ejecuta `navigate("/admin")` y te devuelve al login.
+2. Ambos (`onAuthStateChange` y `getSession`) llaman a `verifyRole()` en paralelo, causando resultados impredecibles.
 
-Ademas, `.single()` lanza un error (no devuelve null) cuando no hay filas o hay mas de una, lo que hace que `internal` sea null incluso si es un problema transitorio.
+### Solucion
 
-### Cambios
+Reescribir la logica de `useEffect` en `AdminAuthContext.tsx`:
 
-#### 1. `src/contexts/AdminAuthContext.tsx`
+- **Verificar solo via `getSession()`** al montar el componente (una sola vez).
+- **`onAuthStateChange`** solo debe reaccionar al evento `SIGNED_OUT` para limpiar el estado. No debe llamar a `verifyRole` ni redirigir en otros eventos.
+- **No redirigir a `/admin` dentro del listener** cuando no hay sesion (puede ser el estado inicial).
+- Capturar errores de la query a `internal_users` y NO hacer `signOut` si es error de red/RLS.
 
-- Reemplazar `.single()` por `.maybeSingle()` para manejar correctamente el caso sin resultados
-- Capturar errores de la query y NO hacer signOut si es error de red/RLS (solo si realmente no tiene rol)
-- Eliminar el `navigate('/admin')` dentro de `onAuthStateChange` cuando no hay sesion (no debe redirigir en el evento inicial)
-- Usar un flag para evitar que `onAuthStateChange` y `getSession` ejecuten `verifyRole` concurrentemente
-- Solo verificar rol una vez al montar (via `getSession`), y en `onAuthStateChange` solo reaccionar a SIGNED_OUT
+### Cambios tecnicos
 
-#### 2. `src/pages/admin/Login.tsx`
+**Archivo: `src/contexts/AdminAuthContext.tsx`**
 
-- Eliminar `console.log` inalcanzable en linea 38 (despues de `return`)
-- Usar `.maybeSingle()` en vez de `.single()`
-
-### Detalle tecnico
+Reemplazar el `useEffect` (lineas 56-80) con esta logica:
 
 ```text
-Flujo corregido:
+useEffect:
+  1. Registrar onAuthStateChange:
+     - Si evento es SIGNED_OUT -> setUser(null), setLoading(false)
+     - Cualquier otro evento -> ignorar (no llamar verifyRole)
 
-Login exitoso
-    |
-    v
-navigate("/admin/dashboard")
+  2. Llamar getSession():
+     - Si hay sesion -> verifyRole()
+     - Si no hay sesion -> setLoading(false) (sin navigate, sin signOut)
+
+  3. return: unsubscribe
+```
+
+Tambien modificar `verifyRole`:
+- Capturar el `error` de la query (actualmente se ignora con destructuring)
+- Si hay error de query, hacer console.error y NO hacer signOut
+- Solo hacer signOut si la query fue exitosa pero no hay rol valido
+
+### Flujo corregido
+
+```text
+Login exitoso -> navigate("/admin/dashboard")
     |
     v
 AdminAuthProvider monta
     |
     v
-getSession() -> session existe -> verifyRole()
+getSession() -> sesion existe -> verifyRole()
     |
     +-- Query OK, rol valido -> setUser() -> renderiza dashboard
-    +-- Query OK, sin rol -> signOut() + redirect (correcto)
-    +-- Query ERROR -> log error, NO signOut (puede ser transitorio)
+    +-- Query OK, sin rol -> signOut() + redirect
+    +-- Query ERROR -> log error, NO signOut (evita bucle)
     |
 onAuthStateChange:
-    +-- SIGNED_OUT -> setUser(null) (sin navigate, ya esta en /admin)
-    +-- SIGNED_IN -> ignorar (ya verificado por getSession)
+    +-- SIGNED_OUT -> setUser(null), setLoading(false)
+    +-- Otros eventos -> ignorar
 ```
 
 | Archivo | Cambio |
 |---|---|
-| `src/contexts/AdminAuthContext.tsx` | Usar `.maybeSingle()`, eliminar race condition, no redirigir en `onAuthStateChange` sin sesion, capturar errores de query |
-| `src/pages/admin/Login.tsx` | Usar `.maybeSingle()`, eliminar codigo muerto |
+| `src/contexts/AdminAuthContext.tsx` | Reescribir useEffect para eliminar race condition; capturar errores en verifyRole |
+
