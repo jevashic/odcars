@@ -1,68 +1,42 @@
 
 
-## Corregir el bucle de login en AdminAuthContext
+## Fix: Admin dashboard white screen
 
-### Problema
+### Root cause
 
-El archivo `AdminAuthContext.tsx` tiene dos fallos que causan el bucle:
+Two issues in `AdminAuthContext.tsx`:
 
-1. `onAuthStateChange` se dispara al montar el componente. Si en ese momento aun no hay sesion (porque `getSession` no ha resuelto), ejecuta `navigate("/admin")` y te devuelve al login.
-2. Ambos (`onAuthStateChange` y `getSession`) llaman a `verifyRole()` en paralelo, causando resultados impredecibles.
+1. **Race condition still present**: Both `onAuthStateChange` (line 60-68) and `getSession` (line 71-76) call `verifyRole()` concurrently. The listener also navigates to `/admin` when there's no session (line 65), which can fire before `getSession` resolves.
 
-### Solucion
+2. **Silent blank screen on line 96**: `if (!user) return null` renders nothing after loading finishes if `verifyRole` failed. The user sees a permanent white screen with no feedback.
 
-Reescribir la logica de `useEffect` en `AdminAuthContext.tsx`:
+### Changes to `src/contexts/AdminAuthContext.tsx`
 
-- **Verificar solo via `getSession()`** al montar el componente (una sola vez).
-- **`onAuthStateChange`** solo debe reaccionar al evento `SIGNED_OUT` para limpiar el estado. No debe llamar a `verifyRole` ni redirigir en otros eventos.
-- **No redirigir a `/admin` dentro del listener** cuando no hay sesion (puede ser el estado inicial).
-- Capturar errores de la query a `internal_users` y NO hacer `signOut` si es error de red/RLS.
+1. **`onAuthStateChange`**: Only react to `SIGNED_OUT` — set user to null. Do NOT call `verifyRole` or navigate. Remove the redirect on no-session.
 
-### Cambios tecnicos
+2. **`verifyRole`**: Capture the query `error`. If there's a DB error, log it and do NOT sign out. Add `setLoading(false)` at the end of `verifyRole` itself so it's guaranteed to run in all branches.
 
-**Archivo: `src/contexts/AdminAuthContext.tsx`**
+3. **Remove `setLoading(false)` from `getSession` callback** — let `verifyRole` handle it internally.
 
-Reemplazar el `useEffect` (lineas 56-80) con esta logica:
+4. **Handle no-session in `getSession`**: Just call `setLoading(false)` without navigating.
 
-```text
-useEffect:
-  1. Registrar onAuthStateChange:
-     - Si evento es SIGNED_OUT -> setUser(null), setLoading(false)
-     - Cualquier otro evento -> ignorar (no llamar verifyRole)
+5. **Line 96 fallback**: Instead of returning `null`, redirect to `/admin` when `!user` after loading completes — prevents the blank screen.
 
-  2. Llamar getSession():
-     - Si hay sesion -> verifyRole()
-     - Si no hay sesion -> setLoading(false) (sin navigate, sin signOut)
-
-  3. return: unsubscribe
-```
-
-Tambien modificar `verifyRole`:
-- Capturar el `error` de la query (actualmente se ignora con destructuring)
-- Si hay error de query, hacer console.error y NO hacer signOut
-- Solo hacer signOut si la query fue exitosa pero no hay rol valido
-
-### Flujo corregido
+### Corrected flow
 
 ```text
-Login exitoso -> navigate("/admin/dashboard")
-    |
-    v
-AdminAuthProvider monta
-    |
-    v
-getSession() -> sesion existe -> verifyRole()
-    |
-    +-- Query OK, rol valido -> setUser() -> renderiza dashboard
-    +-- Query OK, sin rol -> signOut() + redirect
-    +-- Query ERROR -> log error, NO signOut (evita bucle)
-    |
+AdminAuthProvider mounts
+  |
+  v
+getSession()
+  |-- session exists --> verifyRole()
+  |     |-- query OK + valid role --> setUser(), setLoading(false) --> renders dashboard
+  |     |-- query OK + no role --> signOut(), setUser(null), setLoading(false) --> redirect to /admin
+  |     |-- query ERROR --> console.error, setLoading(false) --> redirect to /admin
+  |-- no session --> setLoading(false) --> redirect to /admin
+  
 onAuthStateChange:
-    +-- SIGNED_OUT -> setUser(null), setLoading(false)
-    +-- Otros eventos -> ignorar
+  |-- SIGNED_OUT --> setUser(null)
+  |-- anything else --> ignored
 ```
-
-| Archivo | Cambio |
-|---|---|
-| `src/contexts/AdminAuthContext.tsx` | Reescribir useEffect para eliminar race condition; capturar errores en verifyRole |
 
