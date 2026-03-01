@@ -36,7 +36,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
       .select("id, role, display_name")
       .eq("auth_user_id", authUserId)
       .eq("is_active", true)
-      .maybesingle();
+      .maybeSingle();
 
     if (!internal || !ALLOWED_ROLES.includes(internal.role)) {
       await supabase.auth.signOut();
