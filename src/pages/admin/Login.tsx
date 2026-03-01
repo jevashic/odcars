@@ -23,19 +23,24 @@ export default function AdminLogin() {
       return;
     }
     // Verify internal user with allowed role
-    const { data: internal } = await supabase
+    const { data: internal, error: queryErr } = await supabase
       .from("internal_users")
       .select("role")
       .eq("auth_user_id", data.user.id)
       .eq("is_active", true)
-      .single();
+      .maybeSingle();
+
+    if (queryErr) {
+      setError("Error al verificar permisos. Inténtalo de nuevo.");
+      setLoading(false);
+      return;
+    }
 
     if (!internal || !ALLOWED_ROLES.includes(internal.role)) {
       await supabase.auth.signOut();
       setError("Acceso no autorizado. Se requiere rol admin o manager.");
       setLoading(false);
       return;
-      console.log("internal:", internal);
     }
     navigate("/admin/dashboard");
   };
