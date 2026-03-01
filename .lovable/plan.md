@@ -1,67 +1,62 @@
 
 
-## Corrección definitiva de AdminAuthContext.tsx
+## Reestructurar menu lateral admin - VERSION DEFINITIVA
 
-El menú lateral (`AdminLayout.tsx`) ya tiene la estructura correcta con los roles bien asignados. El problema es que `AdminAuthContext.tsx` **nunca fue actualizado** y sigue bloqueando el renderizado del dashboard.
+### Archivo: `src/pages/admin/AdminLayout.tsx`
 
-### Problemas actuales en `AdminAuthContext.tsx`
+### Estructura por rol
 
-1. **Linea 96**: `if (!user) return null` -- despues de cargar, si no hay usuario valido, renderiza NADA (pantalla blanca permanente en vez de redirigir al login)
-2. **Race condition**: `onAuthStateChange` (linea 60-67) y `getSession` (linea 71-76) ambos llaman a `verifyRole` simultaneamente
-3. **Sin manejo de errores**: la query a `internal_users` no captura errores de BD
-
-### Cambios a realizar en `src/contexts/AdminAuthContext.tsx`
-
-**A) Funcion `verifyRole`** -- Capturar error de BD y garantizar `setLoading(false)` en todas las ramas:
-
-- Desestructurar `error` de la query
-- Si hay error de BD: log del error + `setLoading(false)` + return (sin cerrar sesion)
-- Si no hay rol valido: signOut + setUser(null) + `setLoading(false)` + return
-- Si todo OK: setUser + `setLoading(false)`
-
-**B) `onAuthStateChange`** -- Solo reaccionar a SIGNED_OUT:
-
-```
-onAuthStateChange((event) => {
-  if (event === "SIGNED_OUT") {
-    setUser(null);
-  }
-})
-```
-
-No llama a verifyRole, no navega, no toca loading.
-
-**C) `getSession`** -- Unica fuente de verificacion inicial:
-
-```
-getSession().then(({ data: { session } }) => {
-  if (session?.user) {
-    verifyRole(session.user.id, session.user.email ?? "");
-  } else {
-    setLoading(false);
-  }
-});
+```text
+employee:            manager:                 admin:
+- Reservas           - Reservas               - Reservas
+- Flota              - Flota                  - Flota
+- Clientes           - Clientes               - Clientes
+                     - Categorias             - Categorias
+                     - Precios                - Precios
+                     - Extras                 - Extras
+                     - Descuentos             - Descuentos
+                     - Facturacion            - Facturacion
+                     - Informes               - Informes
+                                              - Oficinas
+                                              - Seguros
+                                              - Informes completos
+                                              --------------------
+                                              [Config. Avanzada v]
+                                                - Usuarios
+                                                - Contenido web
+                                                - Conoce Gran Canaria
+                                                - Banners
+                                                - Chat
+                                                - Newsletter
+                                                - Branding
 ```
 
-Sin `setLoading(false)` fuera del else (lo maneja verifyRole internamente).
+### Cambios concretos
 
-**D) Linea 96** -- Redirigir en vez de pantalla blanca:
+**1. Redefinir `mainLinks`** con 12 items y roles correctos:
 
-Cambiar `if (!user) return null` por:
+| Item | Roles |
+|------|-------|
+| Reservas | employee, manager, admin |
+| Flota | employee, manager, admin |
+| Clientes | employee, manager, admin |
+| Categorias | manager, admin |
+| Precios | manager, admin |
+| Extras | manager, admin |
+| Descuentos | manager, admin |
+| Facturacion | manager, admin |
+| Informes | manager, admin |
+| Oficinas | admin |
+| Seguros | admin |
+| Informes completos | admin |
 
-```typescript
-if (!user) {
-  navigate("/admin", { replace: true });
-  return null;
-}
-```
+**2. Redefinir `configLinks`** con solo 7 items (todos admin only):
+- Usuarios, Contenido web, Conoce Gran Canaria, Banners, Chat, Newsletter, Branding
+
+**3. Cambiar texto del boton colapsable** de "Configuracion" a "Configuracion Avanzada" y anadir emoji de engranaje en el texto (no como icono separado).
+
+**4. Sin cambios en logica de estados, animaciones ni filtrado por rol** -- se reutiliza todo lo existente.
 
 ### Archivo a modificar
+- `src/pages/admin/AdminLayout.tsx`
 
-- `src/contexts/AdminAuthContext.tsx`
-
-### Resultado esperado
-
-- El dashboard carga correctamente y muestra el menu lateral segun el rol del usuario
-- Si falla la verificacion, redirige al login en vez de quedarse en blanco
-- No hay race condition entre listener y getSession
