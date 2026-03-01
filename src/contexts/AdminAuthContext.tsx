@@ -33,7 +33,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const verifyRole = async (authUserId: string, email: string) => {
     const { data: internal } = await supabase
       .from("internal_users")
-      .select("id, role, full_name")
+      .select("id, role, display_name")
       .eq("auth_user_id", authUserId)
       .eq("is_active", true)
       .maybeSingle();
@@ -49,7 +49,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
       id: authUserId,
       email,
       role: internal.role,
-      full_name: internal.full_name,
+      display_name: internal.display_name,
     });
   };
 
