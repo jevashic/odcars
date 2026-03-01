@@ -23,7 +23,7 @@ const AdminAuthContext = createContext<AdminAuthCtx>({
 
 export const useAdminAuth = () => useContext(AdminAuthContext);
 
-const ALLOWED_ROLES = ["admin", "manager"];
+const ALLOWED_ROLES = ["admin", "manager", "employee"];
 
 export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
