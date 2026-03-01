@@ -31,18 +31,12 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const verifyRole = async (authUserId: string, email: string) => {
-    const { data: internal, error } = await supabase
+    const { data: internal } = await supabase
       .from("internal_users")
-      .select("id, role, display_name")
+      .select("id, role, full_name")
       .eq("auth_user_id", authUserId)
       .eq("is_active", true)
       .maybeSingle();
-
-    if (error) {
-      console.error("Error querying internal_users:", error);
-      // Don't sign out on transient errors — avoid login loop
-      return;
-    }
 
     if (!internal || !ALLOWED_ROLES.includes(internal.role)) {
       await supabase.auth.signOut();
@@ -55,22 +49,25 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
       id: authUserId,
       email,
       role: internal.role,
-      display_name: internal.display_name,
+      full_name: internal.full_name,
     });
   };
 
   useEffect(() => {
-    // Only react to SIGNED_OUT — don't call verifyRole from the listener
+    // Listen for auth changes first
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_OUT") {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        await verifyRole(session.user.id, session.user.email ?? "");
+      } else {
         setUser(null);
-        setLoading(false);
+        navigate("/admin", { replace: true });
       }
+      setLoading(false);
     });
 
-    // Verify session once on mount
+    // Then check current session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
         await verifyRole(session.user.id, session.user.email ?? "");
