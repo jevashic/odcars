@@ -46,20 +46,19 @@ const mainLinks: NavItem[] = [
   { to: "/admin/descuentos", icon: Percent, label: "Descuentos", roles: ["manager", "admin"] },
   { to: "/admin/facturacion", icon: Receipt, label: "Facturación", roles: ["manager", "admin"] },
   { to: "/admin/informes", icon: BarChart3, label: "Informes", roles: ["manager", "admin"] },
+  { to: "/admin/oficinas", icon: MapPin, label: "Oficinas", roles: ["admin"] },
+  { to: "/admin/seguros", icon: Shield, label: "Seguros", roles: ["admin"] },
+  { to: "/admin/informes-completos", icon: BarChart3, label: "Informes completos", roles: ["admin"] },
 ];
 
 const configLinks: NavItem[] = [
-  { to: "/admin/oficinas", icon: MapPin, label: "Oficinas", roles: ["admin"] },
   { to: "/admin/usuarios", icon: UserCog, label: "Usuarios", roles: ["admin"] },
   { to: "/admin/contenido/home", icon: FileText, label: "Contenido web", roles: ["admin"] },
   { to: "/admin/conoce-gran-canaria", icon: Compass, label: "Conoce Gran Canaria", roles: ["admin"] },
   { to: "/admin/banners", icon: Image, label: "Banners", roles: ["admin"] },
   { to: "/admin/chat", icon: MessageCircle, label: "Chat", roles: ["admin"] },
-  { to: "/admin/seguros", icon: Shield, label: "Seguros", roles: ["admin"] },
   { to: "/admin/newsletter", icon: Mail, label: "Newsletter", roles: ["admin"] },
   { to: "/admin/branding", icon: Palette, label: "Branding", roles: ["admin"] },
-  { to: "/admin/configuracion", icon: Sliders, label: "Configuración avanzada", roles: ["admin"] },
-  { to: "/admin/informes-completos", icon: BarChart3, label: "Informes completos", roles: ["admin"] },
 ];
 
 function SidebarLink({ item, active }: { item: NavItem; active: boolean }) {
@@ -118,7 +117,7 @@ function AdminLayoutInner() {
                 className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-foreground/70 hover:bg-accent w-full transition-colors"
               >
                 <Settings className="h-4 w-4" />
-                <span className="flex-1 text-left">Configuración</span>
+                <span className="flex-1 text-left">⚙️ Configuración Avanzada</span>
                 <ChevronDown
                   className={`h-4 w-4 transition-transform duration-200 ${
                     configOpen || configActive ? "rotate-180" : ""
