@@ -6,7 +6,7 @@ interface AdminUser {
   id: string;
   email: string;
   role: string;
-  display_name: string | null;
+  full_name: string | null;
 }
 
 interface AdminAuthCtx {
@@ -31,23 +31,17 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const verifyRole = async (authUserId: string, email: string) => {
-    const { data: internal, error } = await supabase
+    const { data: internal } = await supabase
       .from("internal_users")
-      .select("id, role, display_name")
+      .select("id, role, full_name")
       .eq("auth_user_id", authUserId)
       .eq("is_active", true)
       .maybeSingle();
 
-    if (error) {
-      console.error("Error querying internal_users:", error);
-      setLoading(false);
-      return;
-    }
-
     if (!internal || !ALLOWED_ROLES.includes(internal.role)) {
       await supabase.auth.signOut();
+      navigate("/admin", { replace: true });
       setUser(null);
-      setLoading(false);
       return;
     }
 
@@ -55,27 +49,30 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
       id: authUserId,
       email,
       role: internal.role,
-      display_name: internal.display_name,
+      full_name: internal.full_name,
     });
-    setLoading(false);
   };
 
   useEffect(() => {
+    // Listen for auth changes first
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_OUT") {
-        setUser(null);
-        setLoading(false);
-      }
-    });
-
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         await verifyRole(session.user.id, session.user.email ?? "");
       } else {
-        setLoading(false);
+        setUser(null);
+        navigate("/admin", { replace: true });
       }
+      setLoading(false);
+    });
+
+    // Then check current session
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        await verifyRole(session.user.id, session.user.email ?? "");
+      }
+      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -96,10 +93,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  if (!user) {
-    navigate("/admin", { replace: true });
-    return null;
-  }
+  if (!user) return null;
 
   return <AdminAuthContext.Provider value={{ user, loading, logout }}>{children}</AdminAuthContext.Provider>;
 }

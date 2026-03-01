@@ -1,30 +1,47 @@
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation } from "react-router-dom";
 import {
-  LayoutDashboard, CalendarDays, Car, Layers, DollarSign, Package, Percent, Users, MapPin, UserCog,
-  FileText, MessageCircle, Shield, Mail, Palette, Settings, BarChart3, Receipt, LogOut,
-} from 'lucide-react';
-import { AdminAuthProvider, useAdminAuth } from '@/contexts/AdminAuthContext';
-import logoSquare from '@/assets/logo-square.png';
+  LayoutDashboard,
+  CalendarDays,
+  Car,
+  Layers,
+  DollarSign,
+  Package,
+  Percent,
+  Users,
+  MapPin,
+  UserCog,
+  FileText,
+  MessageCircle,
+  Shield,
+  Mail,
+  Palette,
+  Settings,
+  BarChart3,
+  Receipt,
+  LogOut,
+} from "lucide-react";
+import { AdminAuthProvider, useAdminAuth } from "@/contexts/AdminAuthContext";
+import logoSquare from "@/assets/logo-square.png";
 
 const links = [
-  { to: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/admin/reservas', icon: CalendarDays, label: 'Reservas' },
-  { to: '/admin/vehiculos', icon: Car, label: 'Vehículos' },
-  { to: '/admin/categorias', icon: Layers, label: 'Categorías' },
-  { to: '/admin/precios', icon: DollarSign, label: 'Precios' },
-  { to: '/admin/extras', icon: Package, label: 'Extras' },
-  { to: '/admin/descuentos', icon: Percent, label: 'Descuentos' },
-  { to: '/admin/clientes', icon: Users, label: 'Clientes' },
-  { to: '/admin/oficinas', icon: MapPin, label: 'Oficinas' },
-  { to: '/admin/usuarios', icon: UserCog, label: 'Usuarios' },
-  { to: '/admin/contenido/home', icon: FileText, label: 'Contenido' },
-  { to: '/admin/chat', icon: MessageCircle, label: 'Chat' },
-  { to: '/admin/seguros', icon: Shield, label: 'Seguros' },
-  { to: '/admin/newsletter', icon: Mail, label: 'Newsletter' },
-  { to: '/admin/branding', icon: Palette, label: 'Branding' },
-  { to: '/admin/configuracion', icon: Settings, label: 'Configuración' },
-  { to: '/admin/informes', icon: BarChart3, label: 'Informes' },
-  { to: '/admin/facturacion', icon: Receipt, label: 'Facturación' },
+  { to: "/admin/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+  { to: "/admin/reservas", icon: CalendarDays, label: "Reservas" },
+  { to: "/admin/vehiculos", icon: Car, label: "Vehículos" },
+  { to: "/admin/categorias", icon: Layers, label: "Categorías" },
+  { to: "/admin/precios", icon: DollarSign, label: "Precios" },
+  { to: "/admin/extras", icon: Package, label: "Extras" },
+  { to: "/admin/descuentos", icon: Percent, label: "Descuentos" },
+  { to: "/admin/clientes", icon: Users, label: "Clientes" },
+  { to: "/admin/oficinas", icon: MapPin, label: "Oficinas" },
+  { to: "/admin/usuarios", icon: UserCog, label: "Usuarios" },
+  { to: "/admin/contenido/home", icon: FileText, label: "Contenido" },
+  { to: "/admin/chat", icon: MessageCircle, label: "Chat" },
+  { to: "/admin/seguros", icon: Shield, label: "Seguros" },
+  { to: "/admin/newsletter", icon: Mail, label: "Newsletter" },
+  { to: "/admin/branding", icon: Palette, label: "Branding" },
+  { to: "/admin/configuracion", icon: Settings, label: "Configuración" },
+  { to: "/admin/informes", icon: BarChart3, label: "Informes" },
+  { to: "/admin/facturacion", icon: Receipt, label: "Facturación" },
 ];
 
 function AdminLayoutInner() {
@@ -39,9 +56,7 @@ function AdminLayoutInner() {
           <img src={logoSquare} alt="Ocean Drive" className="h-8 w-8 rounded" />
           <div className="flex flex-col">
             <span className="font-bold text-sm text-primary">Ocean Drive</span>
-            {user && (
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{user.role}</span>
-            )}
+            {user && <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{user.role}</span>}
           </div>
         </div>
         <nav className="flex-1 py-2 overflow-y-auto">
@@ -51,7 +66,7 @@ function AdminLayoutInner() {
               <Link
                 key={l.to}
                 to={l.to}
-                className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${active ? 'bg-cta/10 text-cta font-bold border-r-2 border-cta' : 'text-foreground/70 hover:bg-accent'}`}
+                className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${active ? "bg-cta/10 text-cta font-bold border-r-2 border-cta" : "text-foreground/70 hover:bg-accent"}`}
               >
                 <l.icon className="h-4 w-4" />
                 {l.label}
@@ -60,7 +75,7 @@ function AdminLayoutInner() {
           })}
         </nav>
         <div className="border-t border-[#E2E8F0] px-4 py-2">
-          {user && <p className="text-xs text-muted-foreground truncate mb-1">{user.display_name || user.email}</p>}
+          {user && <p className="text-xs text-muted-foreground truncate mb-1">{user.full_name || user.email}</p>}
           <button onClick={logout} className="flex items-center gap-3 py-2 text-sm text-destructive hover:opacity-80">
             <LogOut className="h-4 w-4" /> Cerrar sesión
           </button>
