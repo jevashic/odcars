@@ -40,7 +40,6 @@ const mainLinks: NavItem[] = [
   { to: "/admin/reservas", icon: CalendarDays, label: "Reservas", roles: ["employee", "manager", "admin"] },
   { to: "/admin/vehiculos", icon: Car, label: "Flota", roles: ["employee", "manager", "admin"] },
   { to: "/admin/clientes", icon: Users, label: "Clientes", roles: ["employee", "manager", "admin"] },
-  { to: "/admin/facturacion", icon: Receipt, label: "Facturación", roles: ["employee", "manager", "admin"] },
   { to: "/admin/categorias", icon: Layers, label: "Categorías", roles: ["manager", "admin"] },
   { to: "/admin/precios", icon: DollarSign, label: "Precios", roles: ["manager", "admin"] },
   { to: "/admin/extras", icon: Package, label: "Extras", roles: ["manager", "admin"] },
