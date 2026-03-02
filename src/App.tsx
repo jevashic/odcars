@@ -28,6 +28,7 @@ import AdminLogin from "./pages/admin/Login";
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminStub from "./pages/admin/AdminStub";
+import AdminReports from "./pages/admin/Reports";
 import AdminInvoices from "./pages/admin/Invoices";
 import AdminInvoiceDetail from "./pages/admin/InvoiceDetail";
 import AdminCategories from "./pages/admin/Categories";
@@ -114,7 +115,7 @@ const App = () => (
               <Route path="/admin/newsletter" element={<AdminStub />} />
               <Route path="/admin/branding" element={<AdminStub />} />
               <Route path="/admin/configuracion" element={<AdminStub />} />
-              <Route path="/admin/informes" element={<AdminStub />} />
+              <Route path="/admin/informes" element={<AdminReports />} />
               <Route path="/admin/facturacion" element={<AdminInvoices />} />
               <Route path="/admin/facturacion/:id" element={<AdminInvoiceDetail />} />
             </Route>
