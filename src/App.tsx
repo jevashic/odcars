@@ -31,6 +31,7 @@ import AdminStub from "./pages/admin/AdminStub";
 import AdminCategories from "./pages/admin/Categories";
 import NewReservation from "./pages/admin/NewReservation";
 
+import AdminExtras from "./pages/admin/Extras";
 import AdminInsurance from "./pages/admin/Insurance";
 import NotFound from "./pages/NotFound";
 import ScrollToTop from "./components/ScrollToTop";
@@ -90,7 +91,7 @@ const App = () => (
               <Route path="/admin/vehiculos" element={<AdminStub />} />
               <Route path="/admin/categorias" element={<AdminCategories />} />
               <Route path="/admin/precios" element={<AdminStub />} />
-              <Route path="/admin/extras" element={<AdminStub />} />
+              <Route path="/admin/extras" element={<AdminExtras />} />
               <Route path="/admin/descuentos" element={<AdminStub />} />
               <Route path="/admin/clientes" element={<AdminStub />} />
               <Route path="/admin/oficinas" element={<AdminStub />} />
