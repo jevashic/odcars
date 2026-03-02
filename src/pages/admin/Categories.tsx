@@ -44,7 +44,7 @@ interface Category {
   name: string;
   code: string;
   description: string | null;
-  base_price_per_day: number;
+  price_per_day: number;
   deposit_amount_base: number | null;
   transmission_note: string | null;
   seats_min: number | null;
@@ -71,7 +71,7 @@ const emptyCategoryForm: CategoryForm = {
   name: "",
   code: "",
   description: "",
-  base_price_per_day: 0,
+  price_per_day: 0,
   deposit_amount_base: null,
   transmission_note: "",
   seats_min: null,
@@ -201,7 +201,7 @@ export default function AdminCategories() {
       name: cat.name,
       code: cat.code,
       description: cat.description ?? "",
-      base_price_per_day: cat.base_price_per_day,
+      price_per_day: cat.price_per_day,
       deposit_amount_base: cat.deposit_amount_base,
       transmission_note: cat.transmission_note ?? "",
       seats_min: cat.seats_min,
@@ -217,7 +217,7 @@ export default function AdminCategories() {
   /* ── Save category ────────────────────────────────── */
 
   const saveCategory = async () => {
-    if (!form.name || !form.code || !form.base_price_per_day) {
+    if (!form.name || !form.code || !form.price_per_day) {
       toast({ title: "Campos obligatorios", description: "Nombre, código y precio base son requeridos", variant: "destructive" });
       return;
     }
@@ -400,7 +400,7 @@ export default function AdminCategories() {
               </div>
               <div className="text-sm text-muted-foreground space-y-0.5">
                 <p>Código: <span className="font-medium text-foreground">{cat.code}</span></p>
-                <p>Precio base: <span className="font-medium text-foreground">{cat.base_price_per_day} €/día</span></p>
+                <p>Precio base: <span className="font-medium text-foreground">{cat.price_per_day} €/día</span></p>
                 {cat.transmission_note && <p>Transmisión: {cat.transmission_note}</p>}
                 {(cat.seats_min || cat.seats_max) && (
                   <p>Plazas: {cat.seats_min ?? "–"}–{cat.seats_max ?? "–"}</p>
@@ -480,7 +480,7 @@ export default function AdminCategories() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="cat-price">Precio base/día (€) *</Label>
-                  <Input id="cat-price" type="number" min={0} step={0.01} value={form.base_price_per_day} onChange={(e) => setForm({ ...form, base_price_per_day: parseFloat(e.target.value) || 0 })} />
+                  <Input id="cat-price" type="number" min={0} step={0.01} value={form.price_per_day} onChange={(e) => setForm({ ...form, price_per_day: parseFloat(e.target.value) || 0 })} />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="cat-deposit">Fianza base (€)</Label>
