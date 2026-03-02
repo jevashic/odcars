@@ -36,7 +36,8 @@ interface Category {
   id: string;
   name: string;
   image_url: string | null;
-  base_price_per_day: number;
+  price_per_day: number;
+  vehicles?: { id: string; status: string }[];
   availableCount: number;
 }
 interface Vehicle {
@@ -50,7 +51,8 @@ interface Vehicle {
 interface Extra {
   id: string;
   name: string;
-  price_per_day: number;
+  description?: string;
+  price_per_reservation: number;
 }
 interface CustomerData {
   id?: string;
@@ -126,9 +128,10 @@ export default function NewReservation() {
     });
     supabase
       .from("extras")
-      .select("id, name, price_per_day")
+      .select("id, name, description, price_per_reservation")
       .eq("is_active", true)
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) console.error("Error loading extras:", error);
         if (data) setExtras(data as Extra[]);
       });
   }, []);
@@ -147,10 +150,10 @@ export default function NewReservation() {
   const subtotal = useMemo(() => {
     let total = 0;
     if (selectedCategory && days > 0) {
-      total += selectedCategory.base_price_per_day * days;
+      total += selectedCategory.price_per_day * days;
     }
     selectedExtraItems.forEach((e) => {
-      total += e.price_per_day * days;
+      total += e.price_per_reservation;
     });
     return total;
   }, [selectedCategory, days, selectedExtraItems]);
@@ -170,26 +173,29 @@ export default function NewReservation() {
     setSelectedVehicleId(null);
 
     try {
-      const { data: cats } = await supabase
+      const { data: cats, error } = await supabase
         .from("vehicle_categories")
-        .select("id, name, image_url, base_price_per_day")
+        .select("*, vehicles(id, status)")
         .eq("is_active", true);
+
+      if (error) {
+        console.error("Error loading categories:", error);
+        setCategories([]);
+        return;
+      }
 
       if (!cats) {
         setCategories([]);
         return;
       }
 
-      const withCount: Category[] = await Promise.all(
-        cats.map(async (cat: any) => {
-          const { count } = await supabase
-            .from("vehicles")
-            .select("*", { count: "exact", head: true })
-            .eq("category_id", cat.id)
-            .eq("status", "available");
-          return { ...cat, availableCount: count ?? 0 };
-        })
-      );
+      const withCount: Category[] = cats.map((cat: any) => ({
+        id: cat.id,
+        name: cat.name,
+        image_url: cat.image_url,
+        price_per_day: cat.price_per_day,
+        availableCount: (cat.vehicles || []).filter((v: any) => v.status === "available").length,
+      }));
 
       setCategories(withCount);
     } catch (e: any) {
@@ -418,7 +424,7 @@ export default function NewReservation() {
                             <img src={cat.image_url} alt={cat.name} className="h-24 w-full object-contain mb-2 rounded" />
                           )}
                           <p className="font-bold text-sm">{cat.name}</p>
-                          <p className="text-xs text-muted-foreground">{cat.base_price_per_day.toFixed(2)} €/día</p>
+                          <p className="text-xs text-muted-foreground">{cat.price_per_day.toFixed(2)} €/día</p>
                           {disabled ? (
                             <Badge variant="destructive" className="mt-2 text-xs">Sin disponibilidad</Badge>
                           ) : (
@@ -550,7 +556,7 @@ export default function NewReservation() {
                         }}
                       />
                       <span className="text-sm flex-1">{ext.name}</span>
-                      <span className="text-sm font-medium text-muted-foreground">{ext.price_per_day.toFixed(2)} €/día</span>
+                      <span className="text-sm font-medium text-muted-foreground">{ext.price_per_reservation.toFixed(2)} €/reserva</span>
                     </label>
                   ))}
                 </div>
@@ -625,8 +631,8 @@ export default function NewReservation() {
                         <span className="font-medium">{selectedCategory.name}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">{selectedCategory.base_price_per_day.toFixed(2)} € × {days} días</span>
-                        <span>{(selectedCategory.base_price_per_day * days).toFixed(2)} €</span>
+                        <span className="text-muted-foreground">{selectedCategory.price_per_day.toFixed(2)} € × {days} días</span>
+                        <span>{(selectedCategory.price_per_day * days).toFixed(2)} €</span>
                       </div>
                     </div>
                   </>
@@ -651,7 +657,7 @@ export default function NewReservation() {
                       {selectedExtraItems.map((e) => (
                         <div key={e.id} className="flex justify-between">
                           <span>{e.name}</span>
-                          <span>{(e.price_per_day * days).toFixed(2)} €</span>
+                          <span>{e.price_per_reservation.toFixed(2)} €</span>
                         </div>
                       ))}
                     </div>
