@@ -1,28 +1,46 @@
 
 
-## Implementar CRUD completo del modulo Clientes
+## Implementar CRUD completo del modulo Descuentos
 
 ### Archivos a crear/modificar
 
-1. **Crear `src/pages/admin/Customers.tsx`** -- Listado con filtros, busqueda y paginacion (~350 lineas)
-2. **Crear `src/pages/admin/CustomerDetail.tsx`** -- Ficha individual con historial (~400 lineas)
-3. **Modificar `src/App.tsx`** -- Actualizar rutas
+1. **Crear `src/pages/admin/Discounts.tsx`** -- Listado con filtros, busqueda, paginacion y modal crear/editar (~500 lineas)
+2. **Modificar `src/App.tsx`** -- Cambiar AdminStub por el nuevo componente en `/admin/descuentos`
 
 ### Cambios en App.tsx
 
-- Importar `AdminCustomers` y `AdminCustomerDetail`
-- Linea 102: cambiar `AdminStub` por `AdminCustomers` en `/admin/clientes`
-- Anadir ruta: `/admin/clientes/:id` con `AdminCustomerDetail`
+- Importar `AdminDiscounts` desde `./pages/admin/Discounts`
+- Linea 103: cambiar `AdminStub` por `AdminDiscounts` en `/admin/descuentos`
 
 ---
 
-### Vista 1 -- Customers.tsx (Listado)
+### Discounts.tsx -- Componente principal
 
-Seguir patron exacto de Extras.tsx / Reservations.tsx: mismo writeAudit, mismas importaciones, useAdminAuth, TanStack Query.
+Seguir patron exacto de `Extras.tsx`: mismo `writeAudit` helper, mismas importaciones shadcn, `useAdminAuth`, TanStack Query, toasts.
+
+**Interfaces:**
+```typescript
+interface DiscountCode {
+  id: string;
+  code: string;
+  description: string | null;
+  discount_type: "percentage" | "fixed_amount";
+  discount_value: number;
+  min_days: number | null;
+  max_uses: number | null;
+  max_uses_per_customer: number | null;
+  current_uses: number;
+  restricted_to_email: string | null;
+  valid_from: string;
+  valid_until: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+```
 
 **Query principal:**
 ```text
-supabase.from("customers")
+supabase.from("discount_codes")
   .select("*", { count: "exact" })
   .order("created_at", { ascending: false })
   .range(from, to)
@@ -31,111 +49,63 @@ supabase.from("customers")
 Paginacion de 15 en 15 con `.range()` server-side.
 
 **Tabla con columnas:**
-- Nombre completo (first_name + last_name)
-- Email
-- Telefono (phone)
-- N licencia (license_number)
-- Empresa (mostrar company_name si is_company=true, sino "-")
-- Fecha registro (created_at formateado)
-- Acciones: "Ver ficha" y "Editar"
+- Codigo (code)
+- Descripcion (truncada)
+- Tipo: Badge azul "%" si percentage, Badge verde "euro" si fixed_amount
+- Valor (formateado con % o euro segun tipo)
+- Usos/Maximo (current_uses / max_uses, o "Ilimitado" si max_uses es null)
+- Valido desde (valid_from formateado)
+- Valido hasta (valid_until formateado, o "Sin caducidad")
+- Activo (Badge verde/rojo)
+- Acciones: Editar + Desactivar
 
-**NO hay boton eliminar.** Un cliente nunca se elimina.
+**Filtros (encima de la tabla):**
+- Select: Todos / Activos / Inactivos -- filtrado server-side con `.eq("is_active", value)`
+- Select: Todos / Porcentaje / Importe fijo -- filtrado server-side con `.eq("discount_type", value)`
+- Input de busqueda por codigo o descripcion -- filtrado client-side
 
-**Filtros:**
-- Select: Todos / Particulares (is_company=false) / Empresas (is_company=true) -- aplicado server-side con `.eq("is_company", value)`
-- Rango de fechas de registro: dos date pickers (desde/hasta) que filtran por created_at con `.gte()` y `.lte()`
-- Input de busqueda por nombre, apellidos, email, telefono o n licencia -- filtrado client-side sobre resultados paginados
+**Acciones por fila:**
+- Boton "Editar" -- abre modal con datos precargados
+- Boton "Desactivar/Activar" -- toggle directo de is_active con update en Supabase y registro en audit_log
+- NO hay boton eliminar
 
-**Modal Editar:**
+**Detalle de usos (expandible o en dialogo al hacer clic en una fila):**
+Al hacer clic en un codigo, abrir un Dialog que muestra:
+- Query: `supabase.from("discount_code_usage").select("*, customers(first_name, last_name, email), reservations(reservation_number)").eq("discount_code_id", id)`
+- Tabla con columnas: Cliente (nombre), Email, N Reserva, Fecha de uso
+- Resumen: "X usos realizados de Y permitidos" (o "X usos realizados - Ilimitado")
+
+**Modal Crear/Editar:**
 
 Campos:
-1. Nombre (first_name, obligatorio)
-2. Apellidos (last_name, obligatorio)
-3. Email (obligatorio)
-4. Telefono (phone)
-5. Tipo documento (id_type): Select "DNI" / "Pasaporte" / "NIE" / "Otro"
-6. N documento (id_number)
-7. Nacionalidad (nationality)
-8. N licencia conducir (license_number)
-9. Fecha caducidad carnet (license_expiry): date picker
-10. Toggle "Es empresa?" (is_company)
-    - Si activo, mostrar campos adicionales:
-      - Nombre empresa (company_name)
-      - CIF/VAT empresa (company_vat)
-11. Boton "GUARDAR"
+1. Codigo (code, obligatorio, `toUpperCase()` automatico en onChange)
+2. Descripcion (textarea)
+3. Tipo de descuento (Select: "Porcentaje %" / "Importe fijo euro", obligatorio)
+4. Valor del descuento (numero, obligatorio). Mostrar sufijo "%" o "euro" segun tipo seleccionado
+5. Minimo de dias para aplicar (min_days, numero)
+6. Maximo de usos totales (max_uses, numero). Si vacio = ilimitado
+7. Maximo de usos por cliente (max_uses_per_customer, numero)
+8. Restringido a email (restricted_to_email, input email)
+9. Fecha inicio validez (valid_from, date input, obligatorio)
+10. Fecha fin validez (valid_until, date input). Si vacia = sin caducidad
+11. Toggle Activo/Inactivo (is_active)
+12. Boton "GUARDAR"
 
-Al guardar: UPDATE en customers, registrar en audit_log con action='update', old_data y new_data. Toast de exito/error.
+Validaciones:
+- code es obligatorio y se convierte a mayusculas
+- discount_type es obligatorio
+- discount_value es obligatorio y mayor que 0
+- valid_from es obligatorio
+- Si discount_type es percentage, validar que discount_value <= 100
 
----
+**Audit log:**
+- INSERT: registrar action='insert' con new_data
+- UPDATE: registrar action='update' con old_data y new_data
+- Desactivar/Activar: registrar como update
 
-### Vista 2 -- CustomerDetail.tsx (Ficha)
-
-Se carga con `useParams()` para obtener el `id`.
-
-**Query principal:**
-```text
-supabase.from("customers")
-  .select("*")
-  .eq("id", customerId)
-  .single()
-```
-
-**Query de reservas del cliente:**
-```text
-supabase.from("reservations")
-  .select("*, vehicle_categories(name)")
-  .eq("customer_id", customerId)
-  .order("created_at", { ascending: false })
-```
-
-**Layout dos columnas (grid lg:grid-cols-3, izquierda 2 cols, derecha 1 col):**
-
-#### Columna izquierda (2/3)
-
-**Bloque 1 -- Datos personales (Card):**
-- Nombre completo, email, telefono
-- Tipo y numero de documento
-- Nacionalidad
-- Si es empresa: nombre empresa y CIF/VAT
-- Boton "Editar" que abre el mismo modal de edicion
-
-**Bloque 2 -- Licencia de conducir (Card):**
-- N licencia, fecha caducidad
-- Badge verde "Vigente" si license_expiry > fecha actual
-- Badge rojo "Caducada" si license_expiry <= fecha actual
-- Si no tiene license_expiry, Badge gris "Sin fecha"
-
-#### Columna derecha (1/3)
-
-**Bloque 3 -- Estadisticas del cliente (Card):**
-Calculadas en el cliente a partir del array de reservas:
-- Total reservas realizadas (length)
-- Total gastado (suma de total_amount)
-- Primera reserva (min de created_at)
-- Ultima reserva (max de created_at)
-- Canal mas usado (mode de sale_channel)
-
-**Bloque 4 -- Historial de reservas (Card):**
-Tabla compacta con columnas:
-- N reserva (reservation_number)
-- Fechas (pickup_date - return_date)
-- Categoria (del join vehicle_categories)
-- Total (total_amount)
-- Estado (badge coloreado, reutilizar statusBadge helper)
-- Cada fila enlaza a `/admin/reservas/:id`
-
----
-
-### Patron de codigo
-
-- Mismo helper `writeAudit` inline
-- `useQuery` + `useQueryClient` de TanStack
-- `useAdminAuth` para usuario
-- Toasts con `@/hooks/use-toast`
-- Breadcrumb en la ficha: "Clientes > {nombre}"
-- Boton "Volver" en la ficha
+**Toasts:** exito o error en cada operacion.
 
 ### Dependencias
 
-No se instalan paquetes nuevos. Se reutilizan componentes shadcn existentes: Table, Dialog, Select, Input, Badge, Button, Label, Textarea, Card, Breadcrumb, Separator, Switch, Popover, Calendar.
+No se instalan paquetes nuevos. Se reutilizan componentes shadcn existentes: Table, Dialog, AlertDialog, Select, Input, Badge, Button, Label, Textarea, Switch, Popover, Calendar.
 
