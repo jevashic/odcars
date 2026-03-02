@@ -36,7 +36,7 @@ interface Category {
   id: string;
   name: string;
   image_url: string | null;
-  daily_price: number;
+  base_price_per_day: number;
   availableCount: number;
 }
 interface Vehicle {
@@ -50,7 +50,7 @@ interface Vehicle {
 interface Extra {
   id: string;
   name: string;
-  daily_price: number;
+  price_per_day: number;
 }
 interface CustomerData {
   id?: string;
@@ -68,9 +68,9 @@ const HOURS = Array.from({ length: 24 }, (_, i) => {
 });
 
 const PAYMENT_METHODS = [
-  { value: "office", label: "Pago en oficina" },
-  { value: "card_charged", label: "Tarjeta cobrada" },
-  { value: "online_prepaid", label: "Pago online previo" },
+  { value: "cash", label: "Pago en efectivo" },
+  { value: "card", label: "Pago con tarjeta" },
+  { value: "bizum", label: "Bizum" },
 ];
 
 /* ────────────────── Component ────────────────── */
@@ -113,7 +113,7 @@ export default function NewReservation() {
   const [selectedExtras, setSelectedExtras] = useState<string[]>([]);
 
   /* ── Payment ── */
-  const [paymentMethod, setPaymentMethod] = useState("office");
+  const [paymentMethod, setPaymentMethod] = useState("");
   const [internalNotes, setInternalNotes] = useState("");
 
   /* ── Submit ── */
@@ -126,7 +126,7 @@ export default function NewReservation() {
     });
     supabase
       .from("extras")
-      .select("id, name, daily_price")
+      .select("id, name, price_per_day")
       .eq("is_active", true)
       .then(({ data }) => {
         if (data) setExtras(data as Extra[]);
@@ -147,10 +147,10 @@ export default function NewReservation() {
   const subtotal = useMemo(() => {
     let total = 0;
     if (selectedCategory && days > 0) {
-      total += selectedCategory.daily_price * days;
+      total += selectedCategory.base_price_per_day * days;
     }
     selectedExtraItems.forEach((e) => {
-      total += e.daily_price * days;
+      total += e.price_per_day * days;
     });
     return total;
   }, [selectedCategory, days, selectedExtraItems]);
@@ -172,7 +172,7 @@ export default function NewReservation() {
     try {
       const { data: cats } = await supabase
         .from("vehicle_categories")
-        .select("id, name, image_url, daily_price")
+        .select("id, name, image_url, base_price_per_day")
         .eq("is_active", true);
 
       if (!cats) {
@@ -362,7 +362,7 @@ export default function NewReservation() {
                           {pickupDate ? format(pickupDate, "dd/MM/yyyy", { locale: es }) : "Seleccionar fecha"}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={pickupDate} onSelect={setPickupDate} locale={es} /></PopoverContent>
+                      <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={pickupDate} onSelect={setPickupDate} locale={es} className="pointer-events-auto" /></PopoverContent>
                     </Popover>
                     <Select value={pickupTime} onValueChange={setPickupTime}>
                       <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
@@ -381,7 +381,7 @@ export default function NewReservation() {
                           {returnDate ? format(returnDate, "dd/MM/yyyy", { locale: es }) : "Seleccionar fecha"}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={returnDate} onSelect={setReturnDate} locale={es} /></PopoverContent>
+                      <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={returnDate} onSelect={setReturnDate} locale={es} className="pointer-events-auto" /></PopoverContent>
                     </Popover>
                     <Select value={returnTime} onValueChange={setReturnTime}>
                       <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
@@ -418,7 +418,7 @@ export default function NewReservation() {
                             <img src={cat.image_url} alt={cat.name} className="h-24 w-full object-contain mb-2 rounded" />
                           )}
                           <p className="font-bold text-sm">{cat.name}</p>
-                          <p className="text-xs text-muted-foreground">{cat.daily_price.toFixed(2)} €/día</p>
+                          <p className="text-xs text-muted-foreground">{cat.base_price_per_day.toFixed(2)} €/día</p>
                           {disabled ? (
                             <Badge variant="destructive" className="mt-2 text-xs">Sin disponibilidad</Badge>
                           ) : (
@@ -550,7 +550,7 @@ export default function NewReservation() {
                         }}
                       />
                       <span className="text-sm flex-1">{ext.name}</span>
-                      <span className="text-sm font-medium text-muted-foreground">{ext.daily_price.toFixed(2)} €/día</span>
+                      <span className="text-sm font-medium text-muted-foreground">{ext.price_per_day.toFixed(2)} €/día</span>
                     </label>
                   ))}
                 </div>
@@ -568,7 +568,7 @@ export default function NewReservation() {
               <div className="space-y-2">
                 <Label>Método de pago</Label>
                 <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Seleccionar método de pago" /></SelectTrigger>
                   <SelectContent>
                     {PAYMENT_METHODS.map((pm) => (
                       <SelectItem key={pm.value} value={pm.value}>{pm.label}</SelectItem>
@@ -625,8 +625,8 @@ export default function NewReservation() {
                         <span className="font-medium">{selectedCategory.name}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">{selectedCategory.daily_price.toFixed(2)} € × {days} días</span>
-                        <span>{(selectedCategory.daily_price * days).toFixed(2)} €</span>
+                        <span className="text-muted-foreground">{selectedCategory.base_price_per_day.toFixed(2)} € × {days} días</span>
+                        <span>{(selectedCategory.base_price_per_day * days).toFixed(2)} €</span>
                       </div>
                     </div>
                   </>
@@ -651,7 +651,7 @@ export default function NewReservation() {
                       {selectedExtraItems.map((e) => (
                         <div key={e.id} className="flex justify-between">
                           <span>{e.name}</span>
-                          <span>{(e.daily_price * days).toFixed(2)} €</span>
+                          <span>{(e.price_per_day * days).toFixed(2)} €</span>
                         </div>
                       ))}
                     </div>
@@ -683,12 +683,12 @@ export default function NewReservation() {
                 {/* Payment method */}
                 <div className="text-sm flex justify-between">
                   <span className="text-muted-foreground">Pago</span>
-                  <span>{PAYMENT_METHODS.find((p) => p.value === paymentMethod)?.label}</span>
+                  <span>{PAYMENT_METHODS.find((p) => p.value === paymentMethod)?.label ?? "—"}</span>
                 </div>
 
                 <Button
                   onClick={handleSubmit}
-                  disabled={submitting || !selectedCategoryId || !pickupDate || !returnDate || !customer.email}
+                  disabled={submitting || !selectedCategoryId || !pickupDate || !returnDate || !customer.email || !paymentMethod}
                   className="w-full font-bold mt-4"
                 >
                   {submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creando...</> : "CREAR RESERVA"}
