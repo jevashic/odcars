@@ -1,62 +1,64 @@
 
 
-## Reestructurar menu lateral admin - VERSION DEFINITIVA
+## Corregir topbar + Crear pagina Nueva Reserva Presencial
 
-### Archivo: `src/pages/admin/AdminLayout.tsx`
+### PARTE 1 -- Topbar (AdminLayout.tsx)
 
-### Estructura por rol
+Cambios en el archivo existente `src/pages/admin/AdminLayout.tsx`:
 
-```text
-employee:            manager:                 admin:
-- Reservas           - Reservas               - Reservas
-- Flota              - Flota                  - Flota
-- Clientes           - Clientes               - Clientes
-                     - Categorias             - Categorias
-                     - Precios                - Precios
-                     - Extras                 - Extras
-                     - Descuentos             - Descuentos
-                     - Facturacion            - Facturacion
-                     - Informes               - Informes
-                                              - Oficinas
-                                              - Seguros
-                                              - Informes completos
-                                              --------------------
-                                              [Config. Avanzada v]
-                                                - Usuarios
-                                                - Contenido web
-                                                - Conoce Gran Canaria
-                                                - Banners
-                                                - Chat
-                                                - Newsletter
-                                                - Branding
-```
+**1. Invertir orden de botones en el header (lineas 209-222):**
+- Primero (izquierda): CONSULTAR RESERVA (outline, estilo actual)
+- Segundo (derecha): NUEVA RESERVA con clases `bg-cta text-cta-foreground hover:bg-cta/90`
 
-### Cambios concretos
+**2. Cambiar logica de busqueda del modal:**
+- Placeholder: "Numero de reserva" con ejemplo OD-2026-0001
+- Descripcion: "Busca por numero de reserva"
+- Query: `reservations` WHERE `reservation_number` = valor exacto (eq, no ilike)
+- Mensaje error: "No se encontro ninguna reserva con ese numero"
 
-**1. Redefinir `mainLinks`** con 12 items y roles correctos:
+### PARTE 2 -- Nueva pagina `/admin/reservas/nueva`
 
-| Item | Roles |
-|------|-------|
-| Reservas | employee, manager, admin |
-| Flota | employee, manager, admin |
-| Clientes | employee, manager, admin |
-| Categorias | manager, admin |
-| Precios | manager, admin |
-| Extras | manager, admin |
-| Descuentos | manager, admin |
-| Facturacion | manager, admin |
-| Informes | manager, admin |
-| Oficinas | admin |
-| Seguros | admin |
-| Informes completos | admin |
+Crear archivo `src/pages/admin/NewReservation.tsx` con layout a dos columnas:
 
-**2. Redefinir `configLinks`** con solo 7 items (todos admin only):
-- Usuarios, Contenido web, Conoce Gran Canaria, Banners, Chat, Newsletter, Branding
+**Columna izquierda -- Formulario por pasos:**
 
-**3. Cambiar texto del boton colapsable** de "Configuracion" a "Configuracion Avanzada" y anadir emoji de engranaje en el texto (no como icono separado).
+- **Paso 1 - Fechas y oficina:** Selects de branches (pickup/return), datepickers con hora, boton "VER DISPONIBILIDAD". Al pulsar carga `vehicle_categories` activas, cuenta vehiculos disponibles por categoria, muestra cards con badges de disponibilidad. Al seleccionar categoria muestra tabla de vehiculos fisicos (matricula, marca, color, km) con opcion "Asignacion automatica".
 
-**4. Sin cambios en logica de estados, animaciones ni filtrado por rol** -- se reutiliza todo lo existente.
+- **Paso 2 - Datos del cliente:** Campo busqueda en `customers` por email/telefono con debounce. Si encuentra, precarga campos. Si no, formulario vacio. Campos: nombre, apellidos, email, telefono, num licencia, fecha caducidad carnet.
 
-### Archivo a modificar
-- `src/pages/admin/AdminLayout.tsx`
+- **Paso 3 - Extras:** Checkboxes desde tabla `extras` WHERE is_active = true, mostrando nombre y precio.
+
+- **Paso 4 - Pago:** Select con opciones "Pago en oficina" / "Tarjeta cobrada" / "Pago online previo". Textarea para notas internas.
+
+**Columna derecha -- Resumen en tiempo real:**
+
+Panel sticky que se actualiza automaticamente con: fechas, dias, categoria, vehiculo, extras con precios, subtotal, IGIC 7%, total, metodo de pago. Boton "CREAR RESERVA" (bg-primary) que llama a `supabase.functions.invoke('create_reservation')` con `sale_channel: "office"`. Exito navega a `/admin/reservas/:id` con toast. Error muestra mensaje.
+
+### PARTE 3 -- Ruta en App.tsx
+
+Agregar ruta `/admin/reservas/nueva` antes de `/admin/reservas` apuntando al nuevo componente `NewReservation`.
+
+---
+
+### Detalle tecnico
+
+**Archivos a modificar:**
+- `src/pages/admin/AdminLayout.tsx` -- topbar y modal
+- `src/App.tsx` -- nueva ruta
+
+**Archivos a crear:**
+- `src/pages/admin/NewReservation.tsx` -- pagina completa
+
+**Tablas Supabase utilizadas:**
+- `branches` (oficinas)
+- `vehicle_categories` (categorias activas)
+- `vehicles` (disponibilidad y asignacion)
+- `customers` (busqueda/creacion cliente)
+- `extras` (extras activos)
+- `reservations` (busqueda en modal)
+- Edge function `create_reservation` (crear reserva)
+
+**Componentes UI reutilizados:**
+- Select, Input, Button, Calendar/Popover (datepicker), Dialog, Checkbox, Badge, Card, Tabs (si necesario)
+- Toast para feedback
 
