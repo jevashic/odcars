@@ -86,7 +86,7 @@ export default function AdminInsurance() {
 
   /* ── Queries ─────────────────────────────────────── */
 
-  const { data: plans = [], isLoading } = useQuery<InsurancePlan[]>({
+  const { data: plans = [], isLoading, error: plansError } = useQuery<InsurancePlan[]>({
     queryKey: ["admin-insurance-plans"],
     enabled: isAdmin,
     queryFn: async () => {
@@ -94,7 +94,12 @@ export default function AdminInsurance() {
         .from("insurance_plans")
         .select("*")
         .order("plan_type");
+      console.log("insurance_plans data:", data);
+      console.log("insurance_plans error:", error);
       if (error) throw error;
+      if (!data || data.length === 0) {
+        console.warn("insurance_plans returned empty or null");
+      }
       return data ?? [];
     },
   });
@@ -186,6 +191,29 @@ export default function AdminInsurance() {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (plansError) {
+    return (
+      <div>
+        <h1 className="text-2xl font-bold text-primary mb-4">Seguros</h1>
+        <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-6">
+          <p className="text-destructive font-medium mb-1">Error al cargar los planes de seguro</p>
+          <p className="text-sm text-muted-foreground">{(plansError as Error).message}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isLoading && plans.length === 0) {
+    return (
+      <div>
+        <h1 className="text-2xl font-bold text-primary mb-4">Seguros</h1>
+        <div className="bg-muted rounded-xl p-6 text-center">
+          <p className="text-muted-foreground">No se encontraron planes de seguro en la tabla <code>insurance_plans</code>. Verifica que existen registros y que las políticas RLS permiten la lectura.</p>
+        </div>
       </div>
     );
   }
