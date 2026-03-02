@@ -36,6 +36,7 @@ import AdminVehicleCategories from "./pages/admin/VehicleCategories";
 import AdminVehiclesByCategory from "./pages/admin/VehiclesByCategory";
 
 import AdminExtras from "./pages/admin/Extras";
+import AdminDiscounts from "./pages/admin/Discounts";
 import AdminInsurance from "./pages/admin/Insurance";
 import AdminCustomers from "./pages/admin/Customers";
 import AdminCustomerDetail from "./pages/admin/CustomerDetail";
@@ -100,7 +101,7 @@ const App = () => (
               <Route path="/admin/categorias" element={<AdminCategories />} />
               <Route path="/admin/precios" element={<AdminStub />} />
               <Route path="/admin/extras" element={<AdminExtras />} />
-              <Route path="/admin/descuentos" element={<AdminStub />} />
+              <Route path="/admin/descuentos" element={<AdminDiscounts />} />
               <Route path="/admin/clientes" element={<AdminCustomers />} />
               <Route path="/admin/clientes/:id" element={<AdminCustomerDetail />} />
               <Route path="/admin/oficinas" element={<AdminStub />} />
