@@ -1,144 +1,108 @@
 
 
-## Implementar modulo Informes en /admin/informes
+## Implementar CRUD completo del modulo Oficinas
 
 ### Archivos a crear/modificar
 
-1. **Crear `src/pages/admin/Reports.tsx`** -- Modulo completo con dos pestanas (~600 lineas)
-2. **Modificar `src/App.tsx`** -- Cambiar AdminStub por AdminReports en `/admin/informes`
+1. **Crear `src/pages/admin/Branches.tsx`** -- Listado en cards con modal crear/editar (~400 lineas)
+2. **Modificar `src/App.tsx`** -- Cambiar AdminStub por AdminBranches en `/admin/oficinas`
 
 ### Cambios en App.tsx
 
-- Importar `AdminReports` desde `./pages/admin/Reports`
-- Linea 117: cambiar `AdminStub` por `AdminReports` en `/admin/informes`
+- Importar `AdminBranches` desde `./pages/admin/Branches`
+- Linea 108: cambiar `AdminStub` por `AdminBranches` en la ruta `/admin/oficinas`
 
 ---
 
-### Estructura general
+### Branches.tsx -- Componente principal
 
-Componente con Tabs de shadcn (dos pestanas):
-- "Resumen Operativo" (visible para todos los roles)
-- "Informes Detallados" (visible solo si `user.role === 'admin' || user.role === 'manager'`)
+Seguir patron exacto de Extras.tsx/Discounts.tsx: mismo `writeAudit` helper, mismas importaciones shadcn, `useAdminAuth`, TanStack Query, toasts.
 
----
+**Control de acceso:**
+- Verificar `user.role === 'admin'` al inicio del componente
+- Si no es admin, mostrar mensaje "No tienes permisos para acceder a esta seccion"
 
-### Pestana 1 -- Resumen Operativo
+**Interfaces:**
+```typescript
+interface Branch {
+  id: string;
+  name: string;
+  address: string | null;
+  city: string | null;
+  phone: string | null;
+  email: string | null;
+  manages_own_inventory: boolean;
+  is_active: boolean;
+  created_at: string;
+}
 
-Accesible para employee, manager y admin.
-
-**Panel KPIs del dia (cards en grid 5 columnas):**
-
-Query: `supabase.from("report_active_today").select("*").single()`
-
-Cards:
-- Reservas activas ahora mismo
-- Vehiculos disponibles
-- Vehiculos en taller
-- Entregas pendientes hoy
-- Devoluciones pendientes hoy
-
-**Panel KPIs del mes (cards en grid 4 columnas):**
-
-Query: `supabase.from("report_sales_by_day").select("*")` filtrado por mes actual, y agregar client-side:
-- Total reservas del mes (sum de reservation_count)
-- Ingresos del mes en euros (sum de revenue)
-- Reservas canceladas (del campo cancelled si existe, o query adicional a reservations con status='cancelled' y rango de fechas del mes)
-- Reservas no_show (igual, status='no_show')
-
-Para canceladas y no_show, query directa:
-```text
-supabase.from("reservations")
-  .select("id", { count: "exact", head: true })
-  .eq("status", "cancelled")
-  .gte("created_at", startOfMonth)
-  .lte("created_at", endOfMonth)
+interface BranchForm {
+  name: string;
+  address: string;
+  city: string;
+  phone: string;
+  email: string;
+  manages_own_inventory: boolean;
+  is_active: boolean;
+}
 ```
 
-**Grafico de barras -- Ventas por dia (ultimos 30 dias):**
-
-Query: `supabase.from("report_sales_by_day").select("*").gte("day", hace30dias).order("day")`
-
-Usar recharts BarChart con:
-- Eje X: fecha (day)
-- Eje Y izquierdo: ingresos (revenue) -- barras color primary
-- Eje Y derecho: n reservas (reservation_count) -- linea color cta
-- Usar ChartContainer y ChartTooltip del sistema existente en chart.tsx
-
-Colores: `hsl(var(--primary))` y `hsl(var(--cta))`
-
-**Tabla -- Proximas reservas:**
-
-Query: `supabase.from("report_upcoming_reservations").select("*").limit(20)`
-
-Columnas: N reserva, Cliente, Categoria, Fecha recogida, Oficina, Estado (badge coloreado)
-
----
-
-### Pestana 2 -- Informes Detallados
-
-Solo visible si `user.role` es `admin` o `manager`. Comprobar con `useAdminAuth()`.
-
-**Selector de periodo (encima de todos los informes):**
-
-Select con opciones:
-- Mes actual
-- Mes anterior
-- Trimestre actual
-- Ano actual
-- Rango personalizado
-
-Si "Rango personalizado": mostrar dos date pickers (fecha inicio / fecha fin).
-
-Cada opcion calcula `dateFrom` y `dateTo` que se pasan como filtro a las queries.
-
-**Informe 1 -- Ventas por canal:**
-
-Query: `supabase.from("report_sales_by_channel").select("*").gte("day", dateFrom).lte("day", dateTo)` (o la estructura que tenga la vista, agrupando client-side si es por dia)
-
-Si la vista ya devuelve datos agregados por canal directamente, usar tal cual. Si devuelve por dia, agregar client-side por canal.
-
-Tabla: Canal, N reservas, Ingresos totales, Ticket medio (ingresos/reservas), % del total
-Grafico de tarta (PieChart de recharts) con colores del sistema de diseno.
-
-**Informe 2 -- Ventas por oficina:**
-
-Query: `supabase.from("report_sales_by_branch").select("*")` con filtro de periodo
-
-Tabla: Oficina, N reservas, Ingresos, Ticket medio
-Grafico de barras horizontales (BarChart layout="vertical")
-
-**Informe 3 -- Ventas por metodo de pago:**
-
-Query: `supabase.from("report_sales_by_payment_method").select("*")` con filtro de periodo
-
-Tabla: Metodo, N reservas, Total cobrado
-
-**Informe 4 -- Contabilidad mensual:**
-
-Selector de mes y ano (dos selects).
-
-Boton "GENERAR INFORME" que ejecuta:
+**Query principal:**
 ```text
-supabase.rpc("report_monthly_accounting", { p_year: year, p_month: month })
+supabase.from("branches").select("*").order("name")
 ```
 
-Tabla con todas las lineas contables devueltas: concepto, importe, desglose IGIC.
+Sin paginacion (pocas oficinas normalmente). Carga completa.
 
-Boton "EXPORTAR CSV" que convierte los datos a CSV y dispara descarga con `URL.createObjectURL(blob)` + `a.click()`.
+**Queries de conteo (en paralelo):**
+- Vehiculos por oficina: `supabase.from("vehicles").select("branch_id").not("branch_id", "is", null)` -- agrupar client-side por branch_id
+- Usuarios por oficina: `supabase.from("internal_users").select("branch_id").not("branch_id", "is", null)` -- agrupar client-side por branch_id
 
----
+Alternativamente, si la tabla vehicles no tiene branch_id, se adaptara al campo disponible.
 
-### Patron de codigo
+**Layout en cards (grid responsive: 1 col mobile, 2 cols md, 3 cols lg):**
 
-- `useAdminAuth` para obtener usuario y rol
-- `useQuery` de TanStack para cada seccion de datos
-- Recharts con ChartContainer de `@/components/ui/chart` para tooltips consistentes
-- Tabs de `@/components/ui/tabs`
-- Cards de `@/components/ui/card`
-- Toasts con `@/hooks/use-toast` para errores
-- Colores graficos: `hsl(var(--primary))` para barras principales, `hsl(var(--cta))` para acentos, palette generada para pie chart
+Cada card muestra:
+- Nombre (titulo en negrita)
+- Direccion, ciudad
+- Telefono, email
+- Badge verde "Activa" o rojo "Inactiva"
+- Badge azul "Inventario propio" si manages_own_inventory = true
+- Texto: "X vehiculos asignados"
+- Texto: "X usuarios asignados"
+- Botones: "Editar" (icono lapiz) y "Desactivar/Activar" (boton texto)
+- NO hay boton eliminar
+
+**Boton "Nueva oficina" arriba a la derecha.**
+
+**Modal Crear/Editar (Dialog):**
+
+Campos:
+1. Nombre (obligatorio)
+2. Direccion (address, obligatorio)
+3. Ciudad (city, por defecto "Las Palmas de Gran Canaria")
+4. Telefono (phone)
+5. Email (email)
+6. Toggle Inventario propio (manages_own_inventory) con texto explicativo debajo: "Activar solo si esta oficina gestiona su propio inventario de vehiculos de forma independiente. Por defecto la flota es global."
+7. Toggle Activo/Inactivo (is_active)
+8. Boton "GUARDAR"
+
+Validaciones:
+- name es obligatorio
+- address es obligatorio
+
+**Toggle Activo/Desactivar por fila:**
+- Actualiza is_active en Supabase
+- Registra en audit_log como update
+
+**Audit log:**
+- INSERT: action='insert', new_data
+- UPDATE: action='update', old_data y new_data
+- Desactivar/Activar: registrar como update
+
+**Toasts:** exito o error en cada operacion.
 
 ### Dependencias
 
-No se instalan paquetes nuevos. Se reutilizan recharts, shadcn Tabs, Card, Table, Select, Badge, Button, Calendar, Popover, y el sistema de charts existente.
+No se instalan paquetes nuevos. Se reutilizan: Card, Dialog, Input, Label, Switch, Badge, Button, Loader2.
 
