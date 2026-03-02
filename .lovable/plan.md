@@ -1,108 +1,95 @@
 
 
-## Implementar CRUD completo del modulo Oficinas
+## Reemplazar modulo Seguros con CRUD de insurance_plans
 
-### Archivos a crear/modificar
+### Archivo a modificar
 
-1. **Crear `src/pages/admin/Branches.tsx`** -- Listado en cards con modal crear/editar (~400 lineas)
-2. **Modificar `src/App.tsx`** -- Cambiar AdminStub por AdminBranches en `/admin/oficinas`
+1. **Reescribir `src/pages/admin/Insurance.tsx`** -- Reemplazar completamente con nuevo componente (~300 lineas)
 
-### Cambios en App.tsx
-
-- Importar `AdminBranches` desde `./pages/admin/Branches`
-- Linea 108: cambiar `AdminStub` por `AdminBranches` en la ruta `/admin/oficinas`
+No se necesitan cambios en App.tsx ya que la ruta `/admin/seguros` ya apunta a `AdminInsurance`.
 
 ---
 
-### Branches.tsx -- Componente principal
+### Insurance.tsx -- Componente completo
 
-Seguir patron exacto de Extras.tsx/Discounts.tsx: mismo `writeAudit` helper, mismas importaciones shadcn, `useAdminAuth`, TanStack Query, toasts.
+Seguir patron exacto de Branches.tsx: mismo `writeAudit` helper, mismas importaciones shadcn, `useAdminAuth`, TanStack Query, toasts.
 
 **Control de acceso:**
-- Verificar `user.role === 'admin'` al inicio del componente
+- Verificar `user.role === 'admin'`
 - Si no es admin, mostrar mensaje "No tienes permisos para acceder a esta seccion"
 
 **Interfaces:**
-```typescript
-interface Branch {
+```text
+interface InsurancePlan {
   id: string;
   name: string;
-  address: string | null;
-  city: string | null;
-  phone: string | null;
-  email: string | null;
-  manages_own_inventory: boolean;
+  description: string | null;
+  plan_type: "basic" | "premium";
+  price_per_reservation: number;
+  eliminates_deposit: boolean;
   is_active: boolean;
-  created_at: string;
 }
 
-interface BranchForm {
+interface PlanForm {
   name: string;
-  address: string;
-  city: string;
-  phone: string;
-  email: string;
-  manages_own_inventory: boolean;
+  description: string;
+  price_per_reservation: number;
+  eliminates_deposit: boolean;
   is_active: boolean;
 }
 ```
 
 **Query principal:**
 ```text
-supabase.from("branches").select("*").order("name")
+supabase.from("insurance_plans").select("*").order("plan_type")
 ```
 
-Sin paginacion (pocas oficinas normalmente). Carga completa.
+**Query adicional para fianzas por categoria:**
+```text
+supabase.from("vehicle_categories").select("id, name, deposit_amount_base")
+```
+Se muestra en la card del plan basico la fianza de cada categoria.
 
-**Queries de conteo (en paralelo):**
-- Vehiculos por oficina: `supabase.from("vehicles").select("branch_id").not("branch_id", "is", null)` -- agrupar client-side por branch_id
-- Usuarios por oficina: `supabase.from("internal_users").select("branch_id").not("branch_id", "is", null)` -- agrupar client-side por branch_id
+**Layout:**
 
-Alternativamente, si la tabla vehicles no tiene branch_id, se adaptara al campo disponible.
+Cabecera: "Seguros" + subtitulo descriptivo. NO hay boton "Nuevo" (solo existen 2 planes fijos).
 
-**Layout en cards (grid responsive: 1 col mobile, 2 cols md, 3 cols lg):**
+Dos cards grandes en grid 2 columnas:
 
-Cada card muestra:
-- Nombre (titulo en negrita)
-- Direccion, ciudad
-- Telefono, email
-- Badge verde "Activa" o rojo "Inactiva"
-- Badge azul "Inventario propio" si manages_own_inventory = true
-- Texto: "X vehiculos asignados"
-- Texto: "X usuarios asignados"
-- Botones: "Editar" (icono lapiz) y "Desactivar/Activar" (boton texto)
-- NO hay boton eliminar
+**Card BASICO (plan_type = 'basic'):**
+- Icono Shield + nombre + descripcion
+- Precio: "Incluido en el alquiler" (texto fijo)
+- Fianza: listado de fianzas por categoria (nombre categoria: X euros) cargado de vehicle_categories.deposit_amount_base
+- Badge Activo/Inactivo
+- Boton "Editar"
 
-**Boton "Nueva oficina" arriba a la derecha.**
+**Card PREMIUM (plan_type = 'premium'):**
+- Icono ShieldCheck + nombre + descripcion
+- Suplemento: price_per_reservation formateado en euros
+- Fianza: "0 euros -- Eliminada completamente" (texto fijo)
+- Badge Activo/Inactivo
+- Boton "Editar"
 
-**Modal Crear/Editar (Dialog):**
+**Modal Editar (Dialog):**
 
 Campos:
 1. Nombre (obligatorio)
-2. Direccion (address, obligatorio)
-3. Ciudad (city, por defecto "Las Palmas de Gran Canaria")
-4. Telefono (phone)
-5. Email (email)
-6. Toggle Inventario propio (manages_own_inventory) con texto explicativo debajo: "Activar solo si esta oficina gestiona su propio inventario de vehiculos de forma independiente. Por defecto la flota es global."
-7. Toggle Activo/Inactivo (is_active)
-8. Boton "GUARDAR"
+2. Descripcion (textarea)
+3. Suplemento precio en euros (price_per_reservation) -- si plan_type='basic', input deshabilitado con valor 0
+4. Toggle Elimina fianza (eliminates_deposit) -- si plan_type='basic', switch deshabilitado con valor false
+5. Toggle Activo/Inactivo (is_active)
+6. Boton "GUARDAR"
 
-Validaciones:
-- name es obligatorio
-- address es obligatorio
+Texto informativo debajo del formulario:
+"El seguro basico siempre esta incluido en el precio por dia de cada categoria. El suplemento premium se suma al total en el proceso de reserva."
 
-**Toggle Activo/Desactivar por fila:**
-- Actualiza is_active en Supabase
-- Registra en audit_log como update
-
-**Audit log:**
-- INSERT: action='insert', new_data
-- UPDATE: action='update', old_data y new_data
-- Desactivar/Activar: registrar como update
-
-**Toasts:** exito o error en cada operacion.
+**Save:**
+- Update en insurance_plans por id
+- writeAudit con action='update', old_data (plan original), new_data (plan actualizado)
+- Toast exito/error
+- Invalidar query
 
 ### Dependencias
 
-No se instalan paquetes nuevos. Se reutilizan: Card, Dialog, Input, Label, Switch, Badge, Button, Loader2.
+No se instalan paquetes nuevos. Se reutilizan: Card, Dialog, Input, Label, Switch, Badge, Button, Textarea, Loader2, iconos Shield/ShieldCheck de lucide.
 
