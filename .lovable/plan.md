@@ -1,64 +1,55 @@
 
 
-## Corregir topbar + Crear pagina Nueva Reserva Presencial
+## Corregir disponibilidad, extras y pagos en Nueva Reserva
 
-### PARTE 1 -- Topbar (AdminLayout.tsx)
+### Problema raiz
 
-Cambios en el archivo existente `src/pages/admin/AdminLayout.tsx`:
+El codigo usa la columna `daily_price` en las queries a `vehicle_categories` y `extras`, pero esa columna NO existe en la base de datos. Los nombres reales son:
+- `vehicle_categories` --> `base_price_per_day`
+- `extras` --> `price_per_day`
 
-**1. Invertir orden de botones en el header (lineas 209-222):**
-- Primero (izquierda): CONSULTAR RESERVA (outline, estilo actual)
-- Segundo (derecha): NUEVA RESERVA con clases `bg-cta text-cta-foreground hover:bg-cta/90`
+Esto causa que Supabase devuelva error silencioso y las categorias/extras quedan vacios.
 
-**2. Cambiar logica de busqueda del modal:**
-- Placeholder: "Numero de reserva" con ejemplo OD-2026-0001
-- Descripcion: "Busca por numero de reserva"
-- Query: `reservations` WHERE `reservation_number` = valor exacto (eq, no ilike)
-- Mensaje error: "No se encontro ninguna reserva con ese numero"
+### Cambios en `src/pages/admin/NewReservation.tsx`
 
-### PARTE 2 -- Nueva pagina `/admin/reservas/nueva`
+**1. Corregir interfaz Category (linea 39):**
+- Cambiar `daily_price: number` a `base_price_per_day: number`
 
-Crear archivo `src/pages/admin/NewReservation.tsx` con layout a dos columnas:
+**2. Corregir interfaz Extra (linea 53):**
+- Cambiar `daily_price: number` a `price_per_day: number`
 
-**Columna izquierda -- Formulario por pasos:**
+**3. Corregir query de categorias (linea 175):**
+- Cambiar `.select("id, name, image_url, daily_price")` a `.select("id, name, image_url, base_price_per_day")`
 
-- **Paso 1 - Fechas y oficina:** Selects de branches (pickup/return), datepickers con hora, boton "VER DISPONIBILIDAD". Al pulsar carga `vehicle_categories` activas, cuenta vehiculos disponibles por categoria, muestra cards con badges de disponibilidad. Al seleccionar categoria muestra tabla de vehiculos fisicos (matricula, marca, color, km) con opcion "Asignacion automatica".
+**4. Corregir query de extras (linea 129):**
+- Cambiar `.select("id, name, daily_price")` a `.select("id, name, price_per_day")`
 
-- **Paso 2 - Datos del cliente:** Campo busqueda en `customers` por email/telefono con debounce. Si encuentra, precarga campos. Si no, formulario vacio. Campos: nombre, apellidos, email, telefono, num licencia, fecha caducidad carnet.
+**5. Actualizar todas las referencias a `daily_price`:**
+- `cat.daily_price` --> `cat.base_price_per_day` (lineas 421, 628, 629)
+- `ext.daily_price` --> `ext.price_per_day` (lineas 553, 654)
+- `selectedCategory.daily_price` --> `selectedCategory.base_price_per_day` (lineas 150, 628, 629)
 
-- **Paso 3 - Extras:** Checkboxes desde tabla `extras` WHERE is_active = true, mostrando nombre y precio.
+**6. Actualizar opciones de pago (lineas 70-74):**
+Reemplazar las tres opciones actuales por:
+- `{ value: "cash", label: "Pago en efectivo" }`
+- `{ value: "card", label: "Pago con tarjeta" }`
+- `{ value: "bizum", label: "Bizum" }`
 
-- **Paso 4 - Pago:** Select con opciones "Pago en oficina" / "Tarjeta cobrada" / "Pago online previo". Textarea para notas internas.
+**7. Inicializar paymentMethod vacio (linea 116):**
+- Cambiar `useState("office")` a `useState("")` para forzar seleccion explicita
 
-**Columna derecha -- Resumen en tiempo real:**
+**8. Agregar placeholder al Select de pago (linea 571):**
+- Cambiar `<SelectValue />` a `<SelectValue placeholder="Seleccionar metodo de pago" />`
 
-Panel sticky que se actualiza automaticamente con: fechas, dias, categoria, vehiculo, extras con precios, subtotal, IGIC 7%, total, metodo de pago. Boton "CREAR RESERVA" (bg-primary) que llama a `supabase.functions.invoke('create_reservation')` con `sale_channel: "office"`. Exito navega a `/admin/reservas/:id` con toast. Error muestra mensaje.
+**9. Agregar paymentMethod a la validacion del boton CREAR RESERVA (linea 691):**
+- Anadir `|| !paymentMethod` a la condicion `disabled`
 
-### PARTE 3 -- Ruta en App.tsx
-
-Agregar ruta `/admin/reservas/nueva` antes de `/admin/reservas` apuntando al nuevo componente `NewReservation`.
-
----
+**10. Agregar pointer-events-auto a los Calendar (lineas 365, 384):**
+- Para asegurar que los calendarios sean interactivos dentro del Popover
 
 ### Detalle tecnico
 
-**Archivos a modificar:**
-- `src/pages/admin/AdminLayout.tsx` -- topbar y modal
-- `src/App.tsx` -- nueva ruta
-
-**Archivos a crear:**
-- `src/pages/admin/NewReservation.tsx` -- pagina completa
-
-**Tablas Supabase utilizadas:**
-- `branches` (oficinas)
-- `vehicle_categories` (categorias activas)
-- `vehicles` (disponibilidad y asignacion)
-- `customers` (busqueda/creacion cliente)
-- `extras` (extras activos)
-- `reservations` (busqueda en modal)
-- Edge function `create_reservation` (crear reserva)
-
-**Componentes UI reutilizados:**
-- Select, Input, Button, Calendar/Popover (datepicker), Dialog, Checkbox, Badge, Card, Tabs (si necesario)
-- Toast para feedback
+- Archivo unico: `src/pages/admin/NewReservation.tsx`
+- Todos los cambios son renombramientos de columnas y ajustes de logica de pago
+- No se crean archivos nuevos ni se modifican otros
 
