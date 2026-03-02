@@ -37,6 +37,8 @@ import AdminVehiclesByCategory from "./pages/admin/VehiclesByCategory";
 
 import AdminExtras from "./pages/admin/Extras";
 import AdminInsurance from "./pages/admin/Insurance";
+import AdminCustomers from "./pages/admin/Customers";
+import AdminCustomerDetail from "./pages/admin/CustomerDetail";
 import NotFound from "./pages/NotFound";
 import ScrollToTop from "./components/ScrollToTop";
 
@@ -99,7 +101,8 @@ const App = () => (
               <Route path="/admin/precios" element={<AdminStub />} />
               <Route path="/admin/extras" element={<AdminExtras />} />
               <Route path="/admin/descuentos" element={<AdminStub />} />
-              <Route path="/admin/clientes" element={<AdminStub />} />
+              <Route path="/admin/clientes" element={<AdminCustomers />} />
+              <Route path="/admin/clientes/:id" element={<AdminCustomerDetail />} />
               <Route path="/admin/oficinas" element={<AdminStub />} />
               <Route path="/admin/usuarios" element={<AdminStub />} />
               <Route path="/admin/contenido/*" element={<AdminStub />} />
