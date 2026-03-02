@@ -1,55 +1,35 @@
 
 
-## Corregir disponibilidad, extras y pagos en Nueva Reserva
+## Corregir disponibilidad y extras en Nueva Reserva
 
-### Problema raiz
+### Problema 1 -- VER DISPONIBILIDAD no muestra nada
 
-El codigo usa la columna `daily_price` en las queries a `vehicle_categories` y `extras`, pero esa columna NO existe en la base de datos. Los nombres reales son:
-- `vehicle_categories` --> `base_price_per_day`
-- `extras` --> `price_per_day`
+La query actual pide `base_price_per_day` pero la columna real en `vehicle_categories` es `price_per_day` (confirmado en las respuestas de red). Ademas, la disponibilidad se calcula con queries separadas por categoria cuando se puede hacer en una sola query con join.
 
-Esto causa que Supabase devuelva error silencioso y las categorias/extras quedan vacios.
+**Cambios:**
+- Interfaz `Category` (linea 39): cambiar `base_price_per_day` a `price_per_day`
+- Query de categorias (linea 173-176): cambiar a `.select("id, name, image_url, price_per_day, vehicles(id, status)")` y contar vehiculos disponibles filtrando `v.status === "available"` en el resultado, eliminando las queries individuales por categoria
+- Actualizar todas las referencias: `cat.base_price_per_day` y `selectedCategory.base_price_per_day` a `price_per_day` (lineas 150, 421, 628, 629)
 
-### Cambios en `src/pages/admin/NewReservation.tsx`
+### Problema 2 -- Extras no cargan
 
-**1. Corregir interfaz Category (linea 39):**
-- Cambiar `daily_price: number` a `base_price_per_day: number`
+La query pide `price_per_day` pero la columna real es `price_per_reservation`.
 
-**2. Corregir interfaz Extra (linea 53):**
-- Cambiar `daily_price: number` a `price_per_day: number`
-
-**3. Corregir query de categorias (linea 175):**
-- Cambiar `.select("id, name, image_url, daily_price")` a `.select("id, name, image_url, base_price_per_day")`
-
-**4. Corregir query de extras (linea 129):**
-- Cambiar `.select("id, name, daily_price")` a `.select("id, name, price_per_day")`
-
-**5. Actualizar todas las referencias a `daily_price`:**
-- `cat.daily_price` --> `cat.base_price_per_day` (lineas 421, 628, 629)
-- `ext.daily_price` --> `ext.price_per_day` (lineas 553, 654)
-- `selectedCategory.daily_price` --> `selectedCategory.base_price_per_day` (lineas 150, 628, 629)
-
-**6. Actualizar opciones de pago (lineas 70-74):**
-Reemplazar las tres opciones actuales por:
-- `{ value: "cash", label: "Pago en efectivo" }`
-- `{ value: "card", label: "Pago con tarjeta" }`
-- `{ value: "bizum", label: "Bizum" }`
-
-**7. Inicializar paymentMethod vacio (linea 116):**
-- Cambiar `useState("office")` a `useState("")` para forzar seleccion explicita
-
-**8. Agregar placeholder al Select de pago (linea 571):**
-- Cambiar `<SelectValue />` a `<SelectValue placeholder="Seleccionar metodo de pago" />`
-
-**9. Agregar paymentMethod a la validacion del boton CREAR RESERVA (linea 691):**
-- Anadir `|| !paymentMethod` a la condicion `disabled`
-
-**10. Agregar pointer-events-auto a los Calendar (lineas 365, 384):**
-- Para asegurar que los calendarios sean interactivos dentro del Popover
+**Cambios:**
+- Interfaz `Extra` (linea 53): cambiar `price_per_day` a `price_per_reservation`
+- Query de extras (linea 129): cambiar select a `"id, name, description, price_per_reservation"`
+- Actualizar referencias en el render: `ext.price_per_day` a `ext.price_per_reservation` (lineas 553, 654)
+- Actualizar calculo del subtotal (linea 153): cambiar `e.price_per_day * days` a `e.price_per_reservation` (precio por reserva, no por dia)
+- Mostrar descripcion del extra junto al nombre si existe
 
 ### Detalle tecnico
 
-- Archivo unico: `src/pages/admin/NewReservation.tsx`
-- Todos los cambios son renombramientos de columnas y ajustes de logica de pago
-- No se crean archivos nuevos ni se modifican otros
+Archivo unico: `src/pages/admin/NewReservation.tsx`
+
+Cambios puntuales:
+1. Renombrar `base_price_per_day` a `price_per_day` en interfaz, query y todas las referencias
+2. Simplificar `handleCheckAvailability` para hacer una sola query con join a vehicles en vez de N+1 queries
+3. Renombrar `price_per_day` a `price_per_reservation` en interfaz Extra, query y referencias
+4. Ajustar calculo de extras en subtotal (precio fijo por reserva, no multiplicado por dias)
+5. Agregar `console.error` en los catch blocks para facilitar depuracion futura
 
