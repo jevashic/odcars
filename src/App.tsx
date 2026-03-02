@@ -30,6 +30,8 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import AdminStub from "./pages/admin/AdminStub";
 import AdminCategories from "./pages/admin/Categories";
 import NewReservation from "./pages/admin/NewReservation";
+import AdminVehicleCategories from "./pages/admin/VehicleCategories";
+import AdminVehiclesByCategory from "./pages/admin/VehiclesByCategory";
 
 import AdminExtras from "./pages/admin/Extras";
 import AdminInsurance from "./pages/admin/Insurance";
@@ -88,7 +90,8 @@ const App = () => (
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
               <Route path="/admin/reservas/nueva" element={<NewReservation />} />
               <Route path="/admin/reservas" element={<AdminStub />} />
-              <Route path="/admin/vehiculos" element={<AdminStub />} />
+              <Route path="/admin/vehiculos" element={<AdminVehicleCategories />} />
+              <Route path="/admin/vehiculos/:categoryId" element={<AdminVehiclesByCategory />} />
               <Route path="/admin/categorias" element={<AdminCategories />} />
               <Route path="/admin/precios" element={<AdminStub />} />
               <Route path="/admin/extras" element={<AdminExtras />} />
