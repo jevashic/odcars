@@ -1,0 +1,574 @@
+import { useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAdminAuth } from "@/contexts/AdminAuthContext";
+import { toast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import { Loader2, ArrowLeft, Save, Play, CheckCircle, XCircle, User } from "lucide-react";
+import { format, differenceInDays, parseISO } from "date-fns";
+import { es } from "date-fns/locale";
+
+/* ── Helpers ────────────────────────────────────────── */
+
+const statusBadge = (status: string) => {
+  switch (status) {
+    case "pending": return <Badge variant="secondary">Pendiente</Badge>;
+    case "confirmed": return <Badge className="bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100">Confirmada</Badge>;
+    case "active": return <Badge className="bg-green-100 text-green-800 border-green-200 hover:bg-green-100">En curso</Badge>;
+    case "completed": return <Badge className="bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-100">Completada</Badge>;
+    case "cancelled": return <Badge variant="destructive">Cancelada</Badge>;
+    case "no_show": return <Badge className="bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-100">No presentado</Badge>;
+    default: return <Badge variant="outline">{status}</Badge>;
+  }
+};
+
+const CHANNEL_MAP: Record<string, string> = {
+  web: "🌐 Web",
+  office_sale: "🏢 Oficina",
+  office_pickup: "🚗 Entrega",
+  office_dropoff: "🔑 Devolución",
+  office: "🏢 Oficina",
+};
+
+async function writeAudit(userId: string, action: string, tableName: string, recordId: string, oldData: unknown, newData: unknown) {
+  await supabase.from("audit_log").insert({
+    performed_by: userId, action, table_name: tableName, record_id: recordId,
+    old_data: oldData as any, new_data: newData as any,
+  });
+}
+
+/* ── Component ──────────────────────────────────────── */
+
+export default function ReservationDetail() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { user } = useAdminAuth();
+  const qc = useQueryClient();
+
+  // Action state
+  const [assignVehicleId, setAssignVehicleId] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [notes, setNotes] = useState("");
+  const [notesLoaded, setNotesLoaded] = useState(false);
+
+  // Return form
+  const [returnMileage, setReturnMileage] = useState(0);
+  const [fuelIncomplete, setFuelIncomplete] = useState(false);
+  const [fuelAmount, setFuelAmount] = useState(0);
+  const [lateReturn, setLateReturn] = useState(false);
+  const [lateDays, setLateDays] = useState(0);
+  const [hasDamage, setHasDamage] = useState(false);
+  const [damageAmount, setDamageAmount] = useState(0);
+  const [damageDesc, setDamageDesc] = useState("");
+
+  // Cancel form
+  const [cancelReason, setCancelReason] = useState("");
+
+  /* ── Main query ──────────────────────────────────── */
+
+  const { data: reservation, isLoading } = useQuery({
+    queryKey: ["admin-reservation-detail", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("reservations")
+        .select(`
+          *,
+          customers(*),
+          vehicle_categories(id, name),
+          vehicles(id, license_plate, brand, model)
+        `)
+        .eq("id", id!)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id,
+  });
+
+  // Load notes once
+  if (reservation && !notesLoaded) {
+    setNotes(reservation.internal_notes ?? "");
+    setNotesLoaded(true);
+  }
+
+  /* ── Extras & insurance (separate queries to avoid FK issues) ── */
+
+  const { data: resExtras = [] } = useQuery({
+    queryKey: ["admin-res-extras", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("reservation_extras")
+        .select("*, extras(id, name, price_per_reservation)")
+        .eq("reservation_id", id!);
+      if (error) { console.warn("reservation_extras:", error.message); return []; }
+      return data ?? [];
+    },
+    enabled: !!id,
+  });
+
+  const { data: resInsurance = [] } = useQuery({
+    queryKey: ["admin-res-insurance", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("reservation_insurance")
+        .select("*, insurance_plans(id, name, price_per_day)")
+        .eq("reservation_id", id!);
+      if (error) { console.warn("reservation_insurance:", error.message); return []; }
+      return data ?? [];
+    },
+    enabled: !!id,
+  });
+
+  /* ── Available vehicles for assignment ───────────── */
+
+  const { data: availableVehicles = [] } = useQuery({
+    queryKey: ["admin-available-vehicles", reservation?.category_id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("vehicles")
+        .select("id, license_plate, brand, model")
+        .eq("category_id", reservation!.category_id)
+        .eq("status", "available");
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!reservation && reservation.status === "confirmed",
+  });
+
+  /* ── Audit log ───────────────────────────────────── */
+
+  const { data: auditLog = [] } = useQuery({
+    queryKey: ["admin-audit-reservation", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("audit_log")
+        .select("*")
+        .eq("record_id", id!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!id,
+  });
+
+  /* ── Branch names (separate query) ───────────────── */
+
+  const { data: branches = [] } = useQuery({
+    queryKey: ["admin-branches"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("branches").select("id, name").order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const branchName = (branchId: string | null) => {
+    if (!branchId) return "—";
+    return branches.find((b) => b.id === branchId)?.name ?? branchId;
+  };
+
+  /* ── Actions ─────────────────────────────────────── */
+
+  const invalidateAll = () => {
+    qc.invalidateQueries({ queryKey: ["admin-reservation-detail", id] });
+    qc.invalidateQueries({ queryKey: ["admin-audit-reservation", id] });
+    qc.invalidateQueries({ queryKey: ["admin-reservations"] });
+  };
+
+  const activateReservation = async () => {
+    if (!user || !reservation) return;
+    if (!assignVehicleId) {
+      toast({ title: "Selecciona un vehículo", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    try {
+      const { error: e1 } = await supabase
+        .from("reservations")
+        .update({ status: "active", vehicle_id: assignVehicleId })
+        .eq("id", reservation.id);
+      if (e1) throw e1;
+
+      const { error: e2 } = await supabase
+        .from("vehicles")
+        .update({ status: "rented" })
+        .eq("id", assignVehicleId);
+      if (e2) throw e2;
+
+      await writeAudit(user.id, "update", "reservations", reservation.id,
+        { status: "confirmed", vehicle_id: null },
+        { status: "active", vehicle_id: assignVehicleId }
+      );
+      invalidateAll();
+      toast({ title: "Reserva activada" });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const completeReturn = async () => {
+    if (!user || !reservation) return;
+    setSaving(true);
+    try {
+      const additionalCharges: Record<string, any> = {};
+      if (fuelIncomplete) additionalCharges.fuel = fuelAmount;
+      if (lateReturn) additionalCharges.late_days = lateDays;
+      if (hasDamage) { additionalCharges.damage_amount = damageAmount; additionalCharges.damage_description = damageDesc; }
+
+      const updatePayload: Record<string, any> = {
+        status: "completed",
+        internal_notes: `${reservation.internal_notes ?? ""}\n\n[Devolución] Km: ${returnMileage}${Object.keys(additionalCharges).length ? ` | Cargos: ${JSON.stringify(additionalCharges)}` : ""}`.trim(),
+      };
+
+      const { error: e1 } = await supabase.from("reservations").update(updatePayload).eq("id", reservation.id);
+      if (e1) throw e1;
+
+      if (reservation.vehicle_id) {
+        await supabase.from("vehicles").update({ status: "available", mileage: returnMileage || undefined }).eq("id", reservation.vehicle_id);
+      }
+
+      await writeAudit(user.id, "update", "reservations", reservation.id,
+        { status: "active" },
+        { status: "completed", additional_charges: additionalCharges, return_mileage: returnMileage }
+      );
+      invalidateAll();
+      toast({ title: "Devolución completada" });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const cancelReservation = async () => {
+    if (!user || !reservation) return;
+    if (!cancelReason.trim()) {
+      toast({ title: "El motivo es obligatorio", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    try {
+      const { error: e1 } = await supabase
+        .from("reservations")
+        .update({ status: "cancelled", cancellation_reason: cancelReason })
+        .eq("id", reservation.id);
+      if (e1) throw e1;
+
+      if (reservation.vehicle_id) {
+        await supabase.from("vehicles").update({ status: "available" }).eq("id", reservation.vehicle_id);
+      }
+
+      await writeAudit(user.id, "update", "reservations", reservation.id,
+        { status: reservation.status },
+        { status: "cancelled", cancellation_reason: cancelReason }
+      );
+      invalidateAll();
+      toast({ title: "Reserva cancelada" });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveNotes = async () => {
+    if (!user || !reservation) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("reservations").update({ internal_notes: notes }).eq("id", reservation.id);
+      if (error) throw error;
+      await writeAudit(user.id, "update", "reservations", reservation.id,
+        { internal_notes: reservation.internal_notes },
+        { internal_notes: notes }
+      );
+      invalidateAll();
+      toast({ title: "Nota guardada" });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /* ── Render ──────────────────────────────────────── */
+
+  if (isLoading || !reservation) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const r = reservation as any;
+  const days = r.pickup_date && r.return_date
+    ? Math.max(1, differenceInDays(parseISO(r.return_date), parseISO(r.pickup_date)))
+    : 0;
+  const customer = r.customers;
+  const pricePerDay = r.price_per_day ?? (r.total_amount && days ? r.total_amount / days : 0);
+  const subtotalRent = pricePerDay * days;
+  const extrasTotal = resExtras.reduce((sum: number, re: any) => sum + (re.extras?.price_per_reservation ?? 0), 0);
+  const insuranceTotal = resInsurance.reduce((sum: number, ri: any) => sum + ((ri.insurance_plans?.price_per_day ?? 0) * days), 0);
+  const subtotal = subtotalRent + extrasTotal + insuranceTotal;
+  const igic = subtotal * 0.07;
+
+  return (
+    <div>
+      {/* Breadcrumb */}
+      <Breadcrumb className="mb-4">
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/admin/reservas" onClick={(e) => { e.preventDefault(); navigate("/admin/reservas"); }}>
+              Reservas
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>{r.reservation_number ?? r.id}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+
+      <div className="flex items-center gap-3 mb-6">
+        <Button variant="outline" size="sm" onClick={() => navigate("/admin/reservas")} className="gap-1.5">
+          <ArrowLeft className="h-4 w-4" /> Volver
+        </Button>
+        <h1 className="text-2xl font-bold text-foreground">Reserva {r.reservation_number}</h1>
+        {statusBadge(r.status)}
+      </div>
+
+      {/* Two-column layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* ═══ LEFT (2/3) ═══ */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Block 1 - Reservation data */}
+          <Card>
+            <CardHeader><CardTitle className="text-lg">Datos de la reserva</CardTitle></CardHeader>
+            <CardContent className="grid grid-cols-2 gap-4 text-sm">
+              <div><span className="text-muted-foreground">Nº Reserva:</span> <span className="font-medium">{r.reservation_number ?? "—"}</span></div>
+              <div><span className="text-muted-foreground">Canal:</span> {CHANNEL_MAP[r.sale_channel] ?? r.sale_channel ?? "—"}</div>
+              <div><span className="text-muted-foreground">Recogida:</span> {r.pickup_date ? format(parseISO(r.pickup_date), "dd/MM/yyyy HH:mm", { locale: es }) : "—"}</div>
+              <div><span className="text-muted-foreground">Devolución:</span> {r.return_date ? format(parseISO(r.return_date), "dd/MM/yyyy HH:mm", { locale: es }) : "—"}</div>
+              <div><span className="text-muted-foreground">Días:</span> {days}</div>
+              <div><span className="text-muted-foreground">Categoría:</span> {r.vehicle_categories?.name ?? "—"}</div>
+              <div><span className="text-muted-foreground">Vehículo:</span> {r.vehicles ? `${r.vehicles.brand} ${r.vehicles.model} (${r.vehicles.license_plate})` : <span className="text-muted-foreground">Sin asignar</span>}</div>
+              <div><span className="text-muted-foreground">Oficina recogida:</span> {branchName(r.pickup_branch_id)}</div>
+              <div><span className="text-muted-foreground">Oficina devolución:</span> {branchName(r.return_branch_id)}</div>
+              {resInsurance.length > 0 && (
+                <div className="col-span-2"><span className="text-muted-foreground">Seguro:</span> {resInsurance.map((ri: any) => ri.insurance_plans?.name).filter(Boolean).join(", ") || "—"}</div>
+              )}
+              {resExtras.length > 0 && (
+                <div className="col-span-2"><span className="text-muted-foreground">Extras:</span> {resExtras.map((re: any) => re.extras?.name).filter(Boolean).join(", ") || "—"}</div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Block 2 - Customer */}
+          <Card>
+            <CardHeader><CardTitle className="text-lg">Datos del cliente</CardTitle></CardHeader>
+            <CardContent className="grid grid-cols-2 gap-4 text-sm">
+              <div><span className="text-muted-foreground">Nombre:</span> <span className="font-medium">{customer?.first_name} {customer?.last_name}</span></div>
+              <div><span className="text-muted-foreground">Email:</span> {customer?.email ?? "—"}</div>
+              <div><span className="text-muted-foreground">Teléfono:</span> {customer?.phone ?? "—"}</div>
+              <div><span className="text-muted-foreground">Nº Carnet:</span> {customer?.license_number ?? "—"}</div>
+              <div><span className="text-muted-foreground">Caducidad carnet:</span> {customer?.license_expiry ? format(parseISO(customer.license_expiry), "dd/MM/yyyy") : "—"}</div>
+              {customer?.id && (
+                <div className="col-span-2">
+                  <Button variant="outline" size="sm" onClick={() => navigate(`/admin/clientes/${customer.id}`)} className="gap-1.5">
+                    <User className="h-4 w-4" /> Ver ficha cliente
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Block 3 - Financial */}
+          <Card>
+            <CardHeader><CardTitle className="text-lg">Desglose económico</CardTitle></CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <div className="flex justify-between"><span className="text-muted-foreground">Precio/día:</span> <span>{pricePerDay.toFixed(2)} €</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Subtotal alquiler ({days} días):</span> <span>{subtotalRent.toFixed(2)} €</span></div>
+              {resExtras.map((re: any) => (
+                <div key={re.id} className="flex justify-between"><span className="text-muted-foreground">Extra: {re.extras?.name}</span> <span>{(re.extras?.price_per_reservation ?? 0).toFixed(2)} €</span></div>
+              ))}
+              {resInsurance.map((ri: any) => (
+                <div key={ri.id} className="flex justify-between"><span className="text-muted-foreground">Seguro: {ri.insurance_plans?.name}</span> <span>{((ri.insurance_plans?.price_per_day ?? 0) * days).toFixed(2)} €</span></div>
+              ))}
+              {r.discount_amount != null && r.discount_amount > 0 && (
+                <div className="flex justify-between text-green-700"><span>Descuento:</span> <span>-{Number(r.discount_amount).toFixed(2)} €</span></div>
+              )}
+              <Separator />
+              <div className="flex justify-between"><span className="text-muted-foreground">IGIC 7%:</span> <span>{igic.toFixed(2)} €</span></div>
+              <div className="flex justify-between font-bold text-base"><span>Total:</span> <span>{r.total_amount != null ? `${Number(r.total_amount).toFixed(2)} €` : `${(subtotal + igic).toFixed(2)} €`}</span></div>
+              <Separator />
+              <div className="flex justify-between"><span className="text-muted-foreground">Método de pago:</span> <span>{r.payment_method ?? "—"}</span></div>
+              {r.stripe_payment_intent_id && (
+                <div className="flex justify-between"><span className="text-muted-foreground">Stripe ID:</span> <span className="font-mono text-xs">{r.stripe_payment_intent_id}</span></div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* ═══ RIGHT (1/3) ═══ */}
+        <div className="space-y-6">
+          {/* Block 4 - Actions */}
+          {r.status === "confirmed" && (
+            <Card>
+              <CardHeader><CardTitle className="text-lg flex items-center gap-2"><Play className="h-5 w-5" /> Activar reserva</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label>Asignar vehículo *</Label>
+                  <Select value={assignVehicleId} onValueChange={setAssignVehicleId}>
+                    <SelectTrigger><SelectValue placeholder="Seleccionar vehículo" /></SelectTrigger>
+                    <SelectContent>
+                      {availableVehicles.map((v: any) => (
+                        <SelectItem key={v.id} value={v.id}>{v.license_plate} — {v.brand} {v.model}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button className="w-full" onClick={activateReservation} disabled={saving}>
+                  {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  <Play className="h-4 w-4 mr-2" /> ACTIVAR RESERVA
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {r.status === "active" && (
+            <Card>
+              <CardHeader><CardTitle className="text-lg flex items-center gap-2"><CheckCircle className="h-5 w-5" /> Completar devolución</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label>Kilometraje devolución</Label>
+                  <Input type="number" value={returnMileage} onChange={(e) => setReturnMileage(Number(e.target.value))} />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label>¿Combustible incompleto?</Label>
+                  <Switch checked={fuelIncomplete} onCheckedChange={setFuelIncomplete} />
+                </div>
+                {fuelIncomplete && (
+                  <div className="space-y-1.5">
+                    <Label>Importe combustible (€)</Label>
+                    <Input type="number" value={fuelAmount} onChange={(e) => setFuelAmount(Number(e.target.value))} />
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <Label>¿Devolución tardía?</Label>
+                  <Switch checked={lateReturn} onCheckedChange={setLateReturn} />
+                </div>
+                {lateReturn && (
+                  <div className="space-y-1.5">
+                    <Label>Días extra</Label>
+                    <Input type="number" value={lateDays} onChange={(e) => setLateDays(Number(e.target.value))} />
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <Label>¿Daños?</Label>
+                  <Switch checked={hasDamage} onCheckedChange={setHasDamage} />
+                </div>
+                {hasDamage && (
+                  <>
+                    <div className="space-y-1.5">
+                      <Label>Importe daños (€)</Label>
+                      <Input type="number" value={damageAmount} onChange={(e) => setDamageAmount(Number(e.target.value))} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Descripción daños</Label>
+                      <Textarea value={damageDesc} onChange={(e) => setDamageDesc(e.target.value)} rows={2} />
+                    </div>
+                  </>
+                )}
+                <Button className="w-full" onClick={completeReturn} disabled={saving}>
+                  {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  <CheckCircle className="h-4 w-4 mr-2" /> COMPLETAR DEVOLUCIÓN
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {(r.status === "pending" || r.status === "confirmed") && (
+            <Card>
+              <CardHeader><CardTitle className="text-lg flex items-center gap-2 text-destructive"><XCircle className="h-5 w-5" /> Cancelar reserva</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label>Motivo de cancelación *</Label>
+                  <Textarea value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} rows={3} placeholder="Indica el motivo…" />
+                </div>
+                <Button variant="destructive" className="w-full" onClick={cancelReservation} disabled={saving}>
+                  {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  CANCELAR RESERVA
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Block 5 - Internal notes */}
+          <Card>
+            <CardHeader><CardTitle className="text-lg">Notas internas</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} placeholder="Notas internas de la reserva…" />
+              <Button className="w-full" variant="outline" onClick={saveNotes} disabled={saving}>
+                <Save className="h-4 w-4 mr-2" /> GUARDAR NOTA
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Block 6 - Audit log */}
+          <Card>
+            <CardHeader><CardTitle className="text-lg">Historial de cambios</CardTitle></CardHeader>
+            <CardContent>
+              {auditLog.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Sin cambios registrados.</p>
+              ) : (
+                <div className="space-y-3 max-h-80 overflow-y-auto">
+                  {auditLog.map((entry: any) => (
+                    <div key={entry.id} className="border-b pb-2 last:border-0">
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>{format(parseISO(entry.created_at), "dd/MM/yy HH:mm", { locale: es })}</span>
+                        <span>{entry.performed_by?.slice(0, 8)}…</span>
+                      </div>
+                      <p className="text-sm font-medium">{entry.action}</p>
+                      {entry.new_data && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {typeof entry.new_data === "object"
+                            ? Object.entries(entry.new_data).map(([k, v]) => `${k}: ${v}`).join(" · ")
+                            : String(entry.new_data)}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}

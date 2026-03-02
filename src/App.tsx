@@ -30,6 +30,8 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import AdminStub from "./pages/admin/AdminStub";
 import AdminCategories from "./pages/admin/Categories";
 import NewReservation from "./pages/admin/NewReservation";
+import AdminReservations from "./pages/admin/Reservations";
+import AdminReservationDetail from "./pages/admin/ReservationDetail";
 import AdminVehicleCategories from "./pages/admin/VehicleCategories";
 import AdminVehiclesByCategory from "./pages/admin/VehiclesByCategory";
 
@@ -89,7 +91,8 @@ const App = () => (
             <Route element={<AdminLayout />}>
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
               <Route path="/admin/reservas/nueva" element={<NewReservation />} />
-              <Route path="/admin/reservas" element={<AdminStub />} />
+              <Route path="/admin/reservas/:id" element={<AdminReservationDetail />} />
+              <Route path="/admin/reservas" element={<AdminReservations />} />
               <Route path="/admin/vehiculos" element={<AdminVehicleCategories />} />
               <Route path="/admin/vehiculos/:categoryId" element={<AdminVehiclesByCategory />} />
               <Route path="/admin/categorias" element={<AdminCategories />} />
