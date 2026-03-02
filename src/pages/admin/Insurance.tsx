@@ -25,7 +25,7 @@ interface InsurancePlan {
   id: string;
   name: string;
   description: string | null;
-  plan_type: "basic" | "premium";
+  tier: "basic" | "premium";
   price_per_reservation: number;
   eliminates_deposit: boolean;
   is_active: boolean;
@@ -93,7 +93,7 @@ export default function AdminInsurance() {
       const { data, error } = await supabase
         .from("insurance_plans")
         .select("*")
-        .order("plan_type");
+        .order("tier");
       console.log("insurance_plans data:", data);
       console.log("insurance_plans error:", error);
       if (error) throw error;
@@ -117,8 +117,8 @@ export default function AdminInsurance() {
     },
   });
 
-  const basicPlan = plans.find((p) => p.plan_type === "basic");
-  const premiumPlan = plans.find((p) => p.plan_type === "premium");
+  const basicPlan = plans.find((p) => p.tier === "basic");
+  const premiumPlan = plans.find((p) => p.tier === "premium");
 
   /* ── Open edit ────────────────────────────────────── */
 
@@ -144,7 +144,7 @@ export default function AdminInsurance() {
     if (!editingPlan) return;
 
     setSaving(true);
-    const isBasic = editingPlan.plan_type === "basic";
+    const isBasic = editingPlan.tier === "basic";
     try {
       const payload = {
         name: form.name.trim(),
@@ -161,7 +161,7 @@ export default function AdminInsurance() {
       if (error) throw error;
 
       if (user) {
-        await writeAudit(user.id, "update", "insurance_plans", editingPlan.id, editingPlan, { ...payload, id: editingPlan.id, plan_type: editingPlan.plan_type });
+        await writeAudit(user.id, "update", "insurance_plans", editingPlan.id, editingPlan, { ...payload, id: editingPlan.id, tier: editingPlan.tier });
       }
 
       toast({ title: "Plan de seguro actualizado" });
@@ -336,7 +336,7 @@ export default function AdminInsurance() {
           <DialogHeader>
             <DialogTitle>Editar plan de seguro</DialogTitle>
             <DialogDescription>
-              Modifica los datos del plan {editingPlan?.plan_type === "basic" ? "básico" : "premium"}.
+              Modifica los datos del plan {editingPlan?.tier === "basic" ? "básico" : "premium"}.
             </DialogDescription>
           </DialogHeader>
 
@@ -372,7 +372,7 @@ export default function AdminInsurance() {
                 step={0.5}
                 value={form.price_per_reservation}
                 onChange={(e) => setForm({ ...form, price_per_reservation: Number(e.target.value) })}
-                disabled={editingPlan?.plan_type === "basic"}
+                disabled={editingPlan?.tier === "basic"}
               />
             </div>
 
@@ -383,7 +383,7 @@ export default function AdminInsurance() {
                 id="plan-deposit"
                 checked={form.eliminates_deposit}
                 onCheckedChange={(v) => setForm({ ...form, eliminates_deposit: v })}
-                disabled={editingPlan?.plan_type === "basic"}
+                disabled={editingPlan?.tier === "basic"}
               />
             </div>
 
