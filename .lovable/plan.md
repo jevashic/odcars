@@ -1,180 +1,144 @@
 
 
-## Implementar modulo Facturacion completo
+## Implementar modulo Informes en /admin/informes
 
 ### Archivos a crear/modificar
 
-1. **Crear `src/pages/admin/Invoices.tsx`** -- Listado con filtros, paginacion, modal crear factura (~550 lineas)
-2. **Crear `src/pages/admin/InvoiceDetail.tsx`** -- Ficha individual con acciones segun estado (~500 lineas)
-3. **Modificar `src/App.tsx`** -- Sustituir AdminStub por los nuevos componentes
+1. **Crear `src/pages/admin/Reports.tsx`** -- Modulo completo con dos pestanas (~600 lineas)
+2. **Modificar `src/App.tsx`** -- Cambiar AdminStub por AdminReports en `/admin/informes`
 
 ### Cambios en App.tsx
 
-- Importar `AdminInvoices` y `AdminInvoiceDetail`
-- Cambiar la ruta `/admin/facturacion` de `AdminStub` a `AdminInvoices`
-- Anadir ruta `/admin/facturacion/:id` con `AdminInvoiceDetail`
+- Importar `AdminReports` desde `./pages/admin/Reports`
+- Linea 117: cambiar `AdminStub` por `AdminReports` en `/admin/informes`
 
 ---
 
-### Vista 1 -- Invoices.tsx (Listado)
+### Estructura general
 
-Seguir patron exacto de Discounts.tsx: mismo writeAudit, mismas importaciones shadcn, useAdminAuth, TanStack Query, toasts.
-
-**Query principal:**
-```text
-supabase.from("invoices")
-  .select(`
-    *,
-    reservations(reservation_number),
-    customers(id, first_name, last_name, email)
-  `, { count: "exact" })
-  .order("created_at", { ascending: false })
-  .range(from, to)
-```
-
-Paginacion de 15 en 15 con `.range()` server-side.
-
-**Tabla con columnas:**
-- N Factura (invoice_number)
-- Cliente (first_name + last_name del join customers)
-- N Reserva (reservation_number del join reservations)
-- Fecha emision (issued_at o created_at formateado)
-- Total (total_amount formateado con euro)
-- Estado (badge coloreado)
-- Acciones
-
-**Badges de estado:**
-- draft: gris "Borrador"
-- issued: azul "Emitida"
-- sent: verde "Enviada"
-- void: rojo "Anulada"
-
-**Filtros (encima de la tabla):**
-- Select por estado: Todos / Borrador / Emitida / Enviada / Anulada -- server-side `.eq("status", value)`
-- Rango de fechas: dos date pickers (desde/hasta) que filtran por created_at con `.gte()` y `.lte()`
-- Input de busqueda por n factura, n reserva o email cliente -- filtrado client-side
-
-**Acciones por fila:**
-- Boton "Ver factura" que navega a `/admin/facturacion/{id}`
-- Boton "Imprimir PDF" que genera una ventana de impresion con `window.print()` sobre un layout formateado
-- Boton "Anular" (solo si status = issued o sent): abre AlertDialog con textarea motivo obligatorio, actualiza status a void, registra en audit_log
-
-**Modal "Nueva factura":**
-- Input buscador de reserva por numero de reserva
-- Query: `supabase.from("reservations").select("*, customers(*), vehicle_categories(name), reservation_extras(*, extras(name, price_per_reservation)), reservation_insurance(*, insurance_plans(name, price_per_day))").ilike("reservation_number", search)`
-- Al seleccionar una reserva, precarga automaticamente todos los datos
-- Genera invoice_number automatico con formato FAC-YYYY-XXXX (ano actual + secuencial)
-- Construye line_items jsonb a partir de los datos de la reserva:
-  - Linea de alquiler (precio/dia x dias)
-  - Lineas de extras
-  - Linea de seguro
-  - Lineas de cargos adicionales si existen
-- Calcula subtotal gravable, subtotal exento, IGIC 7%, descuento, total
-- Boton "CREAR BORRADOR" que inserta en invoices con status=draft
-- Registra en audit_log con action='insert'
+Componente con Tabs de shadcn (dos pestanas):
+- "Resumen Operativo" (visible para todos los roles)
+- "Informes Detallados" (visible solo si `user.role === 'admin' || user.role === 'manager'`)
 
 ---
 
-### Vista 2 -- InvoiceDetail.tsx (Ficha)
+### Pestana 1 -- Resumen Operativo
 
-Se carga con `useParams()` para obtener el `id`.
+Accesible para employee, manager y admin.
 
-**Query principal:**
+**Panel KPIs del dia (cards en grid 5 columnas):**
+
+Query: `supabase.from("report_active_today").select("*").single()`
+
+Cards:
+- Reservas activas ahora mismo
+- Vehiculos disponibles
+- Vehiculos en taller
+- Entregas pendientes hoy
+- Devoluciones pendientes hoy
+
+**Panel KPIs del mes (cards en grid 4 columnas):**
+
+Query: `supabase.from("report_sales_by_day").select("*")` filtrado por mes actual, y agregar client-side:
+- Total reservas del mes (sum de reservation_count)
+- Ingresos del mes en euros (sum de revenue)
+- Reservas canceladas (del campo cancelled si existe, o query adicional a reservations con status='cancelled' y rango de fechas del mes)
+- Reservas no_show (igual, status='no_show')
+
+Para canceladas y no_show, query directa:
 ```text
-supabase.from("invoices")
-  .select(`
-    *,
-    reservations(reservation_number, pickup_date, return_date),
-    customers(*)
-  `)
-  .eq("id", invoiceId)
-  .single()
+supabase.from("reservations")
+  .select("id", { count: "exact", head: true })
+  .eq("status", "cancelled")
+  .gte("created_at", startOfMonth)
+  .lte("created_at", endOfMonth)
 ```
 
-**Query de accounting_config:**
+**Grafico de barras -- Ventas por dia (ultimos 30 dias):**
+
+Query: `supabase.from("report_sales_by_day").select("*").gte("day", hace30dias).order("day")`
+
+Usar recharts BarChart con:
+- Eje X: fecha (day)
+- Eje Y izquierdo: ingresos (revenue) -- barras color primary
+- Eje Y derecho: n reservas (reservation_count) -- linea color cta
+- Usar ChartContainer y ChartTooltip del sistema existente en chart.tsx
+
+Colores: `hsl(var(--primary))` y `hsl(var(--cta))`
+
+**Tabla -- Proximas reservas:**
+
+Query: `supabase.from("report_upcoming_reservations").select("*").limit(20)`
+
+Columnas: N reserva, Cliente, Categoria, Fecha recogida, Oficina, Estado (badge coloreado)
+
+---
+
+### Pestana 2 -- Informes Detallados
+
+Solo visible si `user.role` es `admin` o `manager`. Comprobar con `useAdminAuth()`.
+
+**Selector de periodo (encima de todos los informes):**
+
+Select con opciones:
+- Mes actual
+- Mes anterior
+- Trimestre actual
+- Ano actual
+- Rango personalizado
+
+Si "Rango personalizado": mostrar dos date pickers (fecha inicio / fecha fin).
+
+Cada opcion calcula `dateFrom` y `dateTo` que se pasan como filtro a las queries.
+
+**Informe 1 -- Ventas por canal:**
+
+Query: `supabase.from("report_sales_by_channel").select("*").gte("day", dateFrom).lte("day", dateTo)` (o la estructura que tenga la vista, agrupando client-side si es por dia)
+
+Si la vista ya devuelve datos agregados por canal directamente, usar tal cual. Si devuelve por dia, agregar client-side por canal.
+
+Tabla: Canal, N reservas, Ingresos totales, Ticket medio (ingresos/reservas), % del total
+Grafico de tarta (PieChart de recharts) con colores del sistema de diseno.
+
+**Informe 2 -- Ventas por oficina:**
+
+Query: `supabase.from("report_sales_by_branch").select("*")` con filtro de periodo
+
+Tabla: Oficina, N reservas, Ingresos, Ticket medio
+Grafico de barras horizontales (BarChart layout="vertical")
+
+**Informe 3 -- Ventas por metodo de pago:**
+
+Query: `supabase.from("report_sales_by_payment_method").select("*")` con filtro de periodo
+
+Tabla: Metodo, N reservas, Total cobrado
+
+**Informe 4 -- Contabilidad mensual:**
+
+Selector de mes y ano (dos selects).
+
+Boton "GENERAR INFORME" que ejecuta:
 ```text
-supabase.from("accounting_config").select("*").single()
+supabase.rpc("report_monthly_accounting", { p_year: year, p_month: month })
 ```
-Si la tabla no existe, usar valores por defecto hardcoded para la empresa.
 
-**Layout dos columnas (grid lg:grid-cols-3, izquierda 2 cols, derecha 1 col):**
+Tabla con todas las lineas contables devueltas: concepto, importe, desglose IGIC.
 
-#### Columna izquierda (2/3)
-
-**Cabecera empresa (Card):**
-- Logo Ocean Drive (desde assets)
-- Razon social, CIF, direccion, n IGIC (desde accounting_config o defaults)
-
-**Datos cliente (Card):**
-- Nombre completo, email, n documento, direccion
-- Si is_company: nombre empresa y CIF
-
-**Datos factura (Card):**
-- N factura (invoice_number)
-- Fecha de emision (issued_at)
-- N reserva vinculada (link a /admin/reservas/:id)
-
-**Lineas de factura (Table):**
-- Parsear line_items jsonb
-- Columnas: Concepto, Tipo (alquiler/extra/seguro/cargo), Base imponible, IGIC 7%, Total
-- Tipos con badge de color distinto
-- Al final de la tabla:
-  - Subtotal gravable
-  - Subtotal exento (si hay)
-  - IGIC 7%
-  - Descuento aplicado (si existe)
-  - TOTAL en negrita grande
-
-**Pie de factura:**
-- Metodo de pago y fecha de pago
-- invoice_footer_note desde accounting_config o texto por defecto
-
-#### Columna derecha (1/3)
-
-**Bloque Acciones (Card, condicional segun estado):**
-
-Si status = `draft`:
-- Boton "EMITIR FACTURA":
-  - Actualiza status a 'issued', registra issued_at = now()
-  - Intenta llamar a `supabase.functions.invoke('issue_invoice', { body: { invoice_id } })`
-  - Si la edge function no existe, solo actualiza el estado y muestra toast informativo
-  - Registra en audit_log
-
-Si status = `issued` o `sent`:
-- Boton "DESCARGAR PDF": abre ventana de impresion con layout formateado
-- Boton "REENVIAR AL CLIENTE": llama a `supabase.functions.invoke('issue_invoice', { body: { invoice_id, resend: true } })`
-- Boton "ANULAR": AlertDialog con textarea motivo obligatorio, actualiza status a void, registra en audit_log
-
-Si status = `void`:
-- Solo muestra badge "Anulada" con motivo de anulacion
-
-**Bloque Historial (Card):**
-- Query: `supabase.from("audit_log").select("*").eq("record_id", invoiceId).order("created_at", { ascending: false })`
-- Listado con: fecha, usuario, accion, resumen
+Boton "EXPORTAR CSV" que convierte los datos a CSV y dispara descarga con `URL.createObjectURL(blob)` + `a.click()`.
 
 ---
 
 ### Patron de codigo
 
-- Mismo helper `writeAudit` inline
-- `useQuery` + `useQueryClient` de TanStack
-- `useAdminAuth` para usuario
-- Toasts con `@/hooks/use-toast`
-- Breadcrumb en la ficha: "Facturacion > FAC-XXXX"
-- Boton "Volver" en la ficha
-
-### Generacion PDF
-
-Se usa `window.print()` con un div oculto que contiene el layout de factura formateado con estilos de impresion (`@media print`). Es la solucion mas simple sin instalar dependencias adicionales.
-
-### Notas tecnicas
-
-- Si la tabla `invoices` no tiene todos los campos esperados (como `line_items`, `void_reason`, `issued_at`), se adaptaran los queries y se usaran los campos disponibles.
-- Si `accounting_config` no existe como tabla, se usaran valores por defecto hardcoded para la informacion de la empresa.
-- La llamada a `supabase.functions.invoke('issue_invoice')` se hace con try/catch; si la edge function no esta desplegada, se muestra un toast informativo sin bloquear la operacion.
-- NO se elimina ninguna factura, solo se anula.
+- `useAdminAuth` para obtener usuario y rol
+- `useQuery` de TanStack para cada seccion de datos
+- Recharts con ChartContainer de `@/components/ui/chart` para tooltips consistentes
+- Tabs de `@/components/ui/tabs`
+- Cards de `@/components/ui/card`
+- Toasts con `@/hooks/use-toast` para errores
+- Colores graficos: `hsl(var(--primary))` para barras principales, `hsl(var(--cta))` para acentos, palette generada para pie chart
 
 ### Dependencias
 
-No se instalan paquetes nuevos. Se reutilizan componentes shadcn existentes.
+No se instalan paquetes nuevos. Se reutilizan recharts, shadcn Tabs, Card, Table, Select, Badge, Button, Calendar, Popover, y el sistema de charts existente.
 
