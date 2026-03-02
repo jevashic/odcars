@@ -1,35 +1,33 @@
 
 
-## Corregir disponibilidad y extras en Nueva Reserva
+## Corregir modulo Categorias para que funcione con datos reales
 
-### Problema 1 -- VER DISPONIBILIDAD no muestra nada
+### Problema
 
-La query actual pide `base_price_per_day` pero la columna real en `vehicle_categories` es `price_per_day` (confirmado en las respuestas de red). Ademas, la disponibilidad se calcula con queries separadas por categoria cuando se puede hacer en una sola query con join.
+El archivo `src/pages/admin/Categories.tsx` ya tiene un CRUD completo implementado, pero usa la columna `base_price_per_day` que no existe en la tabla `vehicle_categories`. La columna real es `price_per_day` (confirmado por `FeaturedVehicles.tsx` que consulta la misma tabla con exito). Esto causa que las queries fallen silenciosamente y no se muestren datos.
 
-**Cambios:**
-- Interfaz `Category` (linea 39): cambiar `base_price_per_day` a `price_per_day`
-- Query de categorias (linea 173-176): cambiar a `.select("id, name, image_url, price_per_day, vehicles(id, status)")` y contar vehiculos disponibles filtrando `v.status === "available"` en el resultado, eliminando las queries individuales por categoria
-- Actualizar todas las referencias: `cat.base_price_per_day` y `selectedCategory.base_price_per_day` a `price_per_day` (lineas 150, 421, 628, 629)
+### Cambios en `src/pages/admin/Categories.tsx`
 
-### Problema 2 -- Extras no cargan
+**1. Interfaz Category (linea 47):**
+Cambiar `base_price_per_day: number` a `price_per_day: number`
 
-La query pide `price_per_day` pero la columna real es `price_per_reservation`.
+**2. emptyCategoryForm (linea 74):**
+Cambiar `base_price_per_day: 0` a `price_per_day: 0`
 
-**Cambios:**
-- Interfaz `Extra` (linea 53): cambiar `price_per_day` a `price_per_reservation`
-- Query de extras (linea 129): cambiar select a `"id, name, description, price_per_reservation"`
-- Actualizar referencias en el render: `ext.price_per_day` a `ext.price_per_reservation` (lineas 553, 654)
-- Actualizar calculo del subtotal (linea 153): cambiar `e.price_per_day * days` a `e.price_per_reservation` (precio por reserva, no por dia)
-- Mostrar descripcion del extra junto al nombre si existe
+**3. openEdit (linea 204):**
+Cambiar `base_price_per_day: cat.base_price_per_day` a `price_per_day: cat.price_per_day`
 
-### Detalle tecnico
+**4. saveCategory validacion (linea 220):**
+Cambiar `!form.base_price_per_day` a `!form.price_per_day`
 
-Archivo unico: `src/pages/admin/NewReservation.tsx`
+**5. Card display (linea 403):**
+Cambiar `cat.base_price_per_day` a `cat.price_per_day`
 
-Cambios puntuales:
-1. Renombrar `base_price_per_day` a `price_per_day` en interfaz, query y todas las referencias
-2. Simplificar `handleCheckAvailability` para hacer una sola query con join a vehicles en vez de N+1 queries
-3. Renombrar `price_per_day` a `price_per_reservation` en interfaz Extra, query y referencias
-4. Ajustar calculo de extras en subtotal (precio fijo por reserva, no multiplicado por dias)
-5. Agregar `console.error` en los catch blocks para facilitar depuracion futura
+**6. Input del formulario (linea 483):**
+Cambiar `value={form.base_price_per_day}` y `base_price_per_day: parseFloat(...)` a `price_per_day`
+
+Son 6 cambios puntuales de renombrado en un solo archivo. Todo lo demas (estructura CRUD, audit_log, imagen drag-and-drop, temporadas/pricing_rules) ya esta correctamente implementado.
+
+### Archivo a modificar
+- `src/pages/admin/Categories.tsx`
 
