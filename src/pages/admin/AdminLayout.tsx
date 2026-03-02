@@ -112,12 +112,11 @@ function AdminLayoutInner() {
     setSearching(true);
     setSearchError("");
     try {
-      // Search by reservation code or client email
       const q = searchQuery.trim();
       const { data, error } = await supabase
         .from("reservations")
-        .select("id, reservation_code, customer_email")
-        .or(`reservation_code.ilike.%${q}%,customer_email.ilike.%${q}%`)
+        .select("id, reservation_number")
+        .eq("reservation_number", q)
         .limit(1)
         .maybeSingle();
       if (error) throw error;
@@ -126,7 +125,7 @@ function AdminLayoutInner() {
         setSearchQuery("");
         navigate(`/admin/reservas/${data.id}`);
       } else {
-        setSearchError("No se encontró ninguna reserva con ese dato");
+        setSearchError("No se encontró ninguna reserva con ese número");
       }
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
@@ -208,17 +207,17 @@ function AdminLayoutInner() {
         {/* Top bar with quick actions */}
         <header className="bg-white border-b border-[#E2E8F0] px-8 py-3 flex items-center justify-end gap-3 shrink-0">
           <Button
-            onClick={() => navigate("/admin/reservas/nueva")}
-            className="h-10 px-6 rounded-lg text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/90"
-          >
-            🚗 NUEVA RESERVA
-          </Button>
-          <Button
             onClick={() => { setSearchModalOpen(true); setSearchError(""); setSearchQuery(""); }}
             variant="outline"
             className="h-10 px-6 rounded-lg text-sm font-bold border-primary text-primary hover:bg-primary/5"
           >
             🔍 CONSULTAR RESERVA
+          </Button>
+          <Button
+            onClick={() => navigate("/admin/reservas/nueva")}
+            className="h-10 px-6 rounded-lg text-sm font-bold bg-cta text-cta-foreground hover:bg-cta/90"
+          >
+            🚗 NUEVA RESERVA
           </Button>
         </header>
 
@@ -233,11 +232,11 @@ function AdminLayoutInner() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Consultar reserva</DialogTitle>
-            <DialogDescription>Busca por número de reserva o email del cliente.</DialogDescription>
+            <DialogDescription>Busca por número de reserva</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 mt-2">
             <Input
-              placeholder="Número de reserva o email del cliente"
+              placeholder="OD-2026-0001"
               value={searchQuery}
               onChange={(e) => { setSearchQuery(e.target.value); setSearchError(""); }}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}

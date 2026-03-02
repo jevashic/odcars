@@ -29,6 +29,7 @@ import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminStub from "./pages/admin/AdminStub";
 import AdminCategories from "./pages/admin/Categories";
+import NewReservation from "./pages/admin/NewReservation";
 
 import AdminInsurance from "./pages/admin/Insurance";
 import NotFound from "./pages/NotFound";
@@ -84,6 +85,7 @@ const App = () => (
             <Route path="/admin" element={<AdminLogin />} />
             <Route element={<AdminLayout />}>
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
+              <Route path="/admin/reservas/nueva" element={<NewReservation />} />
               <Route path="/admin/reservas" element={<AdminStub />} />
               <Route path="/admin/vehiculos" element={<AdminStub />} />
               <Route path="/admin/categorias" element={<AdminCategories />} />
