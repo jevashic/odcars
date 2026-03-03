@@ -44,6 +44,7 @@ import AdminInsurance from "./pages/admin/Insurance";
 import AdminCustomers from "./pages/admin/Customers";
 import AdminCustomerDetail from "./pages/admin/CustomerDetail";
 import AdminBranches from "./pages/admin/Branches";
+import AdminUsers from "./pages/admin/Users";
 import NotFound from "./pages/NotFound";
 import ScrollToTop from "./components/ScrollToTop";
 
@@ -109,7 +110,7 @@ const App = () => (
               <Route path="/admin/clientes" element={<AdminCustomers />} />
               <Route path="/admin/clientes/:id" element={<AdminCustomerDetail />} />
               <Route path="/admin/oficinas" element={<AdminBranches />} />
-              <Route path="/admin/usuarios" element={<AdminStub />} />
+              <Route path="/admin/usuarios" element={<AdminUsers />} />
               <Route path="/admin/contenido/*" element={<AdminStub />} />
               <Route path="/admin/chat" element={<AdminStub />} />
               <Route path="/admin/seguros" element={<AdminInsurance />} />
