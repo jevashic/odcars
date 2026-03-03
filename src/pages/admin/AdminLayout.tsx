@@ -31,7 +31,7 @@ import {
   Receipt,
   LogOut,
   ChevronDown,
-  Image,
+  
   Compass,
   Sliders,
 } from "lucide-react";
@@ -63,9 +63,8 @@ const configLinks: NavItem[] = [
   { to: "/admin/oficinas", icon: MapPin, label: "Oficinas", roles: ["admin"] },
   { to: "/admin/usuarios", icon: UserCog, label: "Usuarios", roles: ["admin"] },
   { to: "/admin/seguros", icon: Shield, label: "Seguros", roles: ["admin"] },
-  { to: "/admin/contenido/home", icon: FileText, label: "Contenido web", roles: ["admin"] },
+  { to: "/admin/contenido", icon: FileText, label: "Contenido web", roles: ["admin"] },
   { to: "/admin/conoce-gran-canaria", icon: Compass, label: "Conoce Gran Canaria", roles: ["admin"] },
-  { to: "/admin/banners", icon: Image, label: "Banners", roles: ["admin"] },
   { to: "/admin/chat", icon: MessageCircle, label: "Chat", roles: ["admin"] },
   { to: "/admin/newsletter", icon: Mail, label: "Newsletter", roles: ["admin"] },
   { to: "/admin/branding", icon: Palette, label: "Branding", roles: ["admin"] },

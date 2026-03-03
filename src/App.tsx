@@ -45,6 +45,7 @@ import AdminCustomers from "./pages/admin/Customers";
 import AdminCustomerDetail from "./pages/admin/CustomerDetail";
 import AdminBranches from "./pages/admin/Branches";
 import AdminUsers from "./pages/admin/Users";
+import AdminContentManagement from "./pages/admin/ContentManagement";
 import NotFound from "./pages/NotFound";
 import ScrollToTop from "./components/ScrollToTop";
 
@@ -111,7 +112,7 @@ const App = () => (
               <Route path="/admin/clientes/:id" element={<AdminCustomerDetail />} />
               <Route path="/admin/oficinas" element={<AdminBranches />} />
               <Route path="/admin/usuarios" element={<AdminUsers />} />
-              <Route path="/admin/contenido/*" element={<AdminStub />} />
+              <Route path="/admin/contenido/*" element={<AdminContentManagement />} />
               <Route path="/admin/chat" element={<AdminStub />} />
               <Route path="/admin/seguros" element={<AdminInsurance />} />
               <Route path="/admin/newsletter" element={<AdminStub />} />
