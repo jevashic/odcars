@@ -1,95 +1,92 @@
 
 
-## Reemplazar modulo Seguros con CRUD de insurance_plans
+## Modulo Usuarios - CRUD completo en /admin/usuarios
 
-### Archivo a modificar
+### Resumen
 
-1. **Reescribir `src/pages/admin/Insurance.tsx`** -- Reemplazar completamente con nuevo componente (~300 lineas)
-
-No se necesitan cambios en App.tsx ya que la ruta `/admin/seguros` ya apunta a `AdminInsurance`.
+Crear el componente completo de gestion de usuarios internos con listado, filtros, creacion y edicion. Para crear usuarios en Supabase Auth se necesita una **edge function** que use la `service_role` key (no se puede hacer desde el frontend por seguridad).
 
 ---
 
-### Insurance.tsx -- Componente completo
+### Archivos a crear/modificar
 
-Seguir patron exacto de Branches.tsx: mismo `writeAudit` helper, mismas importaciones shadcn, `useAdminAuth`, TanStack Query, toasts.
+1. **Crear `supabase/functions/create-internal-user/index.ts`** -- Edge function que recibe email + password y llama a `supabase.auth.admin.createUser()` con la service_role key. Devuelve el `auth_user_id`.
 
-**Control de acceso:**
-- Verificar `user.role === 'admin'`
-- Si no es admin, mostrar mensaje "No tienes permisos para acceder a esta seccion"
+2. **Actualizar `supabase/config.toml`** -- Registrar la funcion con `verify_jwt = false` (validacion manual en codigo).
 
-**Interfaces:**
-```text
-interface InsurancePlan {
-  id: string;
-  name: string;
-  description: string | null;
-  plan_type: "basic" | "premium";
-  price_per_reservation: number;
-  eliminates_deposit: boolean;
-  is_active: boolean;
-}
+3. **Crear `src/pages/admin/Users.tsx`** -- Componente completo (~450 lineas).
 
-interface PlanForm {
-  name: string;
-  description: string;
-  price_per_reservation: number;
-  eliminates_deposit: boolean;
-  is_active: boolean;
-}
-```
+4. **Modificar `src/App.tsx`** -- Importar `AdminUsers` y reemplazar `AdminStub` en la ruta `/admin/usuarios`.
 
-**Query principal:**
-```text
-supabase.from("insurance_plans").select("*").order("plan_type")
-```
+---
 
-**Query adicional para fianzas por categoria:**
-```text
-supabase.from("vehicle_categories").select("id, name, deposit_amount_base")
-```
-Se muestra en la card del plan basico la fianza de cada categoria.
+### Edge function: create-internal-user
 
-**Layout:**
+- Recibe: `{ email, password, full_name, role, branch_id, is_active }`
+- Valida que el llamante sea un admin (extraer JWT con `getClaims`, consultar `internal_users` para verificar rol admin)
+- Crea usuario en Auth con `supabase.auth.admin.createUser({ email, password, email_confirm: true })`
+- Inserta registro en `internal_users` con el `auth_user_id` devuelto
+- Registra en `audit_log`
+- Devuelve el usuario creado
 
-Cabecera: "Seguros" + subtitulo descriptivo. NO hay boton "Nuevo" (solo existen 2 planes fijos).
+Requisito: el admin debe agregar `SUPABASE_SERVICE_ROLE_KEY` como secreto del proyecto.
 
-Dos cards grandes en grid 2 columnas:
+---
 
-**Card BASICO (plan_type = 'basic'):**
-- Icono Shield + nombre + descripcion
-- Precio: "Incluido en el alquiler" (texto fijo)
-- Fianza: listado de fianzas por categoria (nombre categoria: X euros) cargado de vehicle_categories.deposit_amount_base
-- Badge Activo/Inactivo
-- Boton "Editar"
+### Users.tsx - Estructura del componente
 
-**Card PREMIUM (plan_type = 'premium'):**
-- Icono ShieldCheck + nombre + descripcion
-- Suplemento: price_per_reservation formateado en euros
-- Fianza: "0 euros -- Eliminada completamente" (texto fijo)
-- Badge Activo/Inactivo
-- Boton "Editar"
+**Control de acceso:** Solo rol `admin`. Si no es admin, mensaje "No tienes permisos".
 
-**Modal Editar (Dialog):**
+**Queries (TanStack Query):**
+- `internal_users` con columnas: id, auth_user_id, full_name, email, role, branch_id, is_active, created_at
+- `branches` (activas) para el select de oficina y para mostrar nombre de oficina en la tabla
 
-Campos:
-1. Nombre (obligatorio)
-2. Descripcion (textarea)
-3. Suplemento precio en euros (price_per_reservation) -- si plan_type='basic', input deshabilitado con valor 0
-4. Toggle Elimina fianza (eliminates_deposit) -- si plan_type='basic', switch deshabilitado con valor false
-5. Toggle Activo/Inactivo (is_active)
-6. Boton "GUARDAR"
+**Listado - Tabla:**
 
-Texto informativo debajo del formulario:
-"El seguro basico siempre esta incluido en el precio por dia de cada categoria. El suplemento premium se suma al total en el proceso de reserva."
+| Nombre | Email | Rol | Oficina | Activo | Fecha alta | Acciones |
 
-**Save:**
-- Update en insurance_plans por id
-- writeAudit con action='update', old_data (plan original), new_data (plan actualizado)
-- Toast exito/error
-- Invalidar query
+- Rol con badge de color: admin=rojo, manager=azul, employee=verde
+- Oficina: nombre de la branch asociada o "-"
+- Activo: badge verde/gris
+- Acciones: botones Editar y Desactivar
 
-### Dependencias
+**Filtros (encima de la tabla):**
+- Select por rol (todos / admin / manager / employee)
+- Select por oficina (todas / lista de branches)
+- Select activo/inactivo (todos / activos / inactivos)
+- Input buscador por nombre o email
 
-No se instalan paquetes nuevos. Se reutilizan: Card, Dialog, Input, Label, Switch, Badge, Button, Textarea, Loader2, iconos Shield/ShieldCheck de lucide.
+**Boton "Nuevo usuario"** arriba a la derecha.
+
+**Modal Crear:**
+- full_name (obligatorio)
+- email (obligatorio)
+- Contrasena temporal (autogenerada, editable, min 8 chars)
+- Rol: select employee/manager/admin
+- Oficina: select desde branches activas
+- Toggle is_active (default true)
+- Boton "CREAR USUARIO"
+- Al crear exitosamente: mostrar dialog con la contrasena temporal para que el admin la copie
+
+**Modal Editar:**
+- full_name
+- Rol: select
+- Oficina: select
+- Toggle is_active
+- Email mostrado pero NO editable
+- Boton "GUARDAR"
+
+**Desactivar:** Update `is_active = false` + audit_log + toast.
+
+**Audit:** Todas las operaciones (insert, update) registradas en audit_log con old_data y new_data.
+
+---
+
+### Detalle tecnico
+
+- Generacion de contrasena temporal: funcion que genera 12 caracteres alfanumericos + simbolo
+- La edge function usa `createClient` con `SUPABASE_SERVICE_ROLE_KEY` para tener permisos admin
+- El frontend llama a la edge function via `supabase.functions.invoke('create-internal-user', { body: ... })`
+- Para editar: update directo en `internal_users` desde el frontend (no requiere service role)
+- Patron identico a Branches.tsx: writeAudit helper, useQuery, toast, Dialog
 
