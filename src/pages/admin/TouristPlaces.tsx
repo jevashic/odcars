@@ -103,16 +103,32 @@ export default function TouristPlaces() {
 
   /* ── Query ─────────────────────────────────── */
 
-  const { data: places = [], isLoading } = useQuery<TouristPlace[]>({
+  const { data: places = [], isLoading, error: queryError } = useQuery<TouristPlace[]>({
     queryKey: ["admin-tourist-places"],
     enabled: isAdmin,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tourist_places")
-        .select("id, slug, google_maps_url, is_featured, is_active, sort_order, created_at, tourist_place_translations!inner(name), tourist_place_photos(id, photo_url, field_name)")
+        .select(`
+          id,
+          slug,
+          is_active,
+          is_featured,
+          sort_order,
+          google_maps_url,
+          tourist_place_translations!inner(
+            name,
+            short_description,
+            lang
+          ),
+          tourist_place_photos(
+            photo_url,
+            field_name
+          )
+        `)
         .eq("tourist_place_translations.lang", "es")
         .order("sort_order");
-      if (error) throw error;
+      if (error) throw new Error(error.message);
       return (data ?? []) as unknown as TouristPlace[];
     },
   });
@@ -351,6 +367,17 @@ export default function TouristPlaces() {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (queryError) {
+    return (
+      <div>
+        <h1 className="text-2xl font-bold text-primary mb-4">Conoce Gran Canaria</h1>
+        <div className="bg-destructive/10 rounded-xl p-8 shadow-sm border border-destructive text-center">
+          <p className="text-destructive font-medium">Error al cargar lugares: {queryError.message}</p>
+        </div>
       </div>
     );
   }
