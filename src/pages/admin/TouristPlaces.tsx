@@ -34,9 +34,8 @@ interface TouristPlace {
   is_featured: boolean;
   is_active: boolean;
   sort_order: number;
-  created_at: string;
-  tourist_place_translations: { name: string }[];
-  tourist_place_photos: { id: string; photo_url: string; field_name: string }[];
+  tourist_place_translations: { name: string; short_description: string; lang: string }[];
+  tourist_place_photos: { id: string; url: string; alt_text: string | null; sort_order: number; is_cover: boolean }[];
 }
 
 interface PlaceForm {
@@ -116,17 +115,19 @@ export default function TouristPlaces() {
           is_featured,
           sort_order,
           google_maps_url,
-          tourist_place_translations!inner(
+          tourist_place_translations(
             name,
             short_description,
             lang
           ),
           tourist_place_photos(
-            photo_url,
-            field_name
+            id,
+            url,
+            alt_text,
+            sort_order,
+            is_cover
           )
         `)
-        .eq("tourist_place_translations.lang", "es")
         .order("sort_order");
       if (error) throw new Error(error.message);
       return (data ?? []) as unknown as TouristPlace[];
@@ -184,9 +185,11 @@ export default function TouristPlaces() {
 
     // Photos
     const pMap: Record<string, string> = {};
-    for (const ph of place.tourist_place_photos) {
-      pMap[ph.field_name] = ph.photo_url;
-    }
+    place.tourist_place_photos
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .forEach((ph, i) => {
+        pMap[`photo_${i + 1}`] = ph.url;
+      });
     setPhotos(pMap);
 
     setModalOpen(true);
@@ -259,7 +262,7 @@ export default function TouristPlaces() {
         // Insert current
         const photoRows = Object.entries(photos)
           .filter(([, url]) => url)
-          .map(([field_name, photo_url]) => ({ place_id: placeId!, field_name, photo_url }));
+          .map(([fieldName, url], idx) => ({ place_id: placeId!, url, sort_order: idx + 1, is_cover: idx === 0 }));
         if (photoRows.length > 0) {
           const { error: phError } = await supabase.from("tourist_place_photos").insert(photoRows);
           if (phError) throw phError;
@@ -433,8 +436,8 @@ export default function TouristPlaces() {
             </TableHeader>
             <TableBody>
               {filtered.map((place) => {
-                const name = place.tourist_place_translations?.[0]?.name ?? "—";
-                const cover = place.tourist_place_photos?.find((p) => p.field_name === "photo_1")?.photo_url;
+                const name = place.tourist_place_translations?.find((t) => t.lang === "es")?.name ?? "—";
+                const cover = place.tourist_place_photos?.find((p) => p.is_cover)?.url ?? place.tourist_place_photos?.[0]?.url;
                 return (
                   <TableRow key={place.id}>
                     <TableCell>
