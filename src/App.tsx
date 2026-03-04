@@ -47,6 +47,7 @@ import AdminBranches from "./pages/admin/Branches";
 import AdminUsers from "./pages/admin/Users";
 import AdminContentManagement from "./pages/admin/ContentManagement";
 import TouristPlaces from "./pages/admin/TouristPlaces";
+import AdminNewsletter from "./pages/admin/Newsletter";
 import NotFound from "./pages/NotFound";
 import ScrollToTop from "./components/ScrollToTop";
 
@@ -117,7 +118,7 @@ const App = () => (
               <Route path="/admin/conoce-gran-canaria" element={<TouristPlaces />} />
               <Route path="/admin/chat" element={<AdminStub />} />
               <Route path="/admin/seguros" element={<AdminInsurance />} />
-              <Route path="/admin/newsletter" element={<AdminStub />} />
+              <Route path="/admin/newsletter" element={<AdminNewsletter />} />
               <Route path="/admin/branding" element={<AdminStub />} />
               <Route path="/admin/configuracion" element={<AdminStub />} />
               <Route path="/admin/informes" element={<AdminReports />} />
