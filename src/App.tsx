@@ -48,6 +48,7 @@ import AdminUsers from "./pages/admin/Users";
 import AdminContentManagement from "./pages/admin/ContentManagement";
 import TouristPlaces from "./pages/admin/TouristPlaces";
 import AdminNewsletter from "./pages/admin/Newsletter";
+import AdminBranding from "./pages/admin/Branding";
 import NotFound from "./pages/NotFound";
 import ScrollToTop from "./components/ScrollToTop";
 
@@ -119,7 +120,7 @@ const App = () => (
               <Route path="/admin/chat" element={<AdminStub />} />
               <Route path="/admin/seguros" element={<AdminInsurance />} />
               <Route path="/admin/newsletter" element={<AdminNewsletter />} />
-              <Route path="/admin/branding" element={<AdminStub />} />
+              <Route path="/admin/branding" element={<AdminBranding />} />
               <Route path="/admin/configuracion" element={<AdminStub />} />
               <Route path="/admin/informes" element={<AdminReports />} />
               <Route path="/admin/facturacion" element={<AdminInvoices />} />
