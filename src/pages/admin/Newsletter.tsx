@@ -24,12 +24,13 @@ import { Loader2, Download, Trash2, Search, Users, UserCheck, UserX } from "luci
 interface Subscriber {
   id: string;
   email: string;
-  name: string | null;
   lang: string | null;
   is_active: boolean;
-  created_at: string;
+  subscribed_at: string;
+  unsubscribed_at: string | null;
   accepts_newsletter: boolean;
-  accepts_offers: boolean;
+  accepts_promotions: boolean;
+  ip_address: string | null;
 }
 
 /* ── Audit helper ───────────────────────────── */
@@ -68,7 +69,7 @@ export default function AdminNewsletter() {
       const { data, error } = await supabase
         .from("newsletter_subscribers")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("subscribed_at", { ascending: false });
       if (error) throw new Error(error.message);
       return data as Subscriber[];
     },
@@ -83,10 +84,7 @@ export default function AdminNewsletter() {
       if (filterLang !== "all" && s.lang !== filterLang) return false;
       if (search) {
         const q = search.toLowerCase();
-        if (
-          !s.email.toLowerCase().includes(q) &&
-          !(s.name ?? "").toLowerCase().includes(q)
-        ) return false;
+        if (!s.email.toLowerCase().includes(q)) return false;
       }
       return true;
     });
@@ -155,13 +153,12 @@ export default function AdminNewsletter() {
       toast({ title: "No hay suscriptores activos para exportar", variant: "destructive" });
       return;
     }
-    const header = "email,nombre,idioma,fecha_suscripcion";
+    const header = "email,idioma,fecha_suscripcion";
     const rows = active.map((s) =>
       [
         `"${s.email}"`,
-        `"${(s.name ?? "").replace(/"/g, '""')}"`,
         s.lang ?? "",
-        s.created_at ? new Date(s.created_at).toLocaleDateString("es-ES") : "",
+        s.subscribed_at ? new Date(s.subscribed_at).toLocaleDateString("es-ES") : "",
       ].join(",")
     );
     const csv = [header, ...rows].join("\n");
@@ -283,7 +280,7 @@ export default function AdminNewsletter() {
             <TableHeader>
               <TableRow>
                 <TableHead>Email</TableHead>
-                <TableHead>Nombre</TableHead>
+                <TableHead>Newsletter</TableHead>
                 <TableHead>Idioma</TableHead>
                 <TableHead>Fecha suscripción</TableHead>
                 <TableHead>Activo</TableHead>
@@ -294,12 +291,12 @@ export default function AdminNewsletter() {
               {paginated.map((sub) => (
                 <TableRow key={sub.id}>
                   <TableCell className="font-medium">{sub.email}</TableCell>
-                  <TableCell>{sub.name ?? "—"}</TableCell>
+                  <TableCell>{sub.accepts_newsletter ? "Sí" : "No"}</TableCell>
                   <TableCell>
                     <Badge variant="outline">{(sub.lang ?? "—").toUpperCase()}</Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm">
-                    {sub.created_at ? new Date(sub.created_at).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—"}
+                    {sub.subscribed_at ? new Date(sub.subscribed_at).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—"}
                   </TableCell>
                   <TableCell>
                     <Switch checked={sub.is_active} onCheckedChange={() => toggleActive(sub)} />
