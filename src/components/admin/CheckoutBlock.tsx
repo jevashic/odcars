@@ -188,6 +188,21 @@ export default function CheckoutBlock({ reservation, userId, onComplete }: Props
         <CardDescription>Registrar estado al salir</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Vehicle assignment if not yet assigned */}
+        {!r.vehicle_id && availableVehicles.length > 0 && (
+          <div className="space-y-1.5">
+            <Label>Asignar vehículo *</Label>
+            <Select value={assignVehicleId} onValueChange={setAssignVehicleId}>
+              <SelectTrigger><SelectValue placeholder="Seleccionar vehículo" /></SelectTrigger>
+              <SelectContent>
+                {availableVehicles.map((v: any) => (
+                  <SelectItem key={v.id} value={v.id}>{v.license_plate} — {v.brand} {v.model}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         <div className="space-y-1.5">
           <Label>Kilometraje salida *</Label>
           <Input type="number" value={mileage} onChange={e => setMileage(e.target.value ? Number(e.target.value) : "")} placeholder="Km actuales" />
