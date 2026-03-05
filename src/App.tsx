@@ -50,6 +50,7 @@ import TouristPlaces from "./pages/admin/TouristPlaces";
 import AdminNewsletter from "./pages/admin/Newsletter";
 import AdminBranding from "./pages/admin/Branding";
 import AuditHistory from "./pages/admin/AuditHistory";
+import SearchConfig from "./pages/admin/SearchConfig";
 import NotFound from "./pages/NotFound";
 import ScrollToTop from "./components/ScrollToTop";
 
@@ -118,6 +119,7 @@ const App = () => (
               <Route path="/admin/usuarios" element={<AdminUsers />} />
               <Route path="/admin/contenido/*" element={<AdminContentManagement />} />
               <Route path="/admin/conoce-gran-canaria" element={<TouristPlaces />} />
+              <Route path="/admin/buscador" element={<SearchConfig />} />
               <Route path="/admin/chat" element={<AdminStub />} />
               <Route path="/admin/seguros" element={<AdminInsurance />} />
               <Route path="/admin/newsletter" element={<AdminNewsletter />} />
