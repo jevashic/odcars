@@ -365,80 +365,14 @@ export default function ReservationDetail() {
 
         {/* ═══ RIGHT (1/3) ═══ */}
         <div className="space-y-6">
-          {/* Block 4 - Actions */}
-          {r.status === "confirmed" && (
-            <Card>
-              <CardHeader><CardTitle className="text-lg flex items-center gap-2"><Play className="h-5 w-5" /> Activar reserva</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label>Asignar vehículo *</Label>
-                  <Select value={assignVehicleId} onValueChange={setAssignVehicleId}>
-                    <SelectTrigger><SelectValue placeholder="Seleccionar vehículo" /></SelectTrigger>
-                    <SelectContent>
-                      {availableVehicles.map((v: any) => (
-                        <SelectItem key={v.id} value={v.id}>{v.license_plate} — {v.brand} {v.model}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button className="w-full" onClick={activateReservation} disabled={saving}>
-                  {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  <Play className="h-4 w-4 mr-2" /> ACTIVAR RESERVA
-                </Button>
-              </CardContent>
-            </Card>
+          {/* Checkout block — visible when confirmed or active (but pickup not yet done) */}
+          {(r.status === "confirmed" || r.status === "active") && user && (
+            <CheckoutBlock reservation={r} userId={user.id} onComplete={invalidateAll} />
           )}
 
-          {r.status === "active" && (
-            <Card>
-              <CardHeader><CardTitle className="text-lg flex items-center gap-2"><CheckCircle className="h-5 w-5" /> Completar devolución</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label>Kilometraje devolución</Label>
-                  <Input type="number" value={returnMileage} onChange={(e) => setReturnMileage(Number(e.target.value))} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label>¿Combustible incompleto?</Label>
-                  <Switch checked={fuelIncomplete} onCheckedChange={setFuelIncomplete} />
-                </div>
-                {fuelIncomplete && (
-                  <div className="space-y-1.5">
-                    <Label>Importe combustible (€)</Label>
-                    <Input type="number" value={fuelAmount} onChange={(e) => setFuelAmount(Number(e.target.value))} />
-                  </div>
-                )}
-                <div className="flex items-center justify-between">
-                  <Label>¿Devolución tardía?</Label>
-                  <Switch checked={lateReturn} onCheckedChange={setLateReturn} />
-                </div>
-                {lateReturn && (
-                  <div className="space-y-1.5">
-                    <Label>Días extra</Label>
-                    <Input type="number" value={lateDays} onChange={(e) => setLateDays(Number(e.target.value))} />
-                  </div>
-                )}
-                <div className="flex items-center justify-between">
-                  <Label>¿Daños?</Label>
-                  <Switch checked={hasDamage} onCheckedChange={setHasDamage} />
-                </div>
-                {hasDamage && (
-                  <>
-                    <div className="space-y-1.5">
-                      <Label>Importe daños (€)</Label>
-                      <Input type="number" value={damageAmount} onChange={(e) => setDamageAmount(Number(e.target.value))} />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Descripción daños</Label>
-                      <Textarea value={damageDesc} onChange={(e) => setDamageDesc(e.target.value)} rows={2} />
-                    </div>
-                  </>
-                )}
-                <Button className="w-full" onClick={completeReturn} disabled={saving}>
-                  {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  <CheckCircle className="h-4 w-4 mr-2" /> COMPLETAR DEVOLUCIÓN
-                </Button>
-              </CardContent>
-            </Card>
+          {/* Return block — visible when active */}
+          {r.status === "active" && user && (
+            <ReturnBlock reservation={r} userId={user.id} onComplete={invalidateAll} />
           )}
 
           {(r.status === "pending" || r.status === "confirmed") && (
