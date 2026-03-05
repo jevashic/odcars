@@ -24,7 +24,7 @@ interface SearchBarProps {
 export default function SearchBar({ onSearch, initialParams }: SearchBarProps) {
   const { t, lang } = useLang();
   const navigate = useLangNavigate();
-  const [branches, setBranches] = useState<Branch[]>([]);
+  const [locations, setLocations] = useState<PickupLocation[]>([]);
   const [pickup, setPickup] = useState(initialParams?.get('pickup') || '');
   const [dropoff, setDropoff] = useState(initialParams?.get('dropoff') || '');
   const [differentReturn, setDifferentReturn] = useState(!!initialParams?.get('dropoff'));
@@ -38,31 +38,29 @@ export default function SearchBar({ onSearch, initialParams }: SearchBarProps) {
   const [errors, setErrors] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    supabase.from('branches').select('*').eq('is_active', true).order('sort_order').then(({ data }) => {
-      if (data) setBranches(data as any);
+    supabase.from('pickup_locations').select('*').eq('is_active', true).order('sort_order').then(({ data }) => {
+      if (data) setLocations(data as PickupLocation[]);
     });
   }, []);
 
-  // fallback branches
-  const branchOptions = branches.length > 0 ? branches : [
-    { id: 'maspalomas', name: 'Oficina Maspalomas', show_surcharge_warning: false },
-    { id: 'airport', name: 'Aeropuerto de Gran Canaria', show_surcharge_warning: true, surcharge_label_es: 'Servicio de entrega en aeropuerto (suplemento puede aplicar)' },
-    { id: 'other', name: 'Otro lugar / hotel', show_surcharge_warning: true, surcharge_label_es: 'Servicio de entrega a domicilio (suplemento puede aplicar)' },
-  ] as Branch[];
+  const TYPE_ICONS: Record<string, string> = { office: '🏢', airport: '✈️', hotel: '🏨', other: '📍' };
 
-  const selectedBranch = branchOptions.find(b => b.id === pickup);
-  const selectedDropBranch = branchOptions.find(b => b.id === dropoff);
-  const surchargeKey = `surcharge_label_${lang}` as keyof Branch;
-  const isOtherPickup = selectedBranch?.name?.toLowerCase().includes('otro');
-  const isOtherDrop = selectedDropBranch?.name?.toLowerCase().includes('otro');
+  const selectedLoc = locations.find(l => l.id === pickup);
+  const selectedDropLoc = locations.find(l => l.id === dropoff);
+  const isOtherPickup = selectedLoc?.type === 'other' || selectedLoc?.type === 'hotel';
+  const isOtherDrop = selectedDropLoc?.type === 'other' || selectedDropLoc?.type === 'hotel';
+
+  const pickupCharge = selectedLoc?.extra_charge ?? 0;
+  const dropoffCharge = differentReturn ? (selectedDropLoc?.extra_charge ?? 0) : 0;
+  const totalDeliveryCharge = pickupCharge + dropoffCharge;
 
   // Set default pickup
   useEffect(() => {
-    if (branchOptions.length > 0 && !pickup) {
-      const airport = branchOptions.find(b => b.name?.toLowerCase().includes('aeropuerto'));
-      setPickup(airport?.id ?? branchOptions[0].id);
+    if (locations.length > 0 && !pickup) {
+      const airport = locations.find(l => l.type === 'airport');
+      setPickup(airport?.id ?? locations[0].id);
     }
-  }, [branchOptions, pickup]);
+  }, [locations, pickup]);
 
   const handleSearch = () => {
     const errs: Record<string, boolean> = {};
