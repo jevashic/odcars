@@ -52,7 +52,7 @@ export default function SearchBar({ onSearch, initialParams }: SearchBarProps) {
 
   const pickupCharge = selectedLoc?.extra_charge ?? 0;
   const dropoffCharge = differentReturn ? (selectedDropLoc?.extra_charge ?? 0) : 0;
-  const totalDeliveryCharge = pickupCharge + dropoffCharge;
+  
 
   // Set default pickup
   useEffect(() => {
