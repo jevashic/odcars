@@ -18,13 +18,20 @@ export default function VehicleCategories() {
   const { data: categories = [], isLoading } = useQuery<CategoryWithVehicles[]>({
     queryKey: ["admin-vehicle-categories-overview"],
     queryFn: async () => {
+      const SORT_ORDER: Record<string, number> = {
+        "Económico": 1,
+        "Estándar": 2,
+        "Premium": 3,
+        "Eléctrico Económico": 4,
+        "Eléctrico Premium": 5,
+      };
       const { data, error } = await supabase
         .from("vehicle_categories")
         .select("id, name, image_url, vehicles(id, status)")
-        .eq("is_active", true)
-        .order("name");
+        .eq("is_active", true);
       if (error) throw error;
-      return (data ?? []) as unknown as CategoryWithVehicles[];
+      const sorted = (data ?? []).sort((a, b) => (SORT_ORDER[a.name] ?? 99) - (SORT_ORDER[b.name] ?? 99));
+      return sorted as unknown as CategoryWithVehicles[];
     },
   });
 

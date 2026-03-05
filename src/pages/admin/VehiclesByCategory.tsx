@@ -60,7 +60,7 @@ interface Vehicle {
   brand: string;
   model: string;
   year: number;
-  license_plate: string;
+  plate: string;
   color: string | null;
   seats: number;
   transmission: string;
@@ -78,7 +78,7 @@ interface VehicleForm {
   brand: string;
   model: string;
   year: number;
-  license_plate: string;
+  plate: string;
   color: string;
   seats: number;
   transmission: string;
@@ -94,7 +94,7 @@ const emptyForm = (categoryId: string): VehicleForm => ({
   brand: "",
   model: "",
   year: new Date().getFullYear(),
-  license_plate: "",
+  plate: "",
   color: "",
   seats: 5,
   transmission: "manual",
@@ -218,7 +218,7 @@ export default function VehiclesByCategory() {
   const filtered = search
     ? vehicles.filter(
         (v) =>
-          v.license_plate.toLowerCase().includes(search.toLowerCase()) ||
+          v.plate.toLowerCase().includes(search.toLowerCase()) ||
           v.model.toLowerCase().includes(search.toLowerCase()) ||
           v.brand.toLowerCase().includes(search.toLowerCase())
       )
@@ -313,7 +313,7 @@ export default function VehiclesByCategory() {
       brand: v.brand,
       model: v.model,
       year: v.year,
-      license_plate: v.license_plate,
+      plate: v.plate,
       color: v.color ?? "",
       seats: v.seats,
       transmission: v.transmission,
@@ -332,7 +332,7 @@ export default function VehiclesByCategory() {
   /* ── Save ─────────────────────────────────────────── */
 
   const saveVehicle = async () => {
-    if (!form.brand || !form.model || !form.year || !form.license_plate || !form.seats || !form.transmission || !form.category_id) {
+    if (!form.brand || !form.model || !form.year || !form.plate || !form.seats || !form.transmission || !form.category_id) {
       toast({ title: "Campos obligatorios", description: "Revisa los campos marcados con *", variant: "destructive" });
       return;
     }
@@ -343,7 +343,7 @@ export default function VehiclesByCategory() {
         brand: form.brand,
         model: form.model,
         year: form.year,
-        license_plate: form.license_plate,
+        plate: form.plate,
         color: form.color || null,
         seats: form.seats,
         transmission: form.transmission,
@@ -503,7 +503,7 @@ export default function VehiclesByCategory() {
                       </div>
                     )}
                   </TableCell>
-                  <TableCell className="font-mono font-medium">{v.license_plate}</TableCell>
+                  <TableCell className="font-mono font-medium">{v.plate}</TableCell>
                   <TableCell className="font-medium">{v.brand} {v.model}</TableCell>
                   <TableCell>{v.year}</TableCell>
                   <TableCell>{v.color ?? "—"}</TableCell>
@@ -549,7 +549,7 @@ export default function VehiclesByCategory() {
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar vehículo?</AlertDialogTitle>
             <AlertDialogDescription>
-              Se eliminará permanentemente <strong>{deleteTarget?.brand} {deleteTarget?.model}</strong> ({deleteTarget?.license_plate}). Esta acción no se puede deshacer.
+              Se eliminará permanentemente <strong>{deleteTarget?.brand} {deleteTarget?.model}</strong> ({deleteTarget?.plate}). Esta acción no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -605,7 +605,7 @@ export default function VehiclesByCategory() {
               </div>
               <div className="space-y-1.5">
                 <Label>Matrícula *</Label>
-                <Input value={form.license_plate} onChange={(e) => setForm({ ...form, license_plate: e.target.value })} />
+                <Input value={form.plate} onChange={(e) => setForm({ ...form, plate: e.target.value })} />
               </div>
               <div className="space-y-1.5">
                 <Label>Color</Label>
