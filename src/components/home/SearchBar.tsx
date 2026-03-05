@@ -126,14 +126,14 @@ export default function SearchBar({ onSearch, initialParams }: SearchBarProps) {
               >
                 {locations.map(loc => (
                   <option key={loc.id} value={loc.id} className="text-foreground">
-                    {TYPE_ICONS[loc.type] ?? '📍'} {loc.name}{loc.extra_charge > 0 ? ` +${loc.extra_charge}€` : ''}
+                    {TYPE_ICONS[loc.type] ?? '📍'} {loc.name}
                   </option>
                 ))}
               </select>
             </div>
             {pickupCharge > 0 && (
-              <div className="mt-2 text-xs bg-cta/20 text-cta px-3 py-1.5 rounded-full inline-block">
-                ⚠️ Suplemento entrega/recogida: +{pickupCharge.toFixed(2)} €
+              <div className="mt-2 text-xs text-white/50">
+                ℹ️ Este servicio puede incluir un cargo adicional que se reflejará en el precio final.
               </div>
             )}
             {isOtherPickup && (
@@ -261,7 +261,7 @@ export default function SearchBar({ onSearch, initialParams }: SearchBarProps) {
               <option value="" className="text-foreground">{t('search.select')}</option>
               {locations.map(loc => (
                 <option key={loc.id} value={loc.id} className="text-foreground">
-                  {TYPE_ICONS[loc.type] ?? '📍'} {loc.name}{loc.extra_charge > 0 ? ` +${loc.extra_charge}€` : ''}
+                  {TYPE_ICONS[loc.type] ?? '📍'} {loc.name}
                 </option>
               ))}
             </select>
