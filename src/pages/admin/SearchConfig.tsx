@@ -8,23 +8,47 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Pencil, Loader2, MapPin } from "lucide-react";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { Pencil, Loader2, Plus, Trash2 } from "lucide-react";
 
 const LANGS = ["es", "en", "de", "sv", "no", "fr"] as const;
 const LANG_LABELS: Record<string, string> = { es: "Español", en: "English", de: "Deutsch", sv: "Svenska", no: "Norsk", fr: "Français" };
+
+const TYPE_BADGES: Record<string, { label: string; cls: string }> = {
+  office:  { label: "Oficina",    cls: "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100" },
+  airport: { label: "Aeropuerto", cls: "bg-green-100 text-green-800 border-green-200 hover:bg-green-100" },
+  hotel:   { label: "Hotel",      cls: "bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-100" },
+  other:   { label: "Otro",       cls: "bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-100" },
+};
+
+interface LocationForm {
+  id?: string;
+  name: string;
+  type: string;
+  description: string;
+  extra_charge: number;
+  sort_order: number;
+  is_active: boolean;
+}
+
+const emptyLocForm: LocationForm = {
+  name: "", type: "office", description: "", extra_charge: 0, sort_order: 0, is_active: true,
+};
 
 async function writeAudit(userId: string, action: string, tableName: string, recordId: string, oldData: unknown, newData: unknown) {
   await supabase.from("audit_log").insert({ performed_by: userId, action, table_name: tableName, record_id: recordId, old_data: oldData as any, new_data: newData as any });
 }
 
 interface TransRow { id: string; key: string; section: string | null; lang: string; value: string | null; }
-interface Branch { id: string; name: string; address: string | null; is_active: boolean; }
 
 export default function SearchConfig() {
   const { user } = useAdminAuth();
@@ -41,14 +65,18 @@ export default function SearchConfig() {
     },
   });
 
-  const { data: branches = [], isLoading: loadingBranches } = useQuery<Branch[]>({
-    queryKey: ["admin-active-branches"],
+  const { data: pickupLocations = [], isLoading: loadingLocations } = useQuery({
+    queryKey: ["admin-pickup-locations"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("branches").select("id, name, address, is_active").eq("is_active", true).order("name");
+      const { data, error } = await supabase.from("pickup_locations").select("*").order("sort_order");
       if (error) throw error;
       return data ?? [];
     },
   });
+
+  const [locModalOpen, setLocModalOpen] = useState(false);
+  const [locForm, setLocForm] = useState<LocationForm>(emptyLocForm);
+  const [locSaving, setLocSaving] = useState(false);
 
   // Group by key
   const grouped: Record<string, { key: string; langs: Record<string, string> }> = {};
@@ -147,31 +175,154 @@ export default function SearchConfig() {
         </div>
       </div>
 
-      {/* Active branches */}
+      {/* Pickup locations CRUD */}
       <div className="bg-background rounded-xl shadow-sm border">
         <div className="p-6">
-          <h2 className="text-lg font-semibold mb-2">Ubicaciones disponibles</h2>
-          <p className="text-sm text-muted-foreground mb-4">Oficinas activas que aparecen en el desplegable del buscador de la web.</p>
-          {loadingBranches ? (
-            <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-          ) : branches.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">No hay oficinas activas.</p>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {branches.map((b) => (
-                <div key={b.id} className="flex items-start gap-3 rounded-lg border p-4">
-                  <MapPin className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-                  <div>
-                    <p className="font-medium text-sm">{b.name}</p>
-                    {b.address && <p className="text-xs text-muted-foreground">{b.address}</p>}
-                    <Badge className="mt-1">Activa</Badge>
-                  </div>
-                </div>
-              ))}
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg font-semibold">Ubicaciones de recogida y devolución</h2>
+              <p className="text-sm text-muted-foreground">Puntos disponibles en el buscador de la web pública.</p>
             </div>
+            <Button onClick={() => { setLocForm(emptyLocForm); setLocModalOpen(true); }} className="gap-2">
+              <Plus className="h-4 w-4" /> Nueva ubicación
+            </Button>
+          </div>
+          {loadingLocations ? (
+            <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+          ) : pickupLocations.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8">No hay ubicaciones registradas.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Descripción</TableHead>
+                  <TableHead className="text-right">Cargo extra €</TableHead>
+                  <TableHead>Activa</TableHead>
+                  <TableHead className="text-right">Orden</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pickupLocations.map((loc: any) => {
+                  const t = TYPE_BADGES[loc.type] ?? TYPE_BADGES.other;
+                  return (
+                    <TableRow key={loc.id}>
+                      <TableCell className="font-medium">{loc.name}</TableCell>
+                      <TableCell><Badge className={t.cls}>{t.label}</Badge></TableCell>
+                      <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">{loc.description || "—"}</TableCell>
+                      <TableCell className="text-right">{Number(loc.extra_charge).toFixed(2)} €</TableCell>
+                      <TableCell>{loc.is_active ? <Badge className="bg-green-100 text-green-800 border-green-200 hover:bg-green-100">Sí</Badge> : <Badge variant="secondary">No</Badge>}</TableCell>
+                      <TableCell className="text-right">{loc.sort_order}</TableCell>
+                      <TableCell className="text-right space-x-1">
+                        <Button variant="ghost" size="icon" onClick={() => {
+                          setLocForm({
+                            id: loc.id, name: loc.name ?? "", type: loc.type ?? "office",
+                            description: loc.description ?? "", extra_charge: loc.extra_charge ?? 0,
+                            sort_order: loc.sort_order ?? 0, is_active: loc.is_active ?? true,
+                          });
+                          setLocModalOpen(true);
+                        }}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={async () => {
+                          if (!user || !confirm(`¿Eliminar "${loc.name}"?`)) return;
+                          try {
+                            const { error } = await supabase.from("pickup_locations").delete().eq("id", loc.id);
+                            if (error) throw error;
+                            await writeAudit(user.id, "delete", "pickup_locations", loc.id, loc, null);
+                            qc.invalidateQueries({ queryKey: ["admin-pickup-locations"] });
+                            toast({ title: "Ubicación eliminada" });
+                          } catch (err: any) {
+                            toast({ title: "Error", description: err.message, variant: "destructive" });
+                          }
+                        }}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           )}
         </div>
       </div>
+
+      {/* Location modal */}
+      <Dialog open={locModalOpen} onOpenChange={setLocModalOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{locForm.id ? "Editar ubicación" : "Nueva ubicación"}</DialogTitle>
+            <DialogDescription>Punto de recogida o devolución del buscador.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <div className="space-y-1.5">
+              <Label>Nombre *</Label>
+              <Input value={locForm.name} onChange={e => setLocForm(f => ({ ...f, name: e.target.value }))} placeholder="Ej: Aeropuerto de Gran Canaria" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Tipo</Label>
+              <Select value={locForm.type} onValueChange={v => setLocForm(f => ({ ...f, type: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="office">Oficina</SelectItem>
+                  <SelectItem value="airport">Aeropuerto</SelectItem>
+                  <SelectItem value="hotel">Hotel</SelectItem>
+                  <SelectItem value="other">Otro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Descripción</Label>
+              <Textarea value={locForm.description} onChange={e => setLocForm(f => ({ ...f, description: e.target.value }))} rows={2} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Cargo extra (€)</Label>
+              <Input type="number" step="0.01" value={locForm.extra_charge} onChange={e => setLocForm(f => ({ ...f, extra_charge: Number(e.target.value) }))} />
+              <p className="text-xs text-muted-foreground">0 = sin cargo adicional</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Orden</Label>
+              <Input type="number" value={locForm.sort_order} onChange={e => setLocForm(f => ({ ...f, sort_order: Number(e.target.value) }))} />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label>Activa</Label>
+              <Switch checked={locForm.is_active} onCheckedChange={v => setLocForm(f => ({ ...f, is_active: v }))} />
+            </div>
+            <Button className="w-full font-bold" disabled={locSaving} onClick={async () => {
+              if (!locForm.name.trim()) { toast({ title: "El nombre es obligatorio", variant: "destructive" }); return; }
+              if (!user) return;
+              setLocSaving(true);
+              try {
+                const payload: any = {
+                  name: locForm.name.trim(), type: locForm.type, description: locForm.description.trim() || null,
+                  extra_charge: locForm.extra_charge, sort_order: locForm.sort_order, is_active: locForm.is_active, updated_by: user.id,
+                };
+                if (locForm.id) {
+                  const old = pickupLocations.find((l: any) => l.id === locForm.id);
+                  const { error } = await supabase.from("pickup_locations").update(payload).eq("id", locForm.id);
+                  if (error) throw error;
+                  await writeAudit(user.id, "update", "pickup_locations", locForm.id, old, payload);
+                  toast({ title: "Ubicación actualizada" });
+                } else {
+                  const { data, error } = await supabase.from("pickup_locations").insert(payload).select("id").single();
+                  if (error) throw error;
+                  await writeAudit(user.id, "create", "pickup_locations", data.id, null, payload);
+                  toast({ title: "Ubicación creada" });
+                }
+                qc.invalidateQueries({ queryKey: ["admin-pickup-locations"] });
+                setLocModalOpen(false);
+              } catch (err: any) {
+                toast({ title: "Error", description: err.message, variant: "destructive" });
+              } finally { setLocSaving(false); }
+            }}>
+              {locSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}GUARDAR
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit modal */}
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
