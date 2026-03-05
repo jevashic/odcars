@@ -64,6 +64,7 @@ const configLinks: NavItem[] = [
   { to: "/admin/usuarios", icon: UserCog, label: "Usuarios", roles: ["admin"] },
   { to: "/admin/seguros", icon: Shield, label: "Seguros", roles: ["admin"] },
   { to: "/admin/contenido", icon: FileText, label: "Contenido web", roles: ["admin"] },
+  { to: "/admin/buscador", icon: Compass, label: "Configuración del buscador", roles: ["admin"] },
   { to: "/admin/conoce-gran-canaria", icon: Compass, label: "Conoce Gran Canaria", roles: ["admin"] },
   { to: "/admin/chat", icon: MessageCircle, label: "Chat", roles: ["admin"] },
   { to: "/admin/newsletter", icon: Mail, label: "Newsletter", roles: ["admin"] },

@@ -389,10 +389,11 @@ function TranslationsTab() {
       for (const lang of LANGS) {
         const v = editing.values[lang];
         const val = v.value.trim() || null;
-        if (v.id) {
-          await supabase.from("translations").update({ value: val }).eq("id", v.id);
-        } else if (val) {
-          await supabase.from("translations").insert({ key: editing.key, section: editing.section || null, lang, value: val });
+        if (val !== null) {
+          await supabase.from("translations").upsert(
+            { key: editing.key, lang, value: val, section: editing.section || null },
+            { onConflict: "key,lang" }
+          );
         }
       }
       if (user) await writeAudit(user.id, "update", "translations", editing.key, null, editing.values);
@@ -660,11 +661,11 @@ function BannersTab() {
    ═══════════════════════════════════════════════════ */
 
 interface WhyRow {
-  id: string; icon_name: string | null; title: string; description: string | null;
+  id: string; icon: string | null; title: string; description: string | null;
   lang: string; sort_order: number | null; is_active: boolean;
 }
 
-const emptyWhy = { icon_name: "", title: "", description: "", lang: "es", sort_order: 0, is_active: true };
+const emptyWhy = { icon: "", title: "", description: "", lang: "es", sort_order: 0, is_active: true };
 
 function WhyChooseTab() {
   const { user } = useAdminAuth();
@@ -686,7 +687,7 @@ function WhyChooseTab() {
   const openCreate = () => { setEditingId(null); setForm({ ...emptyWhy }); setModalOpen(true); };
   const openEdit = (r: WhyRow) => {
     setEditingId(r.id);
-    setForm({ icon_name: r.icon_name ?? "", title: r.title, description: r.description ?? "", lang: r.lang, sort_order: r.sort_order ?? 0, is_active: r.is_active });
+    setForm({ icon: r.icon ?? "", title: r.title, description: r.description ?? "", lang: r.lang, sort_order: r.sort_order ?? 0, is_active: r.is_active });
     setModalOpen(true);
   };
 
@@ -694,7 +695,7 @@ function WhyChooseTab() {
     if (!form.title.trim()) { toast({ title: "Campo obligatorio", description: "El título es requerido.", variant: "destructive" }); return; }
     setSaving(true);
     try {
-      const payload = { icon_name: form.icon_name?.trim() || null, title: form.title.trim(), description: form.description?.trim() || null, lang: form.lang, sort_order: form.sort_order ?? 0, is_active: form.is_active };
+      const payload = { icon: form.icon?.trim() || null, title: form.title.trim(), description: form.description?.trim() || null, lang: form.lang, sort_order: form.sort_order ?? 0, is_active: form.is_active };
       if (editingId) {
         const old = rows.find((r) => r.id === editingId);
         const { error } = await supabase.from("why_choose_us").update(payload).eq("id", editingId);
@@ -745,7 +746,7 @@ function WhyChooseTab() {
         <TableBody>
           {rows.map((r) => (
             <TableRow key={r.id}>
-              <TableCell className="font-mono text-xs">{r.icon_name ?? "—"}</TableCell>
+              <TableCell className="font-mono text-xs">{r.icon ?? "—"}</TableCell>
               <TableCell className="font-medium">{r.title}</TableCell>
               <TableCell><Badge variant="secondary">{r.lang}</Badge></TableCell>
               <TableCell>{r.sort_order}</TableCell>
@@ -769,7 +770,7 @@ function WhyChooseTab() {
             <DialogDescription>{editingId ? "Modifica los datos." : "Crea una nueva ventaja."}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-2">
-            <div className="space-y-1.5"><Label>Icono (nombre lucide)</Label><Input value={form.icon_name ?? ""} onChange={(e) => setForm({ ...form, icon_name: e.target.value })} placeholder="ShieldCheck, Gauge…" /></div>
+            <div className="space-y-1.5"><Label>Icono (nombre lucide)</Label><Input value={form.icon ?? ""} onChange={(e) => setForm({ ...form, icon: e.target.value })} placeholder="ShieldCheck, Gauge…" /></div>
             <div className="space-y-1.5"><Label>Título *</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
             <div className="space-y-1.5"><Label>Descripción</Label><Textarea rows={3} value={form.description ?? ""} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
             <div className="space-y-1.5">
@@ -987,9 +988,9 @@ function OffersTab() {
             </div>
             <div className="space-y-1.5">
               <Label>Categoría</Label>
-              <Select value={form.category_id ?? ""} onValueChange={(v) => setForm({ ...form, category_id: v })}>
+              <Select value={form.category_id || "__none__"} onValueChange={(v) => setForm({ ...form, category_id: v === "__none__" ? "" : v })}>
                 <SelectTrigger><SelectValue placeholder="Opcional" /></SelectTrigger>
-                <SelectContent><SelectItem value="">Sin categoría</SelectItem>{categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+                <SelectContent><SelectItem value="__none__">Sin categoría</SelectItem>{categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-3">
