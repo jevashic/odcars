@@ -224,19 +224,27 @@ export default function AdminUsers() {
 
     setSaving(true);
     try {
-      const { data, error } = await supabase.functions.invoke("create-internal-user", {
-        body: {
-          email: form.email.trim(),
-          password: form.password,
-          full_name: form.full_name.trim(),
-          role: form.role,
-          branch_id: form.branch_id || null,
-          is_active: form.is_active,
-        },
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: form.email.trim(),
+        password: form.password,
+        options: { emailRedirectTo: window.location.origin },
       });
 
-      if (error) throw new Error(error.message || "Error al crear usuario");
-      if (data?.error) throw new Error(data.error);
+      if (authError) throw authError;
+      if (!authData.user) throw new Error("No se pudo crear el usuario en Auth");
+
+      const { error: dbError } = await supabase.from("internal_users").insert({
+        auth_user_id: authData.user.id,
+        full_name: form.full_name.trim(),
+        email: form.email.trim(),
+        role: form.role,
+        branch_id: form.branch_id || null,
+        is_active: form.is_active,
+      });
+
+      if (dbError) throw dbError;
+
+      if (user) await writeAudit(user.id, "insert", "internal_users", authData.user.id, null, { email: form.email.trim(), role: form.role });
 
       qc.invalidateQueries({ queryKey: ["admin-users"] });
       setModalOpen(false);
