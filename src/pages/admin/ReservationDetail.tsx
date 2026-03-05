@@ -5,20 +5,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -71,7 +62,6 @@ export default function ReservationDetail() {
   const qc = useQueryClient();
 
   // Action state
-  const [assignVehicleId, setAssignVehicleId] = useState("");
   const [saving, setSaving] = useState(false);
   const [notes, setNotes] = useState("");
   const [notesLoaded, setNotesLoaded] = useState(false);
@@ -138,19 +128,7 @@ export default function ReservationDetail() {
 
   /* ── Available vehicles for assignment ───────────── */
 
-  const { data: availableVehicles = [] } = useQuery({
-    queryKey: ["admin-available-vehicles", reservation?.category_id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("vehicles")
-        .select("id, license_plate, brand, model")
-        .eq("category_id", reservation!.category_id)
-        .eq("status", "available");
-      if (error) throw error;
-      return data ?? [];
-    },
-    enabled: !!reservation && reservation.status === "confirmed",
-  });
+  /* (Available vehicles query moved to CheckoutBlock) */
 
   /* ── Audit log ───────────────────────────────────── */
 
