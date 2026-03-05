@@ -58,6 +58,8 @@ interface UserForm {
   role: string;
   branch_id: string;
   is_active: boolean;
+  new_password: string;
+  confirm_password: string;
 }
 
 const emptyForm: UserForm = {
@@ -67,6 +69,8 @@ const emptyForm: UserForm = {
   role: "employee",
   branch_id: "",
   is_active: true,
+  new_password: "",
+  confirm_password: "",
 };
 
 /* ── Helpers ────────────────────────────────────────── */
@@ -202,6 +206,8 @@ export default function AdminUsers() {
       role: u.role,
       branch_id: u.branch_id ?? "",
       is_active: u.is_active,
+      new_password: "",
+      confirm_password: "",
     });
     setModalOpen(true);
   }, []);
@@ -272,6 +278,19 @@ export default function AdminUsers() {
     }
     if (!editingId) return;
 
+    // Password validation
+    const wantsPasswordChange = form.new_password.length > 0 || form.confirm_password.length > 0;
+    if (wantsPasswordChange) {
+      if (form.new_password.length < 8) {
+        toast({ title: "Contraseña inválida", description: "La nueva contraseña debe tener mínimo 8 caracteres.", variant: "destructive" });
+        return;
+      }
+      if (form.new_password !== form.confirm_password) {
+        toast({ title: "Contraseñas no coinciden", description: "La nueva contraseña y la confirmación deben ser iguales.", variant: "destructive" });
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       const oldUser = users.find((u) => u.id === editingId);
@@ -287,9 +306,22 @@ export default function AdminUsers() {
 
       if (user) await writeAudit(user.id, "update", "internal_users", editingId, oldUser, { ...oldUser, ...payload });
 
+      // Change password if requested
+      if (wantsPasswordChange && oldUser) {
+        const { error: pwdError } = await supabase.auth.admin.updateUserById(oldUser.auth_user_id, {
+          password: form.new_password,
+        });
+        if (pwdError) {
+          toast({ title: "Datos guardados, pero error al cambiar contraseña", description: pwdError.message, variant: "destructive" });
+          qc.invalidateQueries({ queryKey: ["admin-users"] });
+          setModalOpen(false);
+          return;
+        }
+      }
+
       qc.invalidateQueries({ queryKey: ["admin-users"] });
       setModalOpen(false);
-      toast({ title: "Usuario actualizado" });
+      toast({ title: wantsPasswordChange ? "Usuario y contraseña actualizados" : "Usuario actualizado" });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
@@ -532,6 +564,32 @@ export default function AdminUsers() {
                 onCheckedChange={(v) => setForm({ ...form, is_active: v })}
               />
             </div>
+
+            {/* Change password (only on edit) */}
+            {editingId && (
+              <div className="space-y-3 border-t pt-4 mt-2">
+                <Label className="text-sm font-semibold">Cambiar contraseña</Label>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Nueva contraseña</Label>
+                  <Input
+                    type="password"
+                    value={form.new_password}
+                    onChange={(e) => setForm({ ...form, new_password: e.target.value })}
+                    placeholder="••••••••"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Confirmar contraseña</Label>
+                  <Input
+                    type="password"
+                    value={form.confirm_password}
+                    onChange={(e) => setForm({ ...form, confirm_password: e.target.value })}
+                    placeholder="••••••••"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">Dejar en blanco para no cambiar la contraseña</p>
+              </div>
+            )}
 
             <Button
               className="w-full"
