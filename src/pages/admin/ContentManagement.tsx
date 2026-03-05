@@ -388,12 +388,14 @@ function TranslationsTab() {
     try {
       for (const lang of LANGS) {
         const v = editing.values[lang];
-        const val = v.value.trim() || null;
-        if (val !== null) {
-          await supabase.from("translations").upsert(
-            { key: editing.key, lang, value: val, section: editing.section || null },
-            { onConflict: "key,lang" }
-          );
+        const val = v.value.trim();
+        const { error } = await supabase.from("translations").upsert(
+          { key: editing.key, lang, value: val || null, section: editing.section || null },
+          { onConflict: "key,lang" }
+        );
+        if (error) {
+          console.error(`Error upserting translation [${editing.key}][${lang}]:`, error);
+          throw error;
         }
       }
       if (user) await writeAudit(user.id, "update", "translations", editing.key, null, editing.values);
@@ -401,7 +403,8 @@ function TranslationsTab() {
       qc.invalidateQueries({ queryKey: ["admin-translations"] });
       setEditing(null);
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      console.error("Translation save failed:", err);
+      toast({ title: "Error al guardar", description: err.message, variant: "destructive" });
     } finally { setSaving(false); }
   };
 
