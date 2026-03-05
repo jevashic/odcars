@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
@@ -20,7 +20,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Pencil, Trash2, Plus, Loader2, Star, Search } from "lucide-react";
+import { Pencil, Trash2, Plus, Loader2, Star, Search, Upload, X } from "lucide-react";
 
 const LANGS = ["es", "en", "de", "sv", "no", "fr"] as const;
 const LANG_LABELS: Record<string, string> = { es: "Español", en: "English", de: "Deutsch", sv: "Svenska", no: "Norsk", fr: "Français" };
@@ -656,6 +656,357 @@ function BannersTab() {
 }
 
 /* ═══════════════════════════════════════════════════
+   TAB 5 — POR QUÉ ELEGIRNOS
+   ═══════════════════════════════════════════════════ */
+
+interface WhyRow {
+  id: string; icon_name: string | null; title: string; description: string | null;
+  lang: string; sort_order: number | null; is_active: boolean;
+}
+
+const emptyWhy = { icon_name: "", title: "", description: "", lang: "es", sort_order: 0, is_active: true };
+
+function WhyChooseTab() {
+  const { user } = useAdminAuth();
+  const qc = useQueryClient();
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState(emptyWhy);
+  const [saving, setSaving] = useState(false);
+
+  const { data: rows = [], isLoading } = useQuery<WhyRow[]>({
+    queryKey: ["admin-why-choose"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("why_choose_us").select("*").order("sort_order").order("lang");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const openCreate = () => { setEditingId(null); setForm({ ...emptyWhy }); setModalOpen(true); };
+  const openEdit = (r: WhyRow) => {
+    setEditingId(r.id);
+    setForm({ icon_name: r.icon_name ?? "", title: r.title, description: r.description ?? "", lang: r.lang, sort_order: r.sort_order ?? 0, is_active: r.is_active });
+    setModalOpen(true);
+  };
+
+  const save = async () => {
+    if (!form.title.trim()) { toast({ title: "Campo obligatorio", description: "El título es requerido.", variant: "destructive" }); return; }
+    setSaving(true);
+    try {
+      const payload = { icon_name: form.icon_name?.trim() || null, title: form.title.trim(), description: form.description?.trim() || null, lang: form.lang, sort_order: form.sort_order ?? 0, is_active: form.is_active };
+      if (editingId) {
+        const old = rows.find((r) => r.id === editingId);
+        const { error } = await supabase.from("why_choose_us").update(payload).eq("id", editingId);
+        if (error) throw error;
+        if (user) await writeAudit(user.id, "update", "why_choose_us", editingId, old, payload);
+        toast({ title: "Ventaja actualizada" });
+      } else {
+        const { data, error } = await supabase.from("why_choose_us").insert(payload).select().single();
+        if (error) throw error;
+        if (user) await writeAudit(user.id, "insert", "why_choose_us", data.id, null, data);
+        toast({ title: "Ventaja creada" });
+      }
+      qc.invalidateQueries({ queryKey: ["admin-why-choose"] });
+      setModalOpen(false);
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally { setSaving(false); }
+  };
+
+  const deleteRow = async (r: WhyRow) => {
+    if (!confirm("¿Eliminar esta ventaja?")) return;
+    try {
+      const { error } = await supabase.from("why_choose_us").delete().eq("id", r.id);
+      if (error) throw error;
+      if (user) await writeAudit(user.id, "delete", "why_choose_us", r.id, r, null);
+      toast({ title: "Ventaja eliminada" });
+      qc.invalidateQueries({ queryKey: ["admin-why-choose"] });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
+
+  if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+
+  return (
+    <>
+      <div className="flex justify-between items-center mb-4">
+        <div />
+        <Button onClick={openCreate}><Plus className="h-4 w-4 mr-2" />Añadir ventaja</Button>
+      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Icono</TableHead><TableHead>Título</TableHead><TableHead>Idioma</TableHead>
+            <TableHead>Orden</TableHead><TableHead>Activo</TableHead><TableHead>Acciones</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((r) => (
+            <TableRow key={r.id}>
+              <TableCell className="font-mono text-xs">{r.icon_name ?? "—"}</TableCell>
+              <TableCell className="font-medium">{r.title}</TableCell>
+              <TableCell><Badge variant="secondary">{r.lang}</Badge></TableCell>
+              <TableCell>{r.sort_order}</TableCell>
+              <TableCell>{r.is_active ? <Badge>Sí</Badge> : <Badge variant="destructive">No</Badge>}</TableCell>
+              <TableCell>
+                <div className="flex gap-1">
+                  <Button variant="outline" size="sm" onClick={() => openEdit(r)}><Pencil className="h-4 w-4" /></Button>
+                  <Button variant="outline" size="sm" onClick={() => deleteRow(r)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+          {rows.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Sin ventajas.</TableCell></TableRow>}
+        </TableBody>
+      </Table>
+
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingId ? "Editar ventaja" : "Nueva ventaja"}</DialogTitle>
+            <DialogDescription>{editingId ? "Modifica los datos." : "Crea una nueva ventaja."}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-1.5"><Label>Icono (nombre lucide)</Label><Input value={form.icon_name ?? ""} onChange={(e) => setForm({ ...form, icon_name: e.target.value })} placeholder="ShieldCheck, Gauge…" /></div>
+            <div className="space-y-1.5"><Label>Título *</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
+            <div className="space-y-1.5"><Label>Descripción</Label><Textarea rows={3} value={form.description ?? ""} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
+            <div className="space-y-1.5">
+              <Label>Idioma</Label>
+              <Select value={form.lang} onValueChange={(v) => setForm({ ...form, lang: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{LANGS.map((l) => <SelectItem key={l} value={l}>{LANG_LABELS[l]}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5"><Label>Orden</Label><Input type="number" value={form.sort_order} onChange={(e) => setForm({ ...form, sort_order: Number(e.target.value) })} /></div>
+            <div className="flex items-center justify-between"><Label>Activo</Label><Switch checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} /></div>
+            <Button className="w-full" onClick={save} disabled={saving}>{saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}GUARDAR</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+/* ═══════════════════════════════════════════════════
+   TAB 6 — OFERTAS ESPECIALES
+   ═══════════════════════════════════════════════════ */
+
+interface OfferRow {
+  id: string; title: string; description: string | null; image_url: string | null;
+  discount_type: string | null; discount_value: number | null; category_id: string | null;
+  valid_from: string; valid_until: string | null; sort_order: number | null;
+  is_active: boolean; created_at: string;
+}
+
+const emptyOffer = { title: "", description: "", image_url: "", discount_type: "percentage", discount_value: 0, category_id: "", valid_from: "", valid_until: "", sort_order: 0, is_active: true };
+
+function OffersTab() {
+  const { user } = useAdminAuth();
+  const qc = useQueryClient();
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState(emptyOffer);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const { data: rows = [], isLoading } = useQuery<OfferRow[]>({
+    queryKey: ["admin-special-offers"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("special_offers").select("*").order("sort_order").order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: categories = [] } = useQuery<{ id: string; name: string }[]>({
+    queryKey: ["admin-categories-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("vehicle_categories").select("id, name").order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const openCreate = () => { setEditingId(null); setForm({ ...emptyOffer }); setModalOpen(true); };
+  const openEdit = (r: OfferRow) => {
+    setEditingId(r.id);
+    setForm({ title: r.title, description: r.description ?? "", image_url: r.image_url ?? "", discount_type: r.discount_type ?? "percentage", discount_value: r.discount_value ?? 0, category_id: r.category_id ?? "", valid_from: r.valid_from ?? "", valid_until: r.valid_until ?? "", sort_order: r.sort_order ?? 0, is_active: r.is_active });
+    setModalOpen(true);
+  };
+
+  const handleFileUpload = async (file: File) => {
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("offers").upload(path, file, { upsert: true });
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from("offers").getPublicUrl(path);
+      setForm((f) => ({ ...f, image_url: urlData.publicUrl }));
+      toast({ title: "Imagen subida" });
+    } catch (err: any) {
+      toast({ title: "Error subiendo imagen", description: err.message, variant: "destructive" });
+    } finally { setUploading(false); }
+  };
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file) handleFileUpload(file);
+  }, []);
+
+  const save = async () => {
+    if (!form.title.trim() || !form.valid_from) { toast({ title: "Campos obligatorios", description: "Título y fecha inicio son requeridos.", variant: "destructive" }); return; }
+    setSaving(true);
+    try {
+      const payload = {
+        title: form.title.trim(),
+        description: form.description?.trim() || null,
+        image_url: form.image_url?.trim() || null,
+        discount_type: form.discount_type || null,
+        discount_value: form.discount_value || null,
+        category_id: form.category_id || null,
+        valid_from: form.valid_from,
+        valid_until: form.valid_until || null,
+        sort_order: form.sort_order ?? 0,
+        is_active: form.is_active,
+      };
+      if (editingId) {
+        const old = rows.find((r) => r.id === editingId);
+        const { error } = await supabase.from("special_offers").update(payload).eq("id", editingId);
+        if (error) throw error;
+        if (user) await writeAudit(user.id, "update", "special_offers", editingId, old, payload);
+        toast({ title: "Oferta actualizada" });
+      } else {
+        const { data, error } = await supabase.from("special_offers").insert(payload).select().single();
+        if (error) throw error;
+        if (user) await writeAudit(user.id, "insert", "special_offers", data.id, null, data);
+        toast({ title: "Oferta creada" });
+      }
+      qc.invalidateQueries({ queryKey: ["admin-special-offers"] });
+      setModalOpen(false);
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally { setSaving(false); }
+  };
+
+  const deleteRow = async (r: OfferRow) => {
+    if (!confirm("¿Eliminar esta oferta?")) return;
+    try {
+      const { error } = await supabase.from("special_offers").delete().eq("id", r.id);
+      if (error) throw error;
+      if (user) await writeAudit(user.id, "delete", "special_offers", r.id, r, null);
+      toast({ title: "Oferta eliminada" });
+      qc.invalidateQueries({ queryKey: ["admin-special-offers"] });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const catName = (id: string | null) => categories.find((c) => c.id === id)?.name ?? "—";
+
+  if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+
+  return (
+    <>
+      <div className="flex justify-between items-center mb-4">
+        <div />
+        <Button onClick={openCreate}><Plus className="h-4 w-4 mr-2" />Nueva oferta</Button>
+      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Imagen</TableHead><TableHead>Título</TableHead><TableHead>Descuento</TableHead>
+            <TableHead>Categoría</TableHead><TableHead>Desde</TableHead><TableHead>Hasta</TableHead>
+            <TableHead>Activa</TableHead><TableHead>Acciones</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((r) => (
+            <TableRow key={r.id}>
+              <TableCell>{r.image_url ? <img src={r.image_url} alt="" className="h-10 w-14 rounded object-cover" /> : "—"}</TableCell>
+              <TableCell className="font-medium">{r.title}</TableCell>
+              <TableCell>{r.discount_type === "percentage" ? `${r.discount_value}%` : r.discount_value ? `${r.discount_value}€` : "—"}</TableCell>
+              <TableCell>{catName(r.category_id)}</TableCell>
+              <TableCell className="text-xs">{r.valid_from ?? "—"}</TableCell>
+              <TableCell className="text-xs">{r.valid_until ?? "—"}</TableCell>
+              <TableCell>{r.is_active ? <Badge>Sí</Badge> : <Badge variant="destructive">No</Badge>}</TableCell>
+              <TableCell>
+                <div className="flex gap-1">
+                  <Button variant="outline" size="sm" onClick={() => openEdit(r)}><Pencil className="h-4 w-4" /></Button>
+                  <Button variant="outline" size="sm" onClick={() => deleteRow(r)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+          {rows.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Sin ofertas.</TableCell></TableRow>}
+        </TableBody>
+      </Table>
+
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingId ? "Editar oferta" : "Nueva oferta"}</DialogTitle>
+            <DialogDescription>{editingId ? "Modifica los datos de la oferta." : "Crea una nueva oferta especial."}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-1.5"><Label>Título *</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
+            <div className="space-y-1.5"><Label>Descripción</Label><Textarea rows={3} value={form.description ?? ""} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
+            <div className="space-y-1.5">
+              <Label>Imagen</Label>
+              <div
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={handleDrop}
+                onClick={() => fileRef.current?.click()}
+                className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-primary/50 transition-colors"
+              >
+                {form.image_url ? (
+                  <div className="relative inline-block">
+                    <img src={form.image_url} alt="Preview" className="max-h-32 rounded mx-auto" />
+                    <button type="button" onClick={(e) => { e.stopPropagation(); setForm({ ...form, image_url: "" }); }} className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1"><X className="h-3 w-3" /></button>
+                  </div>
+                ) : (
+                  <div className="text-muted-foreground"><Upload className="h-6 w-6 mx-auto mb-1" /><p className="text-sm">Arrastra o haz clic</p></div>
+                )}
+                {uploading && <p className="text-xs text-muted-foreground mt-1">Subiendo…</p>}
+              </div>
+              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Tipo descuento</Label>
+                <Select value={form.discount_type ?? "percentage"} onValueChange={(v) => setForm({ ...form, discount_type: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="percentage">Porcentaje</SelectItem><SelectItem value="fixed">Fijo (€)</SelectItem></SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5"><Label>Valor descuento</Label><Input type="number" min={0} value={form.discount_value ?? 0} onChange={(e) => setForm({ ...form, discount_value: Number(e.target.value) })} /></div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Categoría</Label>
+              <Select value={form.category_id ?? ""} onValueChange={(v) => setForm({ ...form, category_id: v })}>
+                <SelectTrigger><SelectValue placeholder="Opcional" /></SelectTrigger>
+                <SelectContent><SelectItem value="">Sin categoría</SelectItem>{categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5"><Label>Fecha inicio *</Label><Input type="date" value={form.valid_from} onChange={(e) => setForm({ ...form, valid_from: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Fecha fin</Label><Input type="date" value={form.valid_until ?? ""} onChange={(e) => setForm({ ...form, valid_until: e.target.value })} /></div>
+            </div>
+            <div className="space-y-1.5"><Label>Orden</Label><Input type="number" value={form.sort_order} onChange={(e) => setForm({ ...form, sort_order: Number(e.target.value) })} /></div>
+            <div className="flex items-center justify-between"><Label>Activa</Label><Switch checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} /></div>
+            <Button className="w-full" onClick={save} disabled={saving}>{saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}GUARDAR</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+/* ═══════════════════════════════════════════════════
    MAIN — Contenido Web
    ═══════════════════════════════════════════════════ */
 
@@ -679,17 +1030,21 @@ export default function ContentManagement() {
       <h1 className="text-2xl font-bold text-primary mb-6">Contenido Web</h1>
       <div className="bg-background rounded-xl shadow-sm border">
         <Tabs defaultValue="hero" className="w-full">
-          <TabsList className="w-full justify-start rounded-t-xl rounded-b-none border-b h-auto p-0 bg-muted/50">
+          <TabsList className="w-full justify-start rounded-t-xl rounded-b-none border-b h-auto p-0 bg-muted/50 flex-wrap">
             <TabsTrigger value="hero" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3">Hero</TabsTrigger>
             <TabsTrigger value="reviews" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3">Reseñas</TabsTrigger>
             <TabsTrigger value="translations" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3">Traducciones</TabsTrigger>
             <TabsTrigger value="banners" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3">Banners</TabsTrigger>
+            <TabsTrigger value="why" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3">Por qué elegirnos</TabsTrigger>
+            <TabsTrigger value="offers" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3">Ofertas especiales</TabsTrigger>
           </TabsList>
           <div className="p-6">
             <TabsContent value="hero"><HeroTab /></TabsContent>
             <TabsContent value="reviews"><ReviewsTab /></TabsContent>
             <TabsContent value="translations"><TranslationsTab /></TabsContent>
             <TabsContent value="banners"><BannersTab /></TabsContent>
+            <TabsContent value="why"><WhyChooseTab /></TabsContent>
+            <TabsContent value="offers"><OffersTab /></TabsContent>
           </div>
         </Tabs>
       </div>

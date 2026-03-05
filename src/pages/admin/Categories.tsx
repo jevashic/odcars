@@ -35,7 +35,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { Plus, Pencil, Trash2, Upload, X, Loader2 } from "lucide-react";
+
+const ENERGY_TYPES = [
+  { value: "gasoline", label: "Gasolina" },
+  { value: "diesel", label: "Diésel" },
+  { value: "hybrid", label: "Híbrido" },
+  { value: "electric", label: "Eléctrico" },
+] as const;
 
 /* ── Types ──────────────────────────────────────────── */
 
@@ -44,6 +54,7 @@ interface Category {
   name: string;
   code: string;
   description: string | null;
+  energy_type: string;
   price_per_day: number;
   deposit_amount_base: number | null;
   transmission_note: string | null;
@@ -71,6 +82,7 @@ const emptyCategoryForm: CategoryForm = {
   name: "",
   code: "",
   description: "",
+  energy_type: "gasoline",
   price_per_day: 0,
   deposit_amount_base: null,
   transmission_note: "",
@@ -201,6 +213,7 @@ export default function AdminCategories() {
       name: cat.name,
       code: cat.code,
       description: cat.description ?? "",
+      energy_type: cat.energy_type ?? "gasoline",
       price_per_day: cat.price_per_day,
       deposit_amount_base: cat.deposit_amount_base,
       transmission_note: cat.transmission_note ?? "",
@@ -217,8 +230,8 @@ export default function AdminCategories() {
   /* ── Save category ────────────────────────────────── */
 
   const saveCategory = async () => {
-    if (!form.name || !form.code || !form.price_per_day) {
-      toast({ title: "Campos obligatorios", description: "Nombre, código y precio base son requeridos", variant: "destructive" });
+    if (!form.name || !form.code || !form.price_per_day || !form.energy_type) {
+      toast({ title: "Campos obligatorios", description: "Nombre, código, tipo de energía y precio base son requeridos", variant: "destructive" });
       return;
     }
     setSaving(true);
@@ -470,6 +483,16 @@ export default function AdminCategories() {
                   <Label htmlFor="cat-code">Código *</Label>
                   <Input id="cat-code" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })} placeholder="ECO, STD, PRE…" />
                 </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Tipo de energía *</Label>
+                <Select value={form.energy_type} onValueChange={(v) => setForm({ ...form, energy_type: v })}>
+                  <SelectTrigger><SelectValue placeholder="Seleccionar…" /></SelectTrigger>
+                  <SelectContent>
+                    {ENERGY_TYPES.map((et) => <SelectItem key={et.value} value={et.value}>{et.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-1.5">
