@@ -110,14 +110,17 @@ export default function CheckoutBlock({ reservation, userId, onComplete }: Props
     return urls;
   };
 
+  // Don't render if pickup already done
+  if (existingPickup) return null;
+
   const handleSubmit = async () => {
     if (!mileage) {
       toast({ title: "El kilometraje es obligatorio", variant: "destructive" });
       return;
     }
-    const vehicleId = r.vehicle_id || r.vehicles?.id;
+    const vehicleId = assignVehicleId || r.vehicle_id || r.vehicles?.id;
     if (!vehicleId) {
-      toast({ title: "No hay vehículo asignado", variant: "destructive" });
+      toast({ title: "Selecciona un vehículo", variant: "destructive" });
       return;
     }
 
