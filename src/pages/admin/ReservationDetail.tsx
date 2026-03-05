@@ -27,7 +27,9 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { Loader2, ArrowLeft, Save, Play, CheckCircle, XCircle, User } from "lucide-react";
+import { Loader2, ArrowLeft, Save, XCircle, User } from "lucide-react";
+import CheckoutBlock from "@/components/admin/CheckoutBlock";
+import ReturnBlock from "@/components/admin/ReturnBlock";
 import { format, differenceInDays, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -74,15 +76,7 @@ export default function ReservationDetail() {
   const [notes, setNotes] = useState("");
   const [notesLoaded, setNotesLoaded] = useState(false);
 
-  // Return form
-  const [returnMileage, setReturnMileage] = useState(0);
-  const [fuelIncomplete, setFuelIncomplete] = useState(false);
-  const [fuelAmount, setFuelAmount] = useState(0);
-  const [lateReturn, setLateReturn] = useState(false);
-  const [lateDays, setLateDays] = useState(0);
-  const [hasDamage, setHasDamage] = useState(false);
-  const [damageAmount, setDamageAmount] = useState(0);
-  const [damageDesc, setDamageDesc] = useState("");
+  // (Return form state removed — now in ReturnBlock component)
 
   // Cancel form
   const [cancelReason, setCancelReason] = useState("");
@@ -198,72 +192,7 @@ export default function ReservationDetail() {
     qc.invalidateQueries({ queryKey: ["admin-reservations"] });
   };
 
-  const activateReservation = async () => {
-    if (!user || !reservation) return;
-    if (!assignVehicleId) {
-      toast({ title: "Selecciona un vehículo", variant: "destructive" });
-      return;
-    }
-    setSaving(true);
-    try {
-      const { error: e1 } = await supabase
-        .from("reservations")
-        .update({ status: "active", vehicle_id: assignVehicleId })
-        .eq("id", reservation.id);
-      if (e1) throw e1;
-
-      const { error: e2 } = await supabase
-        .from("vehicles")
-        .update({ status: "rented" })
-        .eq("id", assignVehicleId);
-      if (e2) throw e2;
-
-      await writeAudit(user.id, "update", "reservations", reservation.id,
-        { status: "confirmed", vehicle_id: null },
-        { status: "active", vehicle_id: assignVehicleId }
-      );
-      invalidateAll();
-      toast({ title: "Reserva activada" });
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const completeReturn = async () => {
-    if (!user || !reservation) return;
-    setSaving(true);
-    try {
-      const additionalCharges: Record<string, any> = {};
-      if (fuelIncomplete) additionalCharges.fuel = fuelAmount;
-      if (lateReturn) additionalCharges.late_days = lateDays;
-      if (hasDamage) { additionalCharges.damage_amount = damageAmount; additionalCharges.damage_description = damageDesc; }
-
-      const updatePayload: Record<string, any> = {
-        status: "completed",
-        internal_notes: `${reservation.internal_notes ?? ""}\n\n[Devolución] Km: ${returnMileage}${Object.keys(additionalCharges).length ? ` | Cargos: ${JSON.stringify(additionalCharges)}` : ""}`.trim(),
-      };
-
-      const { error: e1 } = await supabase.from("reservations").update(updatePayload).eq("id", reservation.id);
-      if (e1) throw e1;
-
-      if (reservation.vehicle_id) {
-        await supabase.from("vehicles").update({ status: "available", mileage: returnMileage || undefined }).eq("id", reservation.vehicle_id);
-      }
-
-      await writeAudit(user.id, "update", "reservations", reservation.id,
-        { status: "active" },
-        { status: "completed", additional_charges: additionalCharges, return_mileage: returnMileage }
-      );
-      invalidateAll();
-      toast({ title: "Devolución completada" });
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
-    } finally {
-      setSaving(false);
-    }
-  };
+  // (activateReservation & completeReturn moved to CheckoutBlock / ReturnBlock)
 
   const cancelReservation = async () => {
     if (!user || !reservation) return;
