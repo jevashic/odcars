@@ -28,6 +28,7 @@ async function writeAudit(userId: string, action: string, tableName: string, rec
 export default function CheckoutBlock({ reservation, userId, onComplete }: Props) {
   const r = reservation;
 
+  const [assignVehicleId, setAssignVehicleId] = useState(r.vehicle_id ?? "");
   const [mileage, setMileage] = useState<number | "">("");
   const [fuelLevel, setFuelLevel] = useState("");
   const [batteryPercent, setBatteryPercent] = useState<number | "">("");
@@ -36,6 +37,36 @@ export default function CheckoutBlock({ reservation, userId, onComplete }: Props
   const [notes, setNotes] = useState("");
   const [photos, setPhotos] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
+
+  // Check if pickup already done
+  const { data: existingPickup } = useQuery({
+    queryKey: ["pickup-inspection-exists", r.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("vehicle_inspections")
+        .select("id")
+        .eq("reservation_id", r.id)
+        .eq("inspection_type", "pickup")
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!r.id,
+  });
+
+  // Available vehicles for assignment (only if confirmed)
+  const { data: availableVehicles = [] } = useQuery({
+    queryKey: ["admin-available-vehicles-checkout", r.category_id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("vehicles")
+        .select("id, license_plate, brand, model")
+        .eq("category_id", r.category_id)
+        .eq("status", "available");
+      return data ?? [];
+    },
+    enabled: !!r.category_id && r.status === "confirmed",
+  });
 
   // Get category energy type
   const { data: category } = useQuery({
