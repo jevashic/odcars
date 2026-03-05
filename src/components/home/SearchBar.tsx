@@ -22,7 +22,7 @@ interface SearchBarProps {
 }
 
 export default function SearchBar({ onSearch, initialParams }: SearchBarProps) {
-  const { t, lang } = useLang();
+  const { t } = useLang();
   const navigate = useLangNavigate();
   const [locations, setLocations] = useState<PickupLocation[]>([]);
   const [pickup, setPickup] = useState(initialParams?.get('pickup') || '');
@@ -82,6 +82,7 @@ export default function SearchBar({ onSearch, initialParams }: SearchBarProps) {
       ...(isOtherPickup && { address }),
       ...(differentReturn && { dropoff }),
       ...(differentReturn && isOtherDrop && { dropAddress }),
+      ...((pickupCharge + dropoffCharge > 0) && { deliveryCharge: String(pickupCharge + dropoffCharge) }),
     });
 
     if (onSearch) {
@@ -123,14 +124,16 @@ export default function SearchBar({ onSearch, initialParams }: SearchBarProps) {
                   errors.pickup ? 'border-red-500' : 'border-white/20 focus:border-cta'
                 )}
               >
-                {branchOptions.map(b => (
-                  <option key={b.id} value={b.id} className="text-foreground">{b.name}</option>
+                {locations.map(loc => (
+                  <option key={loc.id} value={loc.id} className="text-foreground">
+                    {TYPE_ICONS[loc.type] ?? '📍'} {loc.name}{loc.extra_charge > 0 ? ` +${loc.extra_charge}€` : ''}
+                  </option>
                 ))}
               </select>
             </div>
-            {selectedBranch?.show_surcharge_warning && (
+            {pickupCharge > 0 && (
               <div className="mt-2 text-xs bg-cta/20 text-cta px-3 py-1.5 rounded-full inline-block">
-                ⚠️ {(selectedBranch as any)[surchargeKey] || selectedBranch.surcharge_label_es || 'Suplemento puede aplicar'}
+                ⚠️ Suplemento entrega/recogida: +{pickupCharge.toFixed(2)} €
               </div>
             )}
             {isOtherPickup && (
@@ -256,8 +259,10 @@ export default function SearchBar({ onSearch, initialParams }: SearchBarProps) {
               className="w-full px-3 py-3 rounded-lg bg-white/10 border border-white/20 text-white text-sm appearance-none focus:border-cta"
             >
               <option value="" className="text-foreground">{t('search.select')}</option>
-              {branchOptions.map(b => (
-                <option key={b.id} value={b.id} className="text-foreground">{b.name}</option>
+              {locations.map(loc => (
+                <option key={loc.id} value={loc.id} className="text-foreground">
+                  {TYPE_ICONS[loc.type] ?? '📍'} {loc.name}{loc.extra_charge > 0 ? ` +${loc.extra_charge}€` : ''}
+                </option>
               ))}
             </select>
             {isOtherDrop && (
