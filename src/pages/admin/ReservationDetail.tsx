@@ -5,20 +5,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -27,7 +18,9 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { Loader2, ArrowLeft, Save, Play, CheckCircle, XCircle, User } from "lucide-react";
+import { Loader2, ArrowLeft, Save, XCircle, User } from "lucide-react";
+import CheckoutBlock from "@/components/admin/CheckoutBlock";
+import ReturnBlock from "@/components/admin/ReturnBlock";
 import { format, differenceInDays, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -69,20 +62,11 @@ export default function ReservationDetail() {
   const qc = useQueryClient();
 
   // Action state
-  const [assignVehicleId, setAssignVehicleId] = useState("");
   const [saving, setSaving] = useState(false);
   const [notes, setNotes] = useState("");
   const [notesLoaded, setNotesLoaded] = useState(false);
 
-  // Return form
-  const [returnMileage, setReturnMileage] = useState(0);
-  const [fuelIncomplete, setFuelIncomplete] = useState(false);
-  const [fuelAmount, setFuelAmount] = useState(0);
-  const [lateReturn, setLateReturn] = useState(false);
-  const [lateDays, setLateDays] = useState(0);
-  const [hasDamage, setHasDamage] = useState(false);
-  const [damageAmount, setDamageAmount] = useState(0);
-  const [damageDesc, setDamageDesc] = useState("");
+  // (Return form state removed — now in ReturnBlock component)
 
   // Cancel form
   const [cancelReason, setCancelReason] = useState("");
@@ -144,19 +128,7 @@ export default function ReservationDetail() {
 
   /* ── Available vehicles for assignment ───────────── */
 
-  const { data: availableVehicles = [] } = useQuery({
-    queryKey: ["admin-available-vehicles", reservation?.category_id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("vehicles")
-        .select("id, license_plate, brand, model")
-        .eq("category_id", reservation!.category_id)
-        .eq("status", "available");
-      if (error) throw error;
-      return data ?? [];
-    },
-    enabled: !!reservation && reservation.status === "confirmed",
-  });
+  /* (Available vehicles query moved to CheckoutBlock) */
 
   /* ── Audit log ───────────────────────────────────── */
 
@@ -198,72 +170,7 @@ export default function ReservationDetail() {
     qc.invalidateQueries({ queryKey: ["admin-reservations"] });
   };
 
-  const activateReservation = async () => {
-    if (!user || !reservation) return;
-    if (!assignVehicleId) {
-      toast({ title: "Selecciona un vehículo", variant: "destructive" });
-      return;
-    }
-    setSaving(true);
-    try {
-      const { error: e1 } = await supabase
-        .from("reservations")
-        .update({ status: "active", vehicle_id: assignVehicleId })
-        .eq("id", reservation.id);
-      if (e1) throw e1;
-
-      const { error: e2 } = await supabase
-        .from("vehicles")
-        .update({ status: "rented" })
-        .eq("id", assignVehicleId);
-      if (e2) throw e2;
-
-      await writeAudit(user.id, "update", "reservations", reservation.id,
-        { status: "confirmed", vehicle_id: null },
-        { status: "active", vehicle_id: assignVehicleId }
-      );
-      invalidateAll();
-      toast({ title: "Reserva activada" });
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const completeReturn = async () => {
-    if (!user || !reservation) return;
-    setSaving(true);
-    try {
-      const additionalCharges: Record<string, any> = {};
-      if (fuelIncomplete) additionalCharges.fuel = fuelAmount;
-      if (lateReturn) additionalCharges.late_days = lateDays;
-      if (hasDamage) { additionalCharges.damage_amount = damageAmount; additionalCharges.damage_description = damageDesc; }
-
-      const updatePayload: Record<string, any> = {
-        status: "completed",
-        internal_notes: `${reservation.internal_notes ?? ""}\n\n[Devolución] Km: ${returnMileage}${Object.keys(additionalCharges).length ? ` | Cargos: ${JSON.stringify(additionalCharges)}` : ""}`.trim(),
-      };
-
-      const { error: e1 } = await supabase.from("reservations").update(updatePayload).eq("id", reservation.id);
-      if (e1) throw e1;
-
-      if (reservation.vehicle_id) {
-        await supabase.from("vehicles").update({ status: "available", mileage: returnMileage || undefined }).eq("id", reservation.vehicle_id);
-      }
-
-      await writeAudit(user.id, "update", "reservations", reservation.id,
-        { status: "active" },
-        { status: "completed", additional_charges: additionalCharges, return_mileage: returnMileage }
-      );
-      invalidateAll();
-      toast({ title: "Devolución completada" });
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
-    } finally {
-      setSaving(false);
-    }
-  };
+  // (activateReservation & completeReturn moved to CheckoutBlock / ReturnBlock)
 
   const cancelReservation = async () => {
     if (!user || !reservation) return;
@@ -436,80 +343,14 @@ export default function ReservationDetail() {
 
         {/* ═══ RIGHT (1/3) ═══ */}
         <div className="space-y-6">
-          {/* Block 4 - Actions */}
-          {r.status === "confirmed" && (
-            <Card>
-              <CardHeader><CardTitle className="text-lg flex items-center gap-2"><Play className="h-5 w-5" /> Activar reserva</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label>Asignar vehículo *</Label>
-                  <Select value={assignVehicleId} onValueChange={setAssignVehicleId}>
-                    <SelectTrigger><SelectValue placeholder="Seleccionar vehículo" /></SelectTrigger>
-                    <SelectContent>
-                      {availableVehicles.map((v: any) => (
-                        <SelectItem key={v.id} value={v.id}>{v.license_plate} — {v.brand} {v.model}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button className="w-full" onClick={activateReservation} disabled={saving}>
-                  {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  <Play className="h-4 w-4 mr-2" /> ACTIVAR RESERVA
-                </Button>
-              </CardContent>
-            </Card>
+          {/* Checkout block — visible when confirmed or active (but pickup not yet done) */}
+          {(r.status === "confirmed" || r.status === "active") && user && (
+            <CheckoutBlock reservation={r} userId={user.id} onComplete={invalidateAll} />
           )}
 
-          {r.status === "active" && (
-            <Card>
-              <CardHeader><CardTitle className="text-lg flex items-center gap-2"><CheckCircle className="h-5 w-5" /> Completar devolución</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label>Kilometraje devolución</Label>
-                  <Input type="number" value={returnMileage} onChange={(e) => setReturnMileage(Number(e.target.value))} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label>¿Combustible incompleto?</Label>
-                  <Switch checked={fuelIncomplete} onCheckedChange={setFuelIncomplete} />
-                </div>
-                {fuelIncomplete && (
-                  <div className="space-y-1.5">
-                    <Label>Importe combustible (€)</Label>
-                    <Input type="number" value={fuelAmount} onChange={(e) => setFuelAmount(Number(e.target.value))} />
-                  </div>
-                )}
-                <div className="flex items-center justify-between">
-                  <Label>¿Devolución tardía?</Label>
-                  <Switch checked={lateReturn} onCheckedChange={setLateReturn} />
-                </div>
-                {lateReturn && (
-                  <div className="space-y-1.5">
-                    <Label>Días extra</Label>
-                    <Input type="number" value={lateDays} onChange={(e) => setLateDays(Number(e.target.value))} />
-                  </div>
-                )}
-                <div className="flex items-center justify-between">
-                  <Label>¿Daños?</Label>
-                  <Switch checked={hasDamage} onCheckedChange={setHasDamage} />
-                </div>
-                {hasDamage && (
-                  <>
-                    <div className="space-y-1.5">
-                      <Label>Importe daños (€)</Label>
-                      <Input type="number" value={damageAmount} onChange={(e) => setDamageAmount(Number(e.target.value))} />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Descripción daños</Label>
-                      <Textarea value={damageDesc} onChange={(e) => setDamageDesc(e.target.value)} rows={2} />
-                    </div>
-                  </>
-                )}
-                <Button className="w-full" onClick={completeReturn} disabled={saving}>
-                  {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  <CheckCircle className="h-4 w-4 mr-2" /> COMPLETAR DEVOLUCIÓN
-                </Button>
-              </CardContent>
-            </Card>
+          {/* Return block — visible when active */}
+          {r.status === "active" && user && (
+            <ReturnBlock reservation={r} userId={user.id} onComplete={invalidateAll} />
           )}
 
           {(r.status === "pending" || r.status === "confirmed") && (
