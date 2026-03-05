@@ -14,7 +14,7 @@ const TIMES = Array.from({ length: 48 }, (_, i) => {
   return `${h}:${m}`;
 });
 
-interface Branch { id: string; name: string; show_surcharge_warning: boolean; surcharge_label_es?: string; surcharge_label_en?: string; surcharge_label_de?: string; }
+interface PickupLocation { id: string; name: string; type: string; extra_charge: number; }
 
 interface SearchBarProps {
   onSearch?: (params: URLSearchParams) => void;
@@ -22,9 +22,9 @@ interface SearchBarProps {
 }
 
 export default function SearchBar({ onSearch, initialParams }: SearchBarProps) {
-  const { t, lang } = useLang();
+  const { t } = useLang();
   const navigate = useLangNavigate();
-  const [branches, setBranches] = useState<Branch[]>([]);
+  const [locations, setLocations] = useState<PickupLocation[]>([]);
   const [pickup, setPickup] = useState(initialParams?.get('pickup') || '');
   const [dropoff, setDropoff] = useState(initialParams?.get('dropoff') || '');
   const [differentReturn, setDifferentReturn] = useState(!!initialParams?.get('dropoff'));
@@ -38,31 +38,29 @@ export default function SearchBar({ onSearch, initialParams }: SearchBarProps) {
   const [errors, setErrors] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    supabase.from('branches').select('*').eq('is_active', true).order('sort_order').then(({ data }) => {
-      if (data) setBranches(data as any);
+    supabase.from('pickup_locations').select('*').eq('is_active', true).order('sort_order').then(({ data }) => {
+      if (data) setLocations(data as PickupLocation[]);
     });
   }, []);
 
-  // fallback branches
-  const branchOptions = branches.length > 0 ? branches : [
-    { id: 'maspalomas', name: 'Oficina Maspalomas', show_surcharge_warning: false },
-    { id: 'airport', name: 'Aeropuerto de Gran Canaria', show_surcharge_warning: true, surcharge_label_es: 'Servicio de entrega en aeropuerto (suplemento puede aplicar)' },
-    { id: 'other', name: 'Otro lugar / hotel', show_surcharge_warning: true, surcharge_label_es: 'Servicio de entrega a domicilio (suplemento puede aplicar)' },
-  ] as Branch[];
+  const TYPE_ICONS: Record<string, string> = { office: '🏢', airport: '✈️', hotel: '🏨', other: '📍' };
 
-  const selectedBranch = branchOptions.find(b => b.id === pickup);
-  const selectedDropBranch = branchOptions.find(b => b.id === dropoff);
-  const surchargeKey = `surcharge_label_${lang}` as keyof Branch;
-  const isOtherPickup = selectedBranch?.name?.toLowerCase().includes('otro');
-  const isOtherDrop = selectedDropBranch?.name?.toLowerCase().includes('otro');
+  const selectedLoc = locations.find(l => l.id === pickup);
+  const selectedDropLoc = locations.find(l => l.id === dropoff);
+  const isOtherPickup = selectedLoc?.type === 'other' || selectedLoc?.type === 'hotel';
+  const isOtherDrop = selectedDropLoc?.type === 'other' || selectedDropLoc?.type === 'hotel';
+
+  const pickupCharge = selectedLoc?.extra_charge ?? 0;
+  const dropoffCharge = differentReturn ? (selectedDropLoc?.extra_charge ?? 0) : 0;
+  
 
   // Set default pickup
   useEffect(() => {
-    if (branchOptions.length > 0 && !pickup) {
-      const airport = branchOptions.find(b => b.name?.toLowerCase().includes('aeropuerto'));
-      setPickup(airport?.id ?? branchOptions[0].id);
+    if (locations.length > 0 && !pickup) {
+      const airport = locations.find(l => l.type === 'airport');
+      setPickup(airport?.id ?? locations[0].id);
     }
-  }, [branchOptions, pickup]);
+  }, [locations, pickup]);
 
   const handleSearch = () => {
     const errs: Record<string, boolean> = {};
@@ -84,6 +82,7 @@ export default function SearchBar({ onSearch, initialParams }: SearchBarProps) {
       ...(isOtherPickup && { address }),
       ...(differentReturn && { dropoff }),
       ...(differentReturn && isOtherDrop && { dropAddress }),
+      ...((pickupCharge + dropoffCharge > 0) && { deliveryCharge: String(pickupCharge + dropoffCharge) }),
     });
 
     if (onSearch) {
@@ -125,14 +124,16 @@ export default function SearchBar({ onSearch, initialParams }: SearchBarProps) {
                   errors.pickup ? 'border-red-500' : 'border-white/20 focus:border-cta'
                 )}
               >
-                {branchOptions.map(b => (
-                  <option key={b.id} value={b.id} className="text-foreground">{b.name}</option>
+                {locations.map(loc => (
+                  <option key={loc.id} value={loc.id} className="text-foreground">
+                    {TYPE_ICONS[loc.type] ?? '📍'} {loc.name}{loc.extra_charge > 0 ? ` +${loc.extra_charge}€` : ''}
+                  </option>
                 ))}
               </select>
             </div>
-            {selectedBranch?.show_surcharge_warning && (
+            {pickupCharge > 0 && (
               <div className="mt-2 text-xs bg-cta/20 text-cta px-3 py-1.5 rounded-full inline-block">
-                ⚠️ {(selectedBranch as any)[surchargeKey] || selectedBranch.surcharge_label_es || 'Suplemento puede aplicar'}
+                ⚠️ Suplemento entrega/recogida: +{pickupCharge.toFixed(2)} €
               </div>
             )}
             {isOtherPickup && (
@@ -258,8 +259,10 @@ export default function SearchBar({ onSearch, initialParams }: SearchBarProps) {
               className="w-full px-3 py-3 rounded-lg bg-white/10 border border-white/20 text-white text-sm appearance-none focus:border-cta"
             >
               <option value="" className="text-foreground">{t('search.select')}</option>
-              {branchOptions.map(b => (
-                <option key={b.id} value={b.id} className="text-foreground">{b.name}</option>
+              {locations.map(loc => (
+                <option key={loc.id} value={loc.id} className="text-foreground">
+                  {TYPE_ICONS[loc.type] ?? '📍'} {loc.name}{loc.extra_charge > 0 ? ` +${loc.extra_charge}€` : ''}
+                </option>
               ))}
             </select>
             {isOtherDrop && (
