@@ -14,7 +14,7 @@ const TIMES = Array.from({ length: 48 }, (_, i) => {
   return `${h}:${m}`;
 });
 
-interface Branch { id: string; name: string; show_surcharge_warning: boolean; surcharge_label_es?: string; surcharge_label_en?: string; surcharge_label_de?: string; }
+interface PickupLocation { id: string; name: string; type: string; extra_charge: number; }
 
 interface SearchBarProps {
   onSearch?: (params: URLSearchParams) => void;

@@ -61,6 +61,7 @@ const mainLinks: NavItem[] = [
 
 const configLinks: NavItem[] = [
   { to: "/admin/oficinas", icon: MapPin, label: "Oficinas", roles: ["admin"] },
+  { to: "/admin/ubicaciones", icon: MapPin, label: "Ubicaciones recogida", roles: ["admin"] },
   { to: "/admin/usuarios", icon: UserCog, label: "Usuarios", roles: ["admin"] },
   { to: "/admin/seguros", icon: Shield, label: "Seguros", roles: ["admin"] },
   { to: "/admin/contenido", icon: FileText, label: "Contenido web", roles: ["admin"] },
