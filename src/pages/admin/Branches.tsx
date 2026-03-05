@@ -16,7 +16,17 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Loader2, MapPin, Phone, Mail, Car, Users } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Plus, Pencil, Loader2, MapPin, Phone, Mail, Car, Users, Trash2 } from "lucide-react";
 
 /* ── Types ──────────────────────────────────────────── */
 
@@ -82,6 +92,7 @@ export default function AdminBranches() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<BranchForm>(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Branch | null>(null);
 
   const isAdmin = user?.role === "admin";
 
@@ -225,6 +236,23 @@ export default function AdminBranches() {
     }
   };
 
+  /* ── Delete ───────────────────────────────────────── */
+
+  const deleteBranch = async () => {
+    if (!deleteTarget) return;
+    try {
+      const { error } = await supabase.from("branches").delete().eq("id", deleteTarget.id);
+      if (error) throw error;
+      if (user) await writeAudit(user.id, "delete", "branches", deleteTarget.id, deleteTarget, null);
+      qc.invalidateQueries({ queryKey: ["admin-branches"] });
+      toast({ title: "Oficina eliminada" });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setDeleteTarget(null);
+    }
+  };
+
   /* ── Render ───────────────────────────────────────── */
 
   if (!isAdmin) {
@@ -331,6 +359,14 @@ export default function AdminBranches() {
                   >
                     {branch.is_active ? "Desactivar" : "Activar"}
                   </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => setDeleteTarget(branch)}
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" /> Eliminar
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -436,6 +472,24 @@ export default function AdminBranches() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar oficina?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Se eliminará permanentemente <strong>{deleteTarget?.name}</strong>. Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={deleteBranch} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
