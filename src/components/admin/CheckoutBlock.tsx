@@ -151,9 +151,12 @@ export default function CheckoutBlock({ reservation, userId, onComplete }: Props
       const { error: insErr } = await supabase.from("vehicle_inspections").insert(inspectionData);
       if (insErr) throw insErr;
 
+      const resUpdate: any = { status: "active" };
+      if (!r.vehicle_id) resUpdate.vehicle_id = vehicleId;
+
       const { error: resErr } = await supabase
         .from("reservations")
-        .update({ status: "active" })
+        .update(resUpdate)
         .eq("id", r.id);
       if (resErr) throw resErr;
 
