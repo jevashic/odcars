@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Users, Settings2, ShieldCheck, Check, Zap } from 'lucide-react';
+import { Users, Settings2, ShieldCheck, Check, Zap, Car } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import PublicLayout from '@/components/layout/PublicLayout';
 import { useLang } from '@/contexts/LanguageContext';
 import { useLangNavigate } from '@/hooks/useLangNavigate';
+import { getVehicleImage } from '@/utils/vehicleImage';
 
 interface VehicleCard {
   id: string;
@@ -16,7 +17,7 @@ interface VehicleCard {
   category_id: string;
   category_name: string;
   price_per_day: number;
-  image_url: string | null;
+  resolvedImage: string | null;
 }
 
 export default function Fleet() {
@@ -32,22 +33,10 @@ export default function Fleet() {
       const { data: vehiculos, error: vehError } = await supabase
         .from('vehicles')
         .select(`
-          id,
-          brand,
-          model,
-          year,
-          color,
-          transmission,
-          seats,
-          category_id,
+          id, brand, model, year, color,
+          transmission, seats, category_id, images,
           vehicle_categories(
-            id,
-            name,
-            price_per_day,
-            image_url,
-            transmission_note,
-            seats_min,
-            seats_max
+            id, name, price_per_day, image_url
           )
         `)
         .eq('status', 'available');
@@ -59,7 +48,6 @@ export default function Fleet() {
         return;
       }
 
-      // Group by category_id and keep max 2 per category
       const countByCategory: Record<string, number> = {};
       const all: VehicleCard[] = [];
       for (const v of (vehiculos ?? [])) {
@@ -79,7 +67,7 @@ export default function Fleet() {
           category_id: v.category_id,
           category_name: cat.name,
           price_per_day: cat.price_per_day,
-          image_url: cat.image_url,
+          resolvedImage: getVehicleImage(v.images as any, cat.image_url),
         });
       }
       setCards(all);
@@ -105,8 +93,12 @@ export default function Fleet() {
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {cards.map(v => (
               <div key={v.id} className="bg-card rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.08)] overflow-hidden hover:shadow-lg transition-shadow">
-                {v.image_url && (
-                  <img src={v.image_url} alt={`${v.brand} ${v.model}`} className="w-full aspect-video object-cover" loading="lazy" />
+                {v.resolvedImage ? (
+                  <img src={v.resolvedImage} alt={`${v.brand} ${v.model}`} className="w-full aspect-video object-cover" loading="lazy" />
+                ) : (
+                  <div className="w-full aspect-video bg-muted flex items-center justify-center">
+                    <Car className="h-10 w-10 text-muted-foreground/30" />
+                  </div>
                 )}
                 <div className="p-4 space-y-3">
                   <div className="flex flex-wrap gap-1.5">
