@@ -43,20 +43,32 @@ function PaymentForm() {
     try {
       const cardElement = elements.getElement(CardElement);
       if (!cardElement) throw new Error(t('booking.card_not_found'));
-      const { error: pmError, paymentMethod } = await stripe.createPaymentMethod({ type: 'card', card: cardElement });
-      if (pmError) throw new Error(pmError.message);
+      const firstName = params.get('firstName') || '';
+      const lastName = params.get('lastName') || '';
+      const email = params.get('email') || '';
 
       const payload: ReservationPayload = {
-        customer: { first_name: params.get('firstName') || '', last_name: params.get('lastName') || '', email: params.get('email') || '', phone: params.get('phone') || '', license_number: params.get('licenseNumber') || '', license_expiry: params.get('licenseExpiry') || '' },
+        customer: { first_name: firstName, last_name: lastName, email, phone: params.get('phone') || '', license_number: params.get('licenseNumber') || '', license_expiry: params.get('licenseExpiry') || '' },
         category_id: params.get('categoryId') || '',
         pickup_location_id: params.get('pickup') || '',
         return_location_id: params.get('return') || params.get('pickup') || '',
         start_date: startDate, end_date: endDate,
         start_time: params.get('pickupTime') || '09:00', end_time: params.get('returnTime') || '09:00',
         insurance_tier: 'premium', extra_ids: selectedExtras, payment_method: 'card_online',
-        stripe_payment_intent_id: paymentMethod?.id, sale_channel: 'web',
+        sale_channel: 'web', pay_signal: true,
       };
       const result = await createReservation(payload);
+
+      if (!result.signal_client_secret) throw new Error('No se recibió client_secret de Stripe');
+
+      const { error: stripeError } = await stripe.confirmCardPayment(result.signal_client_secret, {
+        payment_method: {
+          card: cardElement,
+          billing_details: { name: `${firstName} ${lastName}`, email },
+        },
+      });
+      if (stripeError) throw new Error(stripeError.message);
+
       markBookingCompleted();
       navigate(`/reservar/confirmacion`, {
         state: {

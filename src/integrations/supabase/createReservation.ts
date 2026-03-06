@@ -29,6 +29,7 @@ export interface ReservationPayload {
   delivery_details?: any;
   discount_code?: string | null;
   notes?: string | null;
+  pay_signal?: boolean;
 }
 
 export async function createReservation(payload: ReservationPayload) {
@@ -55,7 +56,10 @@ export async function createReservation(payload: ReservationPayload) {
   console.log('Respuesta reserva:', data);
 
   if (data.success === true && data.data?.reservation_number) {
-    return { reservation_number: data.data.reservation_number };
+    return {
+      reservation_number: data.data.reservation_number,
+      signal_client_secret: data.data.signal_client_secret || null,
+    };
   }
 
   console.error('Error reserva:', data);
