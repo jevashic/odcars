@@ -54,11 +54,11 @@ export default function SearchBar({ onSearch, initialParams }: SearchBarProps) {
   const dropoffCharge = differentReturn ? (selectedDropLoc?.extra_charge ?? 0) : 0;
   
 
-  // Set default pickup
+  // Set default pickup to "Oficina Maspalomas" or first office
   useEffect(() => {
     if (locations.length > 0 && !pickup) {
-      const airport = locations.find(l => l.type === 'airport');
-      setPickup(airport?.id ?? locations[0].id);
+      const maspalomas = locations.find(l => l.name.toLowerCase().includes('maspalomas') && l.type === 'office');
+      setPickup(maspalomas?.id ?? locations.find(l => l.type === 'office')?.id ?? locations[0].id);
     }
   }, [locations, pickup]);
 
