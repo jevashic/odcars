@@ -334,7 +334,7 @@ export default function AdminReservations() {
                 const channel = CHANNEL_MAP[r.sale_channel] ?? { icon: "📋", label: r.sale_channel ?? "—" };
 
                 return (
-                  <TableRow key={r.id}>
+                  <TableRow key={r.id} className="cursor-pointer" onClick={() => navigate(`/admin/reservas/${r.id}`)}>
                     <TableCell className="font-mono font-medium">{r.reservation_number ?? "—"}</TableCell>
                     <TableCell>
                       <div className="font-medium">{r.customers?.first_name} {r.customers?.last_name}</div>

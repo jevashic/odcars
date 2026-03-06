@@ -81,8 +81,10 @@ export default function ReservationDetail() {
         .select(`
           *,
           customers(*),
-          vehicle_categories(id, name),
-          vehicles(id, license_plate, brand, model)
+          vehicle_categories(id, name, image_url),
+          vehicles(id, plate, brand, model),
+          reservation_extras(extra_name, quantity, unit_price, subtotal),
+          payments(method, status, amount, payment_type)
         `)
         .eq("id", id!)
         .single();
