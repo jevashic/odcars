@@ -82,6 +82,7 @@ function SummaryForm() {
           stripe_setup_intent_id: paymentMethod?.id, sale_channel: 'web',
         };
         const result = await createReservation(payload);
+        markBookingCompleted();
         navigate(`/reservar/confirmacion`, {
           state: {
             reservation: {
