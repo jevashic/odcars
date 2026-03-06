@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, AlertCircle, Calendar, MapPin, Shield, CreditCard, Package, X, FileText, Loader2 } from 'lucide-react';
+import { Search, AlertCircle, Calendar, MapPin, Shield, CreditCard, X, FileText, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { format, differenceInDays, parseISO, addHours } from 'date-fns';
 import PublicLayout from '@/components/layout/PublicLayout';
 import { useLang } from '@/contexts/LanguageContext';
-import { Badge } from '@/components/ui/badge';
+import { useLang } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -113,7 +113,7 @@ export default function MyReservations() {
     reservation.start_date &&
     new Date(reservation.start_date) > addHours(new Date(), 48);
 
-  const canModify = reservation && ['pending', 'confirmed'].includes(reservation.status);
+  const _canModify = reservation && ['pending', 'confirmed'].includes(reservation.status);
 
   const days = reservation?.start_date && reservation?.end_date
     ? Math.max(1, differenceInDays(parseISO(reservation.end_date), parseISO(reservation.start_date)))
