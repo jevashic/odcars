@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Mail } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/integrations/supabase/client';
 import { useLang } from '@/contexts/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 
