@@ -340,6 +340,23 @@ export default function ReservationDetail() {
               )}
             </CardContent>
           </Card>
+
+          {/* Block 4 - Payments */}
+          <Card>
+            <CardHeader><CardTitle className="text-lg">Historial de pagos</CardTitle></CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              {payments.length === 0 ? (
+                <p className="text-muted-foreground">Sin pagos registrados.</p>
+              ) : (
+                payments.map((p: any, idx: number) => (
+                  <div key={p.id ?? idx} className="flex justify-between">
+                    <span className="text-muted-foreground">{p.payment_type ?? p.method ?? "—"} ({p.status})</span>
+                    <span className="font-medium">{p.amount != null ? `${Number(p.amount).toFixed(2)} €` : "—"}</span>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         {/* ═══ RIGHT (1/3) ═══ */}
