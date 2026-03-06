@@ -1,4 +1,4 @@
-import { Users, Settings2, Fuel, ShieldCheck, Check, Infinity } from 'lucide-react';
+import { Users, Settings2, Fuel, ShieldCheck, Check, Zap } from 'lucide-react';
 import { useLang } from '@/contexts/LanguageContext';
 import { getVehicleTranslation } from '@/utils/vehicleTranslation';
 
@@ -35,7 +35,7 @@ export default function CategoryCard({ category, vehicles, onBook }: Props) {
             <Check className="h-3 w-3" /> 0€ Fianza
           </span>
           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-700 px-2.5 py-0.5 text-[11px] font-bold">
-            <Infinity className="h-3 w-3" /> Km ilimitados
+            <Zap className="h-3 w-3" /> Km ilimitados
           </span>
         </div>
 

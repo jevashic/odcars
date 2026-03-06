@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { format, differenceInDays } from 'date-fns';
-import { X, MapPin, CalendarIcon, ShieldCheck, Check, Infinity } from 'lucide-react';
+import { X, CalendarIcon, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLang } from '@/contexts/LanguageContext';
 import { useLangNavigate } from '@/hooks/useLangNavigate';
