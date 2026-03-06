@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -35,9 +36,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import { Plus, Pencil, Trash2, Upload, X, Loader2 } from "lucide-react";
 
 const ENERGY_TYPES = [
@@ -73,10 +71,12 @@ interface SeasonWithPrice {
   end_date: string;
   price_per_day_with_tax: number;
   is_active: boolean;
+  type: string;
 }
 
 interface PricingRuleForm {
   name: string;
+  type: string;
   start_date: string;
   end_date: string;
   price_per_day_with_tax: number;
@@ -101,6 +101,7 @@ const emptyCategoryForm: CategoryForm = {
 
 const emptyPricingRuleForm: PricingRuleForm = {
   name: "",
+  type: "alta",
   start_date: "",
   end_date: "",
   price_per_day_with_tax: 0,
@@ -173,7 +174,7 @@ export default function AdminCategories() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pricing_rules")
-        .select("id, season_id, price_per_day_with_tax, is_active, seasons(id, name, start_date, end_date, is_active)")
+        .select("id, season_id, price_per_day_with_tax, is_active, seasons(id, name, type, start_date, end_date, is_active)")
         .eq("category_id", editingId!);
       if (error) throw error;
       return (data ?? []).map((r: any) => ({
@@ -184,6 +185,7 @@ export default function AdminCategories() {
         end_date: r.seasons?.end_date ?? "",
         price_per_day_with_tax: r.price_per_day_with_tax,
         is_active: r.is_active,
+        type: r.seasons?.type ?? "alta",
       })).sort((a: SeasonWithPrice, b: SeasonWithPrice) => a.start_date.localeCompare(b.start_date));
     },
   });
@@ -313,6 +315,7 @@ export default function AdminCategories() {
     setPrEditingRow(row);
     setPrForm({
       name: row.name,
+      type: row.type,
       start_date: row.start_date,
       end_date: row.end_date,
       price_per_day_with_tax: row.price_per_day_with_tax,
@@ -332,6 +335,7 @@ export default function AdminCategories() {
         // Update season
         const { error: sErr } = await supabase.from("seasons").update({
           name: prForm.name,
+          type: prForm.type,
           start_date: prForm.start_date,
           end_date: prForm.end_date,
           is_active: prForm.is_active,
@@ -354,7 +358,7 @@ export default function AdminCategories() {
             start_date: prForm.start_date,
             end_date: prForm.end_date,
             is_active: prForm.is_active,
-            type: "custom",
+            type: prForm.type,
           })
           .select()
           .single();
@@ -694,6 +698,19 @@ export default function AdminCategories() {
                       <div className="space-y-1.5">
                         <Label>Nombre *</Label>
                         <Input value={prForm.name} onChange={(e) => setPrForm({ ...prForm, name: e.target.value })} placeholder="Temporada Alta" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Tipo de temporada *</Label>
+                        <Select value={prForm.type} onValueChange={(v) => setPrForm({ ...prForm, type: v })}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar tipo" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="alta">Temporada Alta</SelectItem>
+                            <SelectItem value="media">Temporada Media</SelectItem>
+                            <SelectItem value="baja">Temporada Baja</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1.5">
