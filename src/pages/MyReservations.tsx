@@ -46,7 +46,7 @@ export default function MyReservations() {
     try {
       const { data, error: qErr } = await supabase
         .from('reservations')
-        .select(`*, customers(first_name, last_name, email, phone), vehicle_categories(name, image_url), reservation_extras(id, extra_id, price, extras(name)), pickup_locations:branches!reservations_pickup_branch_id_fkey(name), return_locations:branches!reservations_return_branch_id_fkey(name)`)
+        .select(`id, reservation_number, status, start_date, end_date, total_amount, delivery_charge, delivery_details, sale_channel, created_at, base_amount, extras_amount, discount_amount, insurance_tier, payment_method, pickup_time, return_time, notes, customers(first_name, last_name, email, phone), vehicle_categories(name, image_url), vehicles(plate, brand, model), reservation_extras(extra_name, quantity, unit_price, subtotal), pickup_locations:branches!reservations_pickup_branch_id_fkey(name), return_locations:branches!reservations_return_branch_id_fkey(name)`)
         .eq('reservation_number', code)
         .single();
 
@@ -217,10 +217,10 @@ export default function MyReservations() {
                   <div>
                     <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Extras</p>
                     <div className="space-y-1">
-                      {reservation.reservation_extras.map((re: any) => (
-                        <div key={re.id} className="flex justify-between text-sm">
-                          <span>{re.extras?.name || re.extra_id}</span>
-                          <span className="font-medium">{re.price != null ? `${Number(re.price).toFixed(2)} €` : ''}</span>
+                      {reservation.reservation_extras.map((re: any, idx: number) => (
+                        <div key={idx} className="flex justify-between text-sm">
+                          <span>{re.extra_name || '—'}{re.quantity > 1 ? ` x${re.quantity}` : ''}</span>
+                          <span className="font-medium">{re.subtotal != null ? `${Number(re.subtotal).toFixed(2)} €` : ''}</span>
                         </div>
                       ))}
                     </div>
