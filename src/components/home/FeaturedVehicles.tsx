@@ -56,7 +56,7 @@ export default function FeaturedVehicles() {
           {items.map((cat) => {
             const tr = getVehicleTranslation(cat, lang);
             return (
-            <div key={cat.id} className="bg-card rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.08)] overflow-hidden hover:shadow-lg hover:scale-[1.02] transition-all duration-300 group">
+            <div key={cat.id} className="w-full sm:w-[calc(50%-12px)] lg:w-[calc(25%-18px)] bg-card rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.08)] overflow-hidden hover:shadow-lg hover:scale-[1.02] transition-all duration-300 group">
               <div className="relative aspect-video">
                 <img src={cat.image_url} alt={tr.name} className="w-full h-full object-cover" loading="lazy" />
                 <span className="absolute top-3 right-3 bg-cta text-cta-foreground text-xs font-bold px-3 py-1.5 rounded-full">
