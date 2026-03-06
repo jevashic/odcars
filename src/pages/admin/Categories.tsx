@@ -65,18 +65,25 @@ interface Category {
   created_at: string;
 }
 
-interface PricingRule {
-  id: string;
-  category_id: string;
+interface SeasonWithPrice {
+  pricing_rule_id: string;
+  season_id: string;
   name: string;
   start_date: string;
   end_date: string;
-  price_per_day: number;
+  price_per_day_with_tax: number;
+  is_active: boolean;
+}
+
+interface PricingRuleForm {
+  name: string;
+  start_date: string;
+  end_date: string;
+  price_per_day_with_tax: number;
   is_active: boolean;
 }
 
 type CategoryForm = Omit<Category, "id" | "created_at">;
-type PricingRuleForm = Omit<PricingRule, "id" | "category_id">;
 
 const emptyCategoryForm: CategoryForm = {
   name: "",
@@ -96,7 +103,7 @@ const emptyPricingRuleForm: PricingRuleForm = {
   name: "",
   start_date: "",
   end_date: "",
-  price_per_day: 0,
+  price_per_day_with_tax: 0,
   is_active: true,
 };
 
@@ -139,9 +146,9 @@ export default function AdminCategories() {
 
   // Pricing rule state
   const [prModalOpen, setPrModalOpen] = useState(false);
-  const [prEditId, setPrEditId] = useState<string | null>(null);
+  const [prEditingRow, setPrEditingRow] = useState<SeasonWithPrice | null>(null);
   const [prForm, setPrForm] = useState<PricingRuleForm>(emptyPricingRuleForm);
-  const [prDeleteTarget, setPrDeleteTarget] = useState<PricingRule | null>(null);
+  const [prDeleteTarget, setPrDeleteTarget] = useState<SeasonWithPrice | null>(null);
   const [prSaving, setPrSaving] = useState(false);
 
   const fileRef = useRef<HTMLInputElement>(null);
@@ -160,17 +167,24 @@ export default function AdminCategories() {
     },
   });
 
-  const { data: pricingRules = [] } = useQuery<PricingRule[]>({
+  const { data: pricingRules = [] } = useQuery<SeasonWithPrice[]>({
     queryKey: ["admin-pricing-rules", editingId],
     enabled: !!editingId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pricing_rules")
-        .select("*")
-        .eq("category_id", editingId!)
-        .order("start_date");
+        .select("id, season_id, price_per_day_with_tax, is_active, seasons(id, name, start_date, end_date, is_active)")
+        .eq("category_id", editingId!);
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []).map((r: any) => ({
+        pricing_rule_id: r.id,
+        season_id: r.season_id,
+        name: r.seasons?.name ?? "",
+        start_date: r.seasons?.start_date ?? "",
+        end_date: r.seasons?.end_date ?? "",
+        price_per_day_with_tax: r.price_per_day_with_tax,
+        is_active: r.is_active,
+      })).sort((a: SeasonWithPrice, b: SeasonWithPrice) => a.start_date.localeCompare(b.start_date));
     },
   });
 
@@ -290,44 +304,74 @@ export default function AdminCategories() {
   /* ── Pricing rule CRUD ────────────────────────────── */
 
   const openPrCreate = () => {
-    setPrEditId(null);
+    setPrEditingRow(null);
     setPrForm(emptyPricingRuleForm);
     setPrModalOpen(true);
   };
 
-  const openPrEdit = (pr: PricingRule) => {
-    setPrEditId(pr.id);
+  const openPrEdit = (row: SeasonWithPrice) => {
+    setPrEditingRow(row);
     setPrForm({
-      name: pr.name,
-      start_date: pr.start_date,
-      end_date: pr.end_date,
-      price_per_day: pr.price_per_day,
-      is_active: pr.is_active,
+      name: row.name,
+      start_date: row.start_date,
+      end_date: row.end_date,
+      price_per_day_with_tax: row.price_per_day_with_tax,
+      is_active: row.is_active,
     });
     setPrModalOpen(true);
   };
 
   const savePricingRule = async () => {
-    if (!prForm.name || !prForm.start_date || !prForm.end_date || !prForm.price_per_day) {
+    if (!prForm.name || !prForm.start_date || !prForm.end_date || !prForm.price_per_day_with_tax) {
       toast({ title: "Campos obligatorios", description: "Nombre, fechas y precio son requeridos", variant: "destructive" });
       return;
     }
     setPrSaving(true);
     try {
-      if (prEditId) {
-        const oldRule = pricingRules.find((r) => r.id === prEditId);
-        const { error } = await supabase.from("pricing_rules").update(prForm).eq("id", prEditId);
-        if (error) throw error;
-        await writeAudit(user!.id, "update", "pricing_rules", prEditId, oldRule, prForm);
+      if (prEditingRow) {
+        // Update season
+        const { error: sErr } = await supabase.from("seasons").update({
+          name: prForm.name,
+          start_date: prForm.start_date,
+          end_date: prForm.end_date,
+          is_active: prForm.is_active,
+        }).eq("id", prEditingRow.season_id);
+        if (sErr) throw sErr;
+        // Update pricing rule
+        const { error: pErr } = await supabase.from("pricing_rules").update({
+          price_per_day_with_tax: prForm.price_per_day_with_tax,
+          is_active: prForm.is_active,
+        }).eq("id", prEditingRow.pricing_rule_id);
+        if (pErr) throw pErr;
+        await writeAudit(user!.id, "update", "seasons", prEditingRow.season_id, prEditingRow, prForm);
         toast({ title: "Temporada actualizada" });
       } else {
-        const { data: inserted, error } = await supabase
-          .from("pricing_rules")
-          .insert({ ...prForm, category_id: editingId! })
+        // Insert season first
+        const { data: newSeason, error: sErr } = await supabase
+          .from("seasons")
+          .insert({
+            name: prForm.name,
+            start_date: prForm.start_date,
+            end_date: prForm.end_date,
+            is_active: prForm.is_active,
+            type: "custom",
+          })
           .select()
           .single();
-        if (error) throw error;
-        await writeAudit(user!.id, "insert", "pricing_rules", inserted.id, null, { ...prForm, category_id: editingId });
+        if (sErr) throw sErr;
+        // Insert pricing rule
+        const { data: newRule, error: pErr } = await supabase
+          .from("pricing_rules")
+          .insert({
+            category_id: editingId!,
+            season_id: newSeason.id,
+            price_per_day_with_tax: prForm.price_per_day_with_tax,
+            is_active: prForm.is_active,
+          })
+          .select()
+          .single();
+        if (pErr) throw pErr;
+        await writeAudit(user!.id, "insert", "pricing_rules", newRule.id, null, { season_id: newSeason.id, category_id: editingId });
         toast({ title: "Temporada creada" });
       }
       qc.invalidateQueries({ queryKey: ["admin-pricing-rules", editingId] });
@@ -342,9 +386,12 @@ export default function AdminCategories() {
   const deletePricingRule = async () => {
     if (!prDeleteTarget) return;
     try {
-      const { error } = await supabase.from("pricing_rules").delete().eq("id", prDeleteTarget.id);
-      if (error) throw error;
-      await writeAudit(user!.id, "delete", "pricing_rules", prDeleteTarget.id, prDeleteTarget, null);
+      // Delete pricing rule first, then season
+      const { error: pErr } = await supabase.from("pricing_rules").delete().eq("id", prDeleteTarget.pricing_rule_id);
+      if (pErr) throw pErr;
+      const { error: sErr } = await supabase.from("seasons").delete().eq("id", prDeleteTarget.season_id);
+      if (sErr) throw sErr;
+      await writeAudit(user!.id, "delete", "pricing_rules", prDeleteTarget.pricing_rule_id, prDeleteTarget, null);
       toast({ title: "Temporada eliminada" });
       qc.invalidateQueries({ queryKey: ["admin-pricing-rules", editingId] });
     } catch (e: any) {
@@ -601,18 +648,18 @@ export default function AdminCategories() {
                         <TableHead>Nombre</TableHead>
                         <TableHead>Inicio</TableHead>
                         <TableHead>Fin</TableHead>
-                        <TableHead>€/día</TableHead>
+                        <TableHead>€/día (IVA incl.)</TableHead>
                         <TableHead>Activo</TableHead>
                         <TableHead className="text-right">Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {pricingRules.map((pr) => (
-                        <TableRow key={pr.id}>
+                        <TableRow key={pr.pricing_rule_id}>
                           <TableCell className="font-medium">{pr.name}</TableCell>
                           <TableCell>{pr.start_date}</TableCell>
                           <TableCell>{pr.end_date}</TableCell>
-                          <TableCell>{pr.price_per_day} €</TableCell>
+                          <TableCell>{pr.price_per_day_with_tax} €</TableCell>
                           <TableCell>
                             <Badge variant={pr.is_active ? "default" : "secondary"}>
                               {pr.is_active ? "Sí" : "No"}
@@ -638,9 +685,9 @@ export default function AdminCategories() {
                 <Dialog open={prModalOpen} onOpenChange={setPrModalOpen}>
                   <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>{prEditId ? "Editar temporada" : "Nueva temporada"}</DialogTitle>
+                      <DialogTitle>{prEditingRow ? "Editar temporada" : "Nueva temporada"}</DialogTitle>
                       <DialogDescription>
-                        {prEditId ? "Modifica los datos de esta temporada." : "Configura una nueva temporada de precios."}
+                        {prEditingRow ? "Modifica los datos de esta temporada." : "Configura una nueva temporada de precios."}
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 mt-2">
@@ -659,8 +706,8 @@ export default function AdminCategories() {
                         </div>
                       </div>
                       <div className="space-y-1.5">
-                        <Label>Precio por día (€) *</Label>
-                        <Input type="number" min={0} step={0.01} value={prForm.price_per_day} onChange={(e) => setPrForm({ ...prForm, price_per_day: parseFloat(e.target.value) || 0 })} />
+                        <Label>Precio por día con IVA (€) *</Label>
+                        <Input type="number" min={0} step={0.01} value={prForm.price_per_day_with_tax} onChange={(e) => setPrForm({ ...prForm, price_per_day_with_tax: parseFloat(e.target.value) || 0 })} />
                       </div>
                       <div className="flex items-center gap-3">
                         <Switch checked={prForm.is_active} onCheckedChange={(v) => setPrForm({ ...prForm, is_active: v })} />
