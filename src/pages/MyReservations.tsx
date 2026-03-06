@@ -56,7 +56,7 @@ export default function MyReservations() {
         setError(t('reservations.not_found'));
       } else {
         // Verify email matches
-        if (data.customers?.email?.toLowerCase() !== email.toLowerCase()) {
+        if ((data.customers as any)?.email?.toLowerCase() !== email.toLowerCase()) {
           setAttempts(a => a + 1);
           setError(t('reservations.not_found'));
         } else {
