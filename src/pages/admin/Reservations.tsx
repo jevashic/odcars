@@ -131,13 +131,13 @@ export default function AdminReservations() {
 
   /* ── Main query ──────────────────────────────────── */
 
-  const { data: resData, isLoading } = useQuery({
+  const { data: resData, isLoading, error: queryError } = useQuery({
     queryKey: ["admin-reservations", page, statusFilter, channelFilter, categoryFilter, dateFrom?.toISOString(), dateTo?.toISOString()],
     queryFn: async () => {
       let query = supabase
         .from("reservations")
         .select(
-          `id, reservation_number, status, start_date, end_date, pickup_date, return_date, total_amount, sale_channel, created_at, payment_method, customers(id, first_name, last_name, email, phone), vehicle_categories(id, name), vehicles(id, license_plate, brand, model)`,
+          `id, reservation_number, status, start_date, end_date, total_amount, delivery_charge, sale_channel, notes, delivery_details, created_at, customers(id, first_name, last_name, email, phone), vehicle_categories(id, name, image_url), vehicles(id, plate, brand, model), reservation_extras(extra_name, quantity, unit_price, subtotal), payments(method, status, amount, payment_type)`,
           { count: "exact" }
         )
         .order("created_at", { ascending: false });
@@ -145,13 +145,17 @@ export default function AdminReservations() {
       if (statusFilter !== "all") query = query.eq("status", statusFilter);
       if (channelFilter !== "all") query = query.eq("sale_channel", channelFilter);
       if (categoryFilter !== "all") query = query.eq("category_id", categoryFilter);
-      if (dateFrom) query = query.gte("pickup_date", dateFrom.toISOString());
-      if (dateTo) query = query.lte("pickup_date", dateTo.toISOString());
+      if (dateFrom) query = query.gte("start_date", dateFrom.toISOString().split('T')[0]);
+      if (dateTo) query = query.lte("start_date", dateTo.toISOString().split('T')[0]);
 
       query = query.range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
       const { data, error, count } = await query;
-      if (error) throw error;
+      if (error) {
+        console.error('Error cargando reservas:', error);
+        throw error;
+      }
+      console.log('Reservas cargadas:', data?.length);
       return { reservations: data ?? [], total: count ?? 0 };
     },
   });
