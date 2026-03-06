@@ -52,7 +52,7 @@ export default function FeaturedVehicles() {
         <div className="section-line" />
         <p className="section-subtitle mb-10">{t('vehicles.subtitle')}</p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="flex flex-wrap justify-center gap-6">
           {items.map((cat) => {
             const tr = getVehicleTranslation(cat, lang);
             return (
