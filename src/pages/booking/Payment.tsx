@@ -45,8 +45,9 @@ function PaymentForm() {
 
       const payload: ReservationPayload = {
         customer: { first_name: params.get('firstName') || '', last_name: params.get('lastName') || '', email: params.get('email') || '', phone: params.get('phone') || '', license_number: params.get('licenseNumber') || '', license_expiry: params.get('licenseExpiry') || '' },
-        category_id: params.get('categoryId') || '', pickup_branch_id: params.get('pickup') || '',
-        return_branch_id: params.get('return') || params.get('pickup') || '',
+        category_id: params.get('categoryId') || '',
+        pickup_location_id: params.get('pickup') || '',
+        return_location_id: params.get('return') || params.get('pickup') || '',
         start_date: startDate, end_date: endDate,
         start_time: params.get('pickupTime') || '09:00', end_time: params.get('returnTime') || '09:00',
         insurance_tier: 'premium', extra_ids: selectedExtras, payment_method: 'card_online',
