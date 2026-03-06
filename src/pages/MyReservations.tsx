@@ -5,7 +5,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { format, differenceInDays, parseISO, addHours } from 'date-fns';
 import PublicLayout from '@/components/layout/PublicLayout';
 import { useLang } from '@/contexts/LanguageContext';
-import { useLang } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
