@@ -29,40 +29,58 @@ export default function Fleet() {
   useEffect(() => {
     async function load() {
       setError(null);
-      const { data: cats, error: catError } = await supabase
-        .from('vehicle_categories')
-        .select('id, name, price_per_day, image_url, transmission_note, seats_min, seats_max')
-        .eq('is_active', true);
+      const { data: vehiculos, error: vehError } = await supabase
+        .from('vehicles')
+        .select(`
+          id,
+          brand,
+          model,
+          year,
+          color,
+          transmission,
+          seats,
+          category_id,
+          vehicle_categories(
+            id,
+            name,
+            price_per_day,
+            image_url,
+            transmission_note,
+            seats_min,
+            seats_max
+          )
+        `)
+        .eq('status', 'available');
 
-      if (catError) {
-        console.error('Error categorias:', catError);
-        setError(catError.message);
+      if (vehError) {
+        console.error('Error vehiculos:', vehError);
+        setError(vehError.message);
         setLoaded(true);
         return;
       }
 
+      // Group by category_id and keep max 2 per category
+      const countByCategory: Record<string, number> = {};
       const all: VehicleCard[] = [];
-      for (const cat of (cats ?? [])) {
-        const { data: vehs, error: vehError } = await supabase
-          .from('vehicles')
-          .select('id, brand, model, year, color, transmission, seats')
-          .eq('category_id', cat.id)
-          .eq('status', 'available')
-          .limit(2);
-
-        if (vehError) {
-          console.error('Error vehiculos:', vehError);
-          continue;
-        }
-        for (const v of (vehs ?? [])) {
-          all.push({
-            ...v,
-            category_id: cat.id,
-            category_name: cat.name,
-            price_per_day: cat.price_per_day,
-            image_url: cat.image_url,
-          });
-        }
+      for (const v of (vehiculos ?? [])) {
+        const cat = v.vehicle_categories as any;
+        if (!cat) continue;
+        const count = countByCategory[v.category_id] ?? 0;
+        if (count >= 2) continue;
+        countByCategory[v.category_id] = count + 1;
+        all.push({
+          id: v.id,
+          brand: v.brand,
+          model: v.model,
+          year: v.year,
+          color: v.color,
+          transmission: v.transmission,
+          seats: v.seats,
+          category_id: v.category_id,
+          category_name: cat.name,
+          price_per_day: cat.price_per_day,
+          image_url: cat.image_url,
+        });
       }
       setCards(all);
       setLoaded(true);
