@@ -73,8 +73,9 @@ function SummaryForm() {
         if (pmError) throw new Error(pmError.message);
         const payload: ReservationPayload = {
           customer: { first_name: form.firstName, last_name: form.lastName, email: form.email, phone: form.phone, license_number: form.licenseNumber, license_expiry: form.licenseExpiry },
-          category_id: params.get('categoryId') || '', pickup_branch_id: params.get('pickup') || '',
-          return_branch_id: params.get('return') || params.get('pickup') || '',
+          category_id: params.get('categoryId') || '',
+          pickup_location_id: params.get('pickup') || '',
+          return_location_id: params.get('return') || params.get('pickup') || '',
           start_date: startDate, end_date: endDate,
           start_time: params.get('pickupTime') || '09:00', end_time: params.get('returnTime') || '09:00',
           insurance_tier: 'premium', extra_ids: selectedExtras, payment_method: 'card_office',
