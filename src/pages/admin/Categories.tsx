@@ -36,9 +36,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import { Plus, Pencil, Trash2, Upload, X, Loader2 } from "lucide-react";
 
 const ENERGY_TYPES = [
