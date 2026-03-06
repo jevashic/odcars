@@ -48,8 +48,6 @@ export default function Fleet() {
         return;
       }
 
-      console.log('[Fleet] Sample vehicle images data:', vehiculos?.slice(0, 3)?.map(v => ({ id: v.id, brand: v.brand, images: (v as any).images, cat_img: (v.vehicle_categories as any)?.image_url })));
-
       const countByCategory: Record<string, number> = {};
       const all: VehicleCard[] = [];
       for (const v of (vehiculos ?? [])) {
