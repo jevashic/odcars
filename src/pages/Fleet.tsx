@@ -12,14 +12,45 @@ export default function Fleet() {
   const [categories, setCategories] = useState<any[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [bookingCatId, setBookingCatId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    supabase.from('vehicle_categories').select('*, vehicle_category_translations(*)').eq('is_active', true).order('sort_order').then(({ data }) => {
-      if (data) setCategories(data);
-    });
-    supabase.from('vehicles').select('id, brand, model, year, color, category_id').eq('status', 'available').then(({ data }) => {
-      if (data) setVehicles(data as Vehicle[]);
-    });
+    async function load() {
+      setError(null);
+      const { data: cats, error: catError } = await supabase
+        .from('vehicle_categories')
+        .select('*, vehicle_category_translations(*)')
+        .eq('is_active', true)
+        .order('created_at');
+
+      if (catError) {
+        console.error('Error categorias:', catError);
+        setError(catError.message);
+        setLoaded(true);
+        return;
+      }
+      setCategories(cats ?? []);
+
+      // Load sample vehicles for each category
+      const allVehicles: Vehicle[] = [];
+      for (const cat of (cats ?? [])) {
+        const { data: vehs, error: vehError } = await supabase
+          .from('vehicles')
+          .select('id, brand, model, year, color, category_id')
+          .eq('category_id', cat.id)
+          .eq('status', 'available')
+          .limit(2);
+        if (vehError) {
+          console.error('Error vehiculos:', vehError);
+        } else if (vehs) {
+          allVehicles.push(...(vehs as Vehicle[]));
+        }
+      }
+      setVehicles(allVehicles);
+      setLoaded(true);
+    }
+    load();
   }, [lang]);
 
   const bookingCategory = categories.find(c => c.id === bookingCatId);
@@ -31,6 +62,12 @@ export default function Fleet() {
           <h1 className="section-title">{t('nav.fleet')}</h1>
           <div className="section-line" />
           <p className="section-subtitle mb-10">{t('vehicles.subtitle')}</p>
+
+          {error && (
+            <div className="bg-destructive/10 border border-destructive text-destructive rounded-lg p-4 mb-6 text-sm">
+              <strong>Error:</strong> {error}
+            </div>
+          )}
 
           <div className="flex flex-wrap justify-center gap-6">
             {categories.map(cat => (
@@ -44,8 +81,9 @@ export default function Fleet() {
             ))}
           </div>
 
-          {categories.length === 0 && (
-            <p className="text-center text-muted-foreground mt-10">{t('vehicles.loading')}</p>
+          {!loaded && <p className="text-center text-muted-foreground mt-10">{t('vehicles.loading')}</p>}
+          {loaded && categories.length === 0 && !error && (
+            <p className="text-center text-muted-foreground mt-10">No hay categorías activas.</p>
           )}
         </div>
       </div>
