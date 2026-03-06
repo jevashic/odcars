@@ -52,11 +52,12 @@ export async function createReservation(payload: ReservationPayload) {
   );
 
   const data = await response.json();
+  console.log('Respuesta reserva:', data);
 
-  if (!response.ok || !data.reservation_number) {
-    console.error('Error reserva:', data);
-    throw new Error(data.error || data.message || 'Error al crear la reserva');
+  if (data.success === true && data.data?.reservation_number) {
+    return { reservation_number: data.data.reservation_number };
   }
 
-  return data as { reservation_number: string };
+  console.error('Error reserva:', data);
+  throw new Error(data.error || data.message || 'Error al crear la reserva');
 }
