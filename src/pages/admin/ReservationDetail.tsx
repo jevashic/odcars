@@ -148,21 +148,20 @@ export default function ReservationDetail() {
     enabled: !!id,
   });
 
-  /* ── Branch names (separate query) ───────────────── */
+  /* ── Payments query ────────────────────────────────── */
 
-  const { data: branches = [] } = useQuery({
-    queryKey: ["admin-branches"],
+  const { data: payments = [] } = useQuery({
+    queryKey: ["admin-res-payments", id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("branches").select("id, name").order("name");
-      if (error) throw error;
+      const { data, error } = await supabase
+        .from("payments")
+        .select("*")
+        .eq("reservation_id", id!);
+      if (error) { console.warn("payments:", error.message); return []; }
       return data ?? [];
     },
+    enabled: !!id,
   });
-
-  const branchName = (branchId: string | null) => {
-    if (!branchId) return "—";
-    return branches.find((b) => b.id === branchId)?.name ?? branchId;
-  };
 
   /* ── Actions ─────────────────────────────────────── */
 
