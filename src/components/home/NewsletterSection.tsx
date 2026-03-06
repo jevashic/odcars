@@ -17,19 +17,22 @@ export default function NewsletterSection() {
     e.preventDefault();
     if (!email || !privacy) return;
     setLoading(true);
-    const { error } = await supabase.from('newsletter_subscribers').insert({
-      email,
-      lang,
-      accepts_newsletter: newsletter,
-      accepts_offers: offers,
+    const { error } = await supabase.functions.invoke('newsletter_subscribe', {
+      body: {
+        email,
+        lang,
+        accepts_promotions: false,
+      },
     });
     setLoading(false);
     if (!error) {
-      toast({ title: t('newsletter.success') });
+      toast({ title: '¡Gracias! Te has suscrito correctamente.' });
       setEmail('');
       setPrivacy(false);
       setNewsletter(false);
       setOffers(false);
+    } else {
+      toast({ title: 'Ha ocurrido un error. Inténtalo de nuevo.', variant: 'destructive' });
     }
   };
 
