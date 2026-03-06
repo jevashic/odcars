@@ -27,10 +27,13 @@ function PaymentForm() {
   const baseTotal = 39 * days;
   const extrasParam = params.get('extras') || '';
   const selectedExtras = extrasParam ? extrasParam.split(',') : [];
-  const extrasTotal = selectedExtras.reduce((sum, id) => {
-    const prices: Record<string, number> = { gps: 5, 'baby-seat': 7 };
-    return sum + (prices[id] || 0) * days;
-  }, 0);
+  const extrasPricesParam = params.get('extrasPrices') || '';
+  const extrasPricesMap: Record<string, number> = {};
+  extrasPricesParam.split(',').forEach(entry => {
+    const [id, price] = entry.split(':');
+    if (id && price) extrasPricesMap[id] = parseFloat(price);
+  });
+  const extrasTotal = selectedExtras.reduce((sum, id) => sum + (extrasPricesMap[id] || 0) * days, 0);
   const subtotal = baseTotal + extrasTotal;
   const total = Math.round(subtotal * 0.85);
 
