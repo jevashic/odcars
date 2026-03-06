@@ -13,10 +13,15 @@ import StripeCardInput from '@/components/stripe/StripeCardInput';
 import { createReservation, type ReservationPayload } from '@/integrations/supabase/createReservation';
 import { toast } from '@/hooks/use-toast';
 
-const EXTRAS_MAP: Record<string, { nameKey: string; pricePerDay: number }> = {
-  gps: { nameKey: 'booking.extra_gps', pricePerDay: 5 },
-  'baby-seat': { nameKey: 'booking.extra_baby', pricePerDay: 7 },
-};
+function parseExtrasPrices(param: string): Record<string, number> {
+  if (!param) return {};
+  const map: Record<string, number> = {};
+  param.split(',').forEach(entry => {
+    const [id, price] = entry.split(':');
+    if (id && price) map[id] = parseFloat(price);
+  });
+  return map;
+}
 
 function SummaryForm() {
   const [params] = useSearchParams();
@@ -42,9 +47,10 @@ function SummaryForm() {
   const days = startDate && endDate ? Math.max(differenceInDays(new Date(endDate), new Date(startDate)), 1) : 1;
   const extrasParam = params.get('extras') || '';
   const selectedExtras = extrasParam ? extrasParam.split(',') : [];
+  const extrasPricesMap = parseExtrasPrices(params.get('extrasPrices') || '');
 
   const baseTotal = 39 * days;
-  const extrasTotal = selectedExtras.reduce((sum, id) => sum + (EXTRAS_MAP[id]?.pricePerDay || 0) * days, 0);
+  const extrasTotal = selectedExtras.reduce((sum, id) => sum + (extrasPricesMap[id] || 0) * days, 0);
   const surchargeAmount = hasSurcharge ? 15 : 0;
   const subtotal = baseTotal + extrasTotal + surchargeAmount;
   const discount = paymentMode === 'online' ? Math.round(subtotal * 0.15) : 0;
@@ -124,10 +130,10 @@ function SummaryForm() {
           <span>{t('booking.rental')} ({days} {days > 1 ? t('booking.days') : t('booking.day')})</span>
           <span className="font-medium">{baseTotal} €</span>
         </div>
-        {selectedExtras.map(id => EXTRAS_MAP[id] && (
+        {selectedExtras.map(id => extrasPricesMap[id] !== undefined && (
           <div key={id} className="flex justify-between">
-            <span>{t(EXTRAS_MAP[id].nameKey)}</span>
-            <span className="font-medium">{EXTRAS_MAP[id].pricePerDay * days} €</span>
+            <span>Extra</span>
+            <span className="font-medium">{extrasPricesMap[id] * days} €</span>
           </div>
         ))}
         {hasSurcharge && (
