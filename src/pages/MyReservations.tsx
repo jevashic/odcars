@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/integrations/supabase/client';
+
 import PublicLayout from '@/components/layout/PublicLayout';
 import { useLang } from '@/contexts/LanguageContext';
 
