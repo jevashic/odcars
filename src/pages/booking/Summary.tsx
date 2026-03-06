@@ -4,7 +4,7 @@ import { format, differenceInDays } from 'date-fns';
 import { Lock, Check } from 'lucide-react';
 import { Elements, useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
 import PublicLayout from '@/components/layout/PublicLayout';
-import BookingTimer from '@/components/booking/BookingTimer';
+import BookingTimer, { markBookingCompleted } from '@/components/booking/BookingTimer';
 import { useLang } from '@/contexts/LanguageContext';
 import { useLangNavigate } from '@/hooks/useLangNavigate';
 import { supabase } from '@/integrations/supabase/client';
@@ -82,6 +82,7 @@ function SummaryForm() {
           stripe_setup_intent_id: paymentMethod?.id, sale_channel: 'web',
         };
         const result = await createReservation(payload);
+        markBookingCompleted();
         navigate(`/reservar/confirmacion`, {
           state: {
             reservation: {
