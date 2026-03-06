@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Mail } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/integrations/supabase/client';
 import { useLang } from '@/contexts/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 
@@ -17,23 +17,36 @@ export default function NewsletterSection() {
     e.preventDefault();
     if (!email || !privacy) return;
     setLoading(true);
-    const { error } = await supabase.functions.invoke('newsletter_subscribe', {
-      body: {
-        email,
-        lang,
-        accepts_promotions: false,
-      },
-    });
-    setLoading(false);
-    if (!error) {
-      toast({ title: '¡Gracias! Te has suscrito correctamente.' });
-      setEmail('');
-      setPrivacy(false);
-      setNewsletter(false);
-      setOffers(false);
-    } else {
+    try {
+      const response = await fetch(
+        `${SUPABASE_URL}/functions/v1/newsletter_subscribe`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({
+            email,
+            lang: lang ?? 'es',
+            accepts_promotions: false,
+          }),
+        }
+      );
+      const data = await response.json();
+      if (data.success) {
+        toast({ title: '¡Gracias! Te has suscrito correctamente.' });
+        setEmail('');
+        setPrivacy(false);
+        setNewsletter(false);
+        setOffers(false);
+      } else {
+        toast({ title: 'Ha ocurrido un error. Inténtalo de nuevo.', variant: 'destructive' });
+      }
+    } catch {
       toast({ title: 'Ha ocurrido un error. Inténtalo de nuevo.', variant: 'destructive' });
     }
+    setLoading(false);
   };
 
   return (
