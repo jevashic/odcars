@@ -139,8 +139,9 @@ function ModalInner({ categoryId, category, onClose }: Props) {
 
         const payload: ReservationPayload = {
           customer: { first_name: form.firstName, last_name: form.lastName, email: form.email, phone: form.phone, license_number: form.licenseNumber, license_expiry: form.licenseExpiry },
-          category_id: categoryId, pickup_branch_id: pickupId,
-          return_branch_id: returnId || pickupId,
+          category_id: categoryId,
+          pickup_location_id: pickupId,
+          return_location_id: returnId || pickupId,
           start_date: format(pickupDate!, 'yyyy-MM-dd'), end_date: format(returnDate!, 'yyyy-MM-dd'),
           start_time: pickupTime, end_time: returnTime,
           insurance_tier: 'premium', extra_ids: selectedExtras, payment_method: 'card_office',
