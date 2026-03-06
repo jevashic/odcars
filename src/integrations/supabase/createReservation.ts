@@ -1,5 +1,7 @@
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './client';
 
+const BRANCH_MASPALOMAS = 'a58b7a55-b6a3-456a-b0f6-eed247cf3137';
+
 export interface ReservationPayload {
   customer: {
     first_name: string;
@@ -11,9 +13,8 @@ export interface ReservationPayload {
   };
   category_id: string;
   vehicle_id?: string;
-  pickup_branch_id: string;
-  return_branch_id: string;
-  sale_branch_id?: string;
+  pickup_location_id?: string;
+  return_location_id?: string;
   start_date: string;
   end_date: string;
   start_time: string;
@@ -24,8 +25,6 @@ export interface ReservationPayload {
   stripe_payment_intent_id?: string;
   stripe_setup_intent_id?: string;
   sale_channel: string;
-  pickup_location_id?: string;
-  return_location_id?: string;
   delivery_charge?: number;
   delivery_details?: any;
   discount_code?: string | null;
@@ -35,7 +34,9 @@ export interface ReservationPayload {
 export async function createReservation(payload: ReservationPayload) {
   const body = {
     ...payload,
-    sale_branch_id: payload.sale_branch_id || payload.pickup_branch_id,
+    sale_branch_id: BRANCH_MASPALOMAS,
+    pickup_branch_id: BRANCH_MASPALOMAS,
+    return_branch_id: BRANCH_MASPALOMAS,
   };
 
   const response = await fetch(
