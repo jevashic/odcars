@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Users, Settings2, Fuel, DoorOpen, Wind, Car, Check, AlertTriangle, Star, Search } from 'lucide-react';
+import { Users, Settings2, Fuel, Wind, Car, Check, AlertTriangle, Star, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import PublicLayout from '@/components/layout/PublicLayout';
 import SearchBar from '@/components/home/SearchBar';
