@@ -4,7 +4,7 @@ import { format, differenceInDays } from 'date-fns';
 import { Lock, Check } from 'lucide-react';
 import { Elements, useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
 import PublicLayout from '@/components/layout/PublicLayout';
-import BookingTimer from '@/components/booking/BookingTimer';
+import BookingTimer, { markBookingCompleted } from '@/components/booking/BookingTimer';
 import { useLang } from '@/contexts/LanguageContext';
 import { useLangNavigate } from '@/hooks/useLangNavigate';
 import { supabase } from '@/integrations/supabase/client';
