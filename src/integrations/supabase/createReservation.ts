@@ -1,4 +1,4 @@
-import { supabase } from './client';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './client';
 
 export interface ReservationPayload {
   customer: {
@@ -10,6 +10,7 @@ export interface ReservationPayload {
     license_expiry: string;
   };
   category_id: string;
+  vehicle_id?: string;
   pickup_branch_id: string;
   return_branch_id: string;
   sale_branch_id?: string;
@@ -23,6 +24,12 @@ export interface ReservationPayload {
   stripe_payment_intent_id?: string;
   stripe_setup_intent_id?: string;
   sale_channel: string;
+  pickup_location_id?: string;
+  return_location_id?: string;
+  delivery_charge?: number;
+  delivery_details?: any;
+  discount_code?: string | null;
+  notes?: string | null;
 }
 
 export async function createReservation(payload: ReservationPayload) {
@@ -31,16 +38,23 @@ export async function createReservation(payload: ReservationPayload) {
     sale_branch_id: payload.sale_branch_id || payload.pickup_branch_id,
   };
 
-  const { data, error } = await supabase.functions.invoke('create_reservation', { body });
+  const response = await fetch(
+    `${SUPABASE_URL}/functions/v1/create_reservation`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify(body),
+    }
+  );
 
-  if (error) {
-    console.error('Error reserva:', error);
-    throw new Error(error.message || 'Error al crear la reserva');
-  }
+  const data = await response.json();
 
-  if (!data?.reservation_number) {
-    console.error('Respuesta inesperada:', data);
-    throw new Error('No se recibió número de reserva');
+  if (!response.ok || !data.reservation_number) {
+    console.error('Error reserva:', data);
+    throw new Error(data.error || data.message || 'Error al crear la reserva');
   }
 
   return data as { reservation_number: string };
