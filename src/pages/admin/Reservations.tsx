@@ -131,13 +131,13 @@ export default function AdminReservations() {
 
   /* ── Main query ──────────────────────────────────── */
 
-  const { data: resData, isLoading } = useQuery({
+  const { data: resData, isLoading, error: queryError } = useQuery({
     queryKey: ["admin-reservations", page, statusFilter, channelFilter, categoryFilter, dateFrom?.toISOString(), dateTo?.toISOString()],
     queryFn: async () => {
       let query = supabase
         .from("reservations")
         .select(
-          `id, reservation_number, status, start_date, end_date, pickup_date, return_date, total_amount, sale_channel, created_at, payment_method, customers(id, first_name, last_name, email, phone), vehicle_categories(id, name), vehicles(id, license_plate, brand, model)`,
+          `id, reservation_number, status, start_date, end_date, total_amount, delivery_charge, sale_channel, notes, delivery_details, created_at, customers(id, first_name, last_name, email, phone), vehicle_categories(id, name, image_url), vehicles(id, plate, brand, model), reservation_extras(extra_name, quantity, unit_price, subtotal), payments(method, status, amount, payment_type)`,
           { count: "exact" }
         )
         .order("created_at", { ascending: false });
@@ -145,13 +145,17 @@ export default function AdminReservations() {
       if (statusFilter !== "all") query = query.eq("status", statusFilter);
       if (channelFilter !== "all") query = query.eq("sale_channel", channelFilter);
       if (categoryFilter !== "all") query = query.eq("category_id", categoryFilter);
-      if (dateFrom) query = query.gte("pickup_date", dateFrom.toISOString());
-      if (dateTo) query = query.lte("pickup_date", dateTo.toISOString());
+      if (dateFrom) query = query.gte("start_date", dateFrom.toISOString().split('T')[0]);
+      if (dateTo) query = query.lte("start_date", dateTo.toISOString().split('T')[0]);
 
       query = query.range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
       const { data, error, count } = await query;
-      if (error) throw error;
+      if (error) {
+        console.error('Error cargando reservas:', error);
+        throw error;
+      }
+      console.log('Reservas cargadas:', data?.length);
       return { reservations: data ?? [], total: count ?? 0 };
     },
   });
@@ -206,6 +210,15 @@ export default function AdminReservations() {
   };
 
   /* ── Render ──────────────────────────────────────── */
+
+  if (queryError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-destructive">
+        <p className="font-bold text-lg mb-2">Error cargando reservas</p>
+        <p className="text-sm">{(queryError as any).message}</p>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -315,8 +328,8 @@ export default function AdminReservations() {
               </TableRow>
             ) : (
               filtered.map((r: any) => {
-                const days = r.pickup_date && r.return_date
-                  ? Math.max(1, differenceInDays(parseISO(r.return_date), parseISO(r.pickup_date)))
+                const days = r.start_date && r.end_date
+                  ? Math.max(1, differenceInDays(parseISO(r.end_date), parseISO(r.start_date)))
                   : 0;
                 const channel = CHANNEL_MAP[r.sale_channel] ?? { icon: "📋", label: r.sale_channel ?? "—" };
 
@@ -328,11 +341,11 @@ export default function AdminReservations() {
                       <div className="text-xs text-muted-foreground">{r.customers?.email}</div>
                     </TableCell>
                     <TableCell>{r.vehicle_categories?.name ?? "—"}</TableCell>
-                    <TableCell>{r.vehicles?.license_plate ?? <span className="text-muted-foreground">Sin asignar</span>}</TableCell>
+                    <TableCell>{r.vehicles?.plate ?? <span className="text-muted-foreground">Sin asignar</span>}</TableCell>
                     <TableCell className="text-xs">
-                      {r.pickup_date ? format(parseISO(r.pickup_date), "dd/MM/yy") : "—"}
+                      {r.start_date ? format(parseISO(r.start_date), "dd/MM/yy") : "—"}
                       {" → "}
-                      {r.return_date ? format(parseISO(r.return_date), "dd/MM/yy") : "—"}
+                      {r.end_date ? format(parseISO(r.end_date), "dd/MM/yy") : "—"}
                     </TableCell>
                     <TableCell className="text-center">{days}</TableCell>
                     <TableCell className="text-right font-medium">{r.total_amount != null ? `${Number(r.total_amount).toFixed(2)} €` : "—"}</TableCell>
