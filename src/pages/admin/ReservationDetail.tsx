@@ -81,8 +81,10 @@ export default function ReservationDetail() {
         .select(`
           *,
           customers(*),
-          vehicle_categories(id, name),
-          vehicles(id, license_plate, brand, model)
+          vehicle_categories(id, name, image_url),
+          vehicles(id, plate, brand, model),
+          reservation_extras(extra_name, quantity, unit_price, subtotal),
+          payments(method, status, amount, payment_type)
         `)
         .eq("id", id!)
         .single();
@@ -146,21 +148,20 @@ export default function ReservationDetail() {
     enabled: !!id,
   });
 
-  /* ── Branch names (separate query) ───────────────── */
+  /* ── Payments query ────────────────────────────────── */
 
-  const { data: branches = [] } = useQuery({
-    queryKey: ["admin-branches"],
+  const { data: payments = [] } = useQuery({
+    queryKey: ["admin-res-payments", id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("branches").select("id, name").order("name");
-      if (error) throw error;
+      const { data, error } = await supabase
+        .from("payments")
+        .select("*")
+        .eq("reservation_id", id!);
+      if (error) { console.warn("payments:", error.message); return []; }
       return data ?? [];
     },
+    enabled: !!id,
   });
-
-  const branchName = (branchId: string | null) => {
-    if (!branchId) return "—";
-    return branches.find((b) => b.id === branchId)?.name ?? branchId;
-  };
 
   /* ── Actions ─────────────────────────────────────── */
 
@@ -233,8 +234,8 @@ export default function ReservationDetail() {
   }
 
   const r = reservation as any;
-  const days = r.pickup_date && r.return_date
-    ? Math.max(1, differenceInDays(parseISO(r.return_date), parseISO(r.pickup_date)))
+  const days = r.start_date && r.end_date
+    ? Math.max(1, differenceInDays(parseISO(r.end_date), parseISO(r.start_date)))
     : 0;
   const customer = r.customers;
   const pricePerDay = r.price_per_day ?? (r.total_amount && days ? r.total_amount / days : 0);
@@ -279,13 +280,13 @@ export default function ReservationDetail() {
             <CardContent className="grid grid-cols-2 gap-4 text-sm">
               <div><span className="text-muted-foreground">Nº Reserva:</span> <span className="font-medium">{r.reservation_number ?? "—"}</span></div>
               <div><span className="text-muted-foreground">Canal:</span> {CHANNEL_MAP[r.sale_channel] ?? r.sale_channel ?? "—"}</div>
-              <div><span className="text-muted-foreground">Recogida:</span> {r.pickup_date ? format(parseISO(r.pickup_date), "dd/MM/yyyy HH:mm", { locale: es }) : "—"}</div>
-              <div><span className="text-muted-foreground">Devolución:</span> {r.return_date ? format(parseISO(r.return_date), "dd/MM/yyyy HH:mm", { locale: es }) : "—"}</div>
+              <div><span className="text-muted-foreground">Recogida:</span> {r.start_date ? format(parseISO(r.start_date), "dd/MM/yyyy HH:mm", { locale: es }) : "—"}</div>
+              <div><span className="text-muted-foreground">Devolución:</span> {r.end_date ? format(parseISO(r.end_date), "dd/MM/yyyy HH:mm", { locale: es }) : "—"}</div>
               <div><span className="text-muted-foreground">Días:</span> {days}</div>
               <div><span className="text-muted-foreground">Categoría:</span> {r.vehicle_categories?.name ?? "—"}</div>
-              <div><span className="text-muted-foreground">Vehículo:</span> {r.vehicles ? `${r.vehicles.brand} ${r.vehicles.model} (${r.vehicles.license_plate})` : <span className="text-muted-foreground">Sin asignar</span>}</div>
-              <div><span className="text-muted-foreground">Oficina recogida:</span> {branchName(r.pickup_branch_id)}</div>
-              <div><span className="text-muted-foreground">Oficina devolución:</span> {branchName(r.return_branch_id)}</div>
+              <div><span className="text-muted-foreground">Vehículo:</span> {r.vehicles ? `${r.vehicles.brand} ${r.vehicles.model} (${r.vehicles.plate})` : <span className="text-muted-foreground">Sin asignar</span>}</div>
+              <div><span className="text-muted-foreground">Entrega:</span> {r.delivery_details ? JSON.stringify(r.delivery_details) : "—"}</div>
+              <div><span className="text-muted-foreground">Cargo entrega:</span> {r.delivery_charge != null ? `${Number(r.delivery_charge).toFixed(2)} €` : "—"}</div>
               {resInsurance.length > 0 && (
                 <div className="col-span-2"><span className="text-muted-foreground">Seguro:</span> {resInsurance.map((ri: any) => ri.insurance_plans?.name).filter(Boolean).join(", ") || "—"}</div>
               )}
@@ -336,6 +337,23 @@ export default function ReservationDetail() {
               <div className="flex justify-between"><span className="text-muted-foreground">Método de pago:</span> <span>{r.payment_method ?? "—"}</span></div>
               {r.stripe_payment_intent_id && (
                 <div className="flex justify-between"><span className="text-muted-foreground">Stripe ID:</span> <span className="font-mono text-xs">{r.stripe_payment_intent_id}</span></div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Block 4 - Payments */}
+          <Card>
+            <CardHeader><CardTitle className="text-lg">Historial de pagos</CardTitle></CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              {payments.length === 0 ? (
+                <p className="text-muted-foreground">Sin pagos registrados.</p>
+              ) : (
+                payments.map((p: any, idx: number) => (
+                  <div key={p.id ?? idx} className="flex justify-between">
+                    <span className="text-muted-foreground">{p.payment_type ?? p.method ?? "—"} ({p.status})</span>
+                    <span className="font-medium">{p.amount != null ? `${Number(p.amount).toFixed(2)} €` : "—"}</span>
+                  </div>
+                ))
               )}
             </CardContent>
           </Card>
