@@ -9,11 +9,6 @@ import { useLangPath } from '@/hooks/useLangNavigate';
 import { differenceInDays } from 'date-fns';
 import { getVehicleTranslation } from '@/utils/vehicleTranslation';
 
-const FALLBACK_CATEGORIES = [
-  { id: 'eco-1', name: 'Económico', example_model: 'Fiat Panda', image_url: 'https://images.unsplash.com/photo-1502877338535-766e1452684a?w=600', seats_min: 4, seats_max: 5, doors: 5, transmission_note: 'Manual', energy_type: 'Gasolina', has_ac: true, is_active: true, base_price_per_day: 29, sort_order: 1 },
-  { id: 'std-1', name: 'Standard', example_model: 'Seat León', image_url: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0afa?w=600', seats_min: 5, seats_max: 5, doors: 5, transmission_note: 'Manual', energy_type: 'Gasolina', has_ac: true, is_active: true, base_price_per_day: 39, sort_order: 2 },
-  { id: 'pre-1', name: 'Premium', example_model: 'VW T-Roc', image_url: 'https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?w=600', seats_min: 5, seats_max: 5, doors: 5, transmission_note: 'Automático', energy_type: 'Híbrido', has_ac: true, is_active: true, base_price_per_day: 59, sort_order: 3 },
-];
 
 export default function SearchResults() {
   const { t, lang } = useLang();
@@ -48,35 +43,59 @@ export default function SearchResults() {
 
     setLoading(true);
     setHasSearched(true);
-    const { data: categories } = await supabase
+
+    const { data: categories, error: catError } = await supabase
       .from('vehicle_categories')
       .select('*, vehicle_category_translations(*)')
       .eq('is_active', true)
-      .order('sort_order');
+      .order('created_at');
 
-    const cats = categories && categories.length > 0 ? categories : FALLBACK_CATEGORIES;
+    if (catError || !categories || categories.length === 0) {
+      console.error('Error categorías:', catError);
+      setResults([]);
+      setLoading(false);
+      return;
+    }
 
-    if (sd && ed) {
-      const enriched = await Promise.all(cats.map(async (cat: any) => {
-        try {
+    const enriched = await Promise.all(categories.map(async (cat: any) => {
+      try {
+        // Get example vehicle
+        const { data: exampleVehicles } = await supabase
+          .from('vehicles')
+          .select('brand, model')
+          .eq('category_id', cat.id)
+          .eq('status', 'available')
+          .limit(1);
+        const exampleVehicle = exampleVehicles?.[0] ?? null;
+
+        let available = true;
+        let quote: any = null;
+
+        if (sd && ed) {
           const { data: avail } = await supabase.rpc('check_availability', {
             p_category_id: cat.id, p_start_date: sd, p_end_date: ed,
           });
-          const { data: quote } = await supabase.rpc('get_quote', {
-            p_category_id: cat.id, p_start_date: sd, p_end_date: ed,
-            p_pickup_branch_id: searchParams.get('pickup') || '',
-            p_return_branch_id: searchParams.get('dropoff') || searchParams.get('pickup') || '',
-            p_driver_age: searchParams.get('age') || '+30',
+          available = avail ?? true;
+
+          const { data: q } = await supabase.rpc('get_quote', {
+            p_category_id: cat.id,
+            p_start_date: sd,
+            p_end_date: ed,
+            p_insurance_tier: 'premium',
+            p_extra_ids: [],
+            p_discount_code: null,
           });
-          return { ...cat, available: avail ?? true, quote };
-        } catch {
-          return { ...cat, available: true, quote: null };
+          quote = q;
         }
-      }));
-      setResults(enriched);
-    } else {
-      setResults(cats.map((c: any) => ({ ...c, available: true, quote: null })));
-    }
+
+        return { ...cat, available, quote, exampleVehicle };
+      } catch (err) {
+        console.error('Error enriching category:', cat.id, err);
+        return { ...cat, available: true, quote: null, exampleVehicle: null };
+      }
+    }));
+
+    setResults(enriched);
     setLoading(false);
   }, []);
 
@@ -91,7 +110,12 @@ export default function SearchResults() {
 
   const getPrice = (cat: any) => {
     if (cat.quote?.total_amount) return cat.quote.total_amount;
-    return (cat.base_price_per_day || 39) * days;
+    return (cat.price_per_day || 0) * days;
+  };
+
+  const getPricePerDay = (cat: any) => {
+    if (cat.quote?.price_per_day) return cat.quote.price_per_day;
+    return cat.price_per_day || 0;
   };
 
   return (
@@ -131,15 +155,16 @@ export default function SearchResults() {
               ) : results.length === 0 ? (
                 <p className="text-center text-muted-foreground py-20">{t('booking.no_results')}</p>
               ) : (
-                <div className="space-y-6">
+              <div className="space-y-6">
                   {results.map((cat, idx) => {
                     const totalOffice = getPrice(cat);
-                    const pricePerDayOffice = Math.round(totalOffice / days);
+                    const perDayOffice = getPricePerDay(cat);
                     const totalOnline = Math.round(totalOffice * 0.85);
-                    const pricePerDayOnline = Math.round(totalOnline / days);
+                    const perDayOnline = Math.round(perDayOffice * 0.85);
                     const savings = totalOffice - totalOnline;
                     const isRecommended = idx === 0;
                     const tr = getVehicleTranslation(cat, lang);
+                    const exVeh = cat.exampleVehicle;
 
                     return (
                       <div key={cat.id} className={`bg-card rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.08)] overflow-hidden relative ${!cat.available ? 'opacity-50 pointer-events-none' : ''}`}>
@@ -157,15 +182,22 @@ export default function SearchResults() {
 
                         <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr_auto] gap-0">
                           <div className="p-5 flex flex-col">
-                            {cat.image_url && (
+                            {cat.image_url ? (
                               <img src={cat.image_url} alt={tr.name} className="w-full aspect-[4/3] object-cover rounded-xl mb-4" loading="lazy" />
+                            ) : (
+                              <div className="w-full aspect-[4/3] rounded-xl mb-4 bg-muted flex items-center justify-center">
+                                <Car className="h-12 w-12 text-muted-foreground/30" />
+                              </div>
                             )}
                             <h3 className="font-bold text-lg text-foreground">{tr.name}</h3>
-                            <p className="text-xs text-muted-foreground mb-3">{t('booking.example')} {cat.example_model || tr.name} {t('booking.or_similar')}</p>
+                            {tr.description && <p className="text-xs text-muted-foreground mb-1">{tr.description}</p>}
+                            <p className="text-xs text-muted-foreground mb-3">
+                              {exVeh ? `${t('booking.example')} ${exVeh.brand} ${exVeh.model} ${t('booking.or_similar')}` : ''}
+                            </p>
                             <div className="grid grid-cols-3 gap-x-3 gap-y-2 text-xs text-muted-foreground">
-                              <span className="flex items-center gap-1"><Car className="h-3.5 w-3.5" />{tr.name}</span>
-                              <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{cat.seats_min ?? 5}p</span>
-                              <span className="flex items-center gap-1"><DoorOpen className="h-3.5 w-3.5" />{cat.doors ?? 5}p</span>
+                              <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{cat.seats_min ?? '?'}-{cat.seats_max ?? '?'}</span>
+                              <span className="flex items-center gap-1"><Settings2 className="h-3.5 w-3.5" />{tr.transmission_note}</span>
+                              <span className="flex items-center gap-1"><Fuel className="h-3.5 w-3.5" />{tr.energy_type}</span>
                               <span className="flex items-center gap-1"><Settings2 className="h-3.5 w-3.5" />{tr.transmission_note}</span>
                               <span className="flex items-center gap-1"><Fuel className="h-3.5 w-3.5" />{tr.energy_type}</span>
                               <span className="flex items-center gap-1"><Wind className="h-3.5 w-3.5" />{cat.has_ac !== false ? 'A/C' : '—'}</span>
@@ -189,7 +221,7 @@ export default function SearchResults() {
                               <div className="flex flex-col items-center text-center justify-between py-2">
                                 <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">{t('booking.pay_office')}</h4>
                                 <div>
-                                  <p className="text-2xl font-bold text-foreground">{pricePerDayOffice} €<span className="text-xs font-normal text-muted-foreground">{t('booking.per_day')}</span></p>
+                                  <p className="text-2xl font-bold text-foreground">{perDayOffice} €<span className="text-xs font-normal text-muted-foreground">{t('booking.per_day')}</span></p>
                                   <p className="text-xs text-muted-foreground mt-1">{t('booking.total')} {totalOffice} €</p>
                                 </div>
                                 <Link
@@ -203,7 +235,7 @@ export default function SearchResults() {
                               <div className="flex flex-col items-center text-center justify-between py-2 bg-accent/50 rounded-xl px-3 -m-1">
                                 <h4 className="text-[10px] font-bold text-primary uppercase tracking-wider mb-2">{t('booking.pay_now')}</h4>
                                 <div>
-                                  <p className="text-2xl font-bold text-primary">{pricePerDayOnline} €<span className="text-xs font-normal text-muted-foreground">{t('booking.per_day')}</span></p>
+                                  <p className="text-2xl font-bold text-primary">{perDayOnline} €<span className="text-xs font-normal text-muted-foreground">{t('booking.per_day')}</span></p>
                                   <p className="text-xs text-muted-foreground mt-1">{t('booking.total')} {totalOnline} €</p>
                                   <span className="inline-block mt-1 text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">{t('booking.savings')} {savings} €</span>
                                 </div>
