@@ -21,6 +21,7 @@ import {
 import { Loader2, ArrowLeft, Save, XCircle, User } from "lucide-react";
 import CheckoutBlock from "@/components/admin/CheckoutBlock";
 import ReturnBlock from "@/components/admin/ReturnBlock";
+import VehicleAssignmentBlock from "@/components/admin/VehicleAssignmentBlock";
 import { format, differenceInDays, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -361,6 +362,11 @@ export default function ReservationDetail() {
 
         {/* ═══ RIGHT (1/3) ═══ */}
         <div className="space-y-6">
+          {/* Vehicle assignment block */}
+          {user && (r.status === "pending" || r.status === "confirmed" || r.status === "active") && (
+            <VehicleAssignmentBlock reservation={r} userId={user.id} onComplete={invalidateAll} />
+          )}
+
           {/* Checkout block — visible when confirmed or active (but pickup not yet done) */}
           {(r.status === "confirmed" || r.status === "active") && user && (
             <CheckoutBlock reservation={r} userId={user.id} onComplete={invalidateAll} />
