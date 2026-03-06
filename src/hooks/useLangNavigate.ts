@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, type NavigateOptions } from 'react-router-dom';
 import { useCallback } from 'react';
 import { type Lang } from '@/i18n';
 
@@ -9,7 +9,7 @@ export function useLangNavigate() {
   const prefix = `/${lang ?? 'es'}`;
 
   const langNavigate = useCallback(
-    (to: string, options?: { replace?: boolean }) => {
+    (to: string, options?: NavigateOptions) => {
       const path = to.startsWith('/') ? `${prefix}${to}` : to;
       navigate(path, options);
     },

@@ -53,8 +53,21 @@ function PaymentForm() {
         insurance_tier: 'premium', extra_ids: selectedExtras, payment_method: 'card_online',
         stripe_payment_intent_id: paymentMethod?.id, sale_channel: 'web',
       };
-      const { reservation_number } = await createReservation(payload);
-      navigate(`/mis-reservas?ref=${reservation_number}&email=${encodeURIComponent(params.get('email') || '')}`);
+      const result = await createReservation(payload);
+      navigate(`/reservar/confirmacion`, {
+        state: {
+          reservation: {
+            reservation_number: result.reservation_number,
+            start_date: startDate, end_date: endDate,
+            start_time: params.get('pickupTime') || '09:00', end_time: params.get('returnTime') || '09:00',
+            category_name: params.get('categoryName') || '',
+            insurance_tier: 'premium', extras: selectedExtras,
+            payment_method: 'card_online', total_amount: total,
+            ...(result as any),
+          },
+          customer: { first_name: params.get('firstName') || '', last_name: params.get('lastName') || '', email: params.get('email') || '', phone: params.get('phone') || '' },
+        },
+      });
     } catch (err: any) {
       toast({ title: t('booking.error_payment'), description: err.message, variant: 'destructive' });
     } finally { setLoading(false); }

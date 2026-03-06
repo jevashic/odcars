@@ -137,7 +137,7 @@ export default function AdminReservations() {
       let query = supabase
         .from("reservations")
         .select(
-          `*, customers(id, first_name, last_name, email, phone), vehicle_categories(id, name), vehicles(id, license_plate, brand, model)`,
+          `id, reservation_number, status, start_date, end_date, pickup_date, return_date, total_amount, sale_channel, created_at, payment_method, customers(id, first_name, last_name, email, phone), vehicle_categories(id, name), vehicles(id, license_plate, brand, model)`,
           { count: "exact" }
         )
         .order("created_at", { ascending: false });
