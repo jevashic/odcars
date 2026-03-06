@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -289,11 +289,19 @@ export default function NewReservation() {
         internal_notes: internalNotes,
       };
 
-      const { data, error } = await supabase.functions.invoke("create_reservation", {
-        body: payload,
-      });
-
-      if (error) throw error;
+      const response = await fetch(
+        `${SUPABASE_URL}/functions/v1/create_reservation`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || data.message || 'Error al crear la reserva');
 
       const resId = data?.reservation_id || data?.id;
       const resNumber = data?.reservation_number || "";
