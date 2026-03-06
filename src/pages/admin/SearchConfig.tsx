@@ -298,7 +298,7 @@ export default function SearchConfig() {
               try {
                 const payload: any = {
                   name: locForm.name.trim(), type: locForm.type, description: locForm.description.trim() || null,
-                  extra_charge: locForm.extra_charge, sort_order: locForm.sort_order, is_active: locForm.is_active, updated_by: user.id,
+                  extra_charge: locForm.extra_charge, sort_order: locForm.sort_order, is_active: locForm.is_active,
                 };
                 if (locForm.id) {
                   const old = pickupLocations.find((l: any) => l.id === locForm.id);
