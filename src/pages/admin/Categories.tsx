@@ -655,7 +655,7 @@ export default function AdminCategories() {
                     </TableHeader>
                     <TableBody>
                       {pricingRules.map((pr) => (
-                        <TableRow key={pr.id}>
+                        <TableRow key={pr.pricing_rule_id}>
                           <TableCell className="font-medium">{pr.name}</TableCell>
                           <TableCell>{pr.start_date}</TableCell>
                           <TableCell>{pr.end_date}</TableCell>
@@ -685,9 +685,9 @@ export default function AdminCategories() {
                 <Dialog open={prModalOpen} onOpenChange={setPrModalOpen}>
                   <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>{prEditId ? "Editar temporada" : "Nueva temporada"}</DialogTitle>
+                      <DialogTitle>{prEditingRow ? "Editar temporada" : "Nueva temporada"}</DialogTitle>
                       <DialogDescription>
-                        {prEditId ? "Modifica los datos de esta temporada." : "Configura una nueva temporada de precios."}
+                        {prEditingRow ? "Modifica los datos de esta temporada." : "Configura una nueva temporada de precios."}
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 mt-2">
