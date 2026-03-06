@@ -1,11 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Search, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/integrations/supabase/client';
 import PublicLayout from '@/components/layout/PublicLayout';
 import { useLang } from '@/contexts/LanguageContext';
 
 export default function MyReservations() {
   const { t } = useLang();
+  const [params] = useSearchParams();
   const [code, setCode] = useState('');
   const [email, setEmail] = useState('');
   const [reservation, setReservation] = useState<any>(null);
@@ -13,21 +16,37 @@ export default function MyReservations() {
   const [loading, setLoading] = useState(false);
   const [attempts, setAttempts] = useState(0);
 
+  // Pre-fill from URL params (after successful booking)
+  useEffect(() => {
+    const ref = params.get('ref');
+    const em = params.get('email');
+    if (ref) setCode(ref);
+    if (em) setEmail(em);
+  }, [params]);
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (attempts >= 3) { setError(t('reservations.too_many')); return; }
     setLoading(true);
     setError('');
-    const { data, error: err } = await supabase.functions.invoke('validate_customer_zone', {
-      body: { reservation_code: code, email },
-    });
-    setLoading(false);
-    if (err || !data) {
+    try {
+      const { data, error: qErr } = await supabase
+        .from('reservations')
+        .select(`*, customers(first_name, last_name, email), vehicle_categories(name, image_url)`)
+        .eq('reservation_number', code)
+        .single();
+
+      if (qErr || !data) {
+        setAttempts(a => a + 1);
+        setError(t('reservations.not_found'));
+      } else {
+        setReservation(data);
+      }
+    } catch {
       setAttempts(a => a + 1);
       setError(t('reservations.not_found'));
-    } else {
-      setReservation(data);
     }
+    setLoading(false);
   };
 
   const statusColors: Record<string, string> = {

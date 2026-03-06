@@ -82,7 +82,7 @@ function SummaryForm() {
           stripe_setup_intent_id: paymentMethod?.id, sale_channel: 'web',
         };
         const { reservation_number } = await createReservation(payload);
-        navigate(`/reservar/confirmacion?ref=${reservation_number}`);
+        navigate(`/mis-reservas?ref=${reservation_number}&email=${encodeURIComponent(form.email)}`);
       } catch (err: any) {
         toast({ title: t('booking.error_confirm'), description: err.message, variant: 'destructive' });
       } finally { setLoading(false); }
