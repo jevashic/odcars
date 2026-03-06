@@ -1,23 +1,28 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Users, Settings2, Fuel } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import PublicLayout from '@/components/layout/PublicLayout';
-import InsuranceBadges from '@/components/InsuranceBadges';
 import { useLang } from '@/contexts/LanguageContext';
-import { useLangPath } from '@/hooks/useLangNavigate';
-import { getVehicleTranslation } from '@/utils/vehicleTranslation';
+import CategoryCard from '@/components/fleet/CategoryCard';
+import FleetBookingModal from '@/components/fleet/FleetBookingModal';
+
+interface Vehicle { id: string; brand: string; model: string; year: number; color: string; category_id: string; }
 
 export default function Fleet() {
   const { t, lang } = useLang();
-  const lp = useLangPath();
   const [categories, setCategories] = useState<any[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [bookingCatId, setBookingCatId] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.from('vehicle_categories').select('*, vehicle_category_translations(*)').eq('is_active', true).order('price_per_day').then(({ data }) => {
+    supabase.from('vehicle_categories').select('*, vehicle_category_translations(*)').eq('is_active', true).order('sort_order').then(({ data }) => {
       if (data) setCategories(data);
     });
+    supabase.from('vehicles').select('id, brand, model, year, color, category_id').eq('status', 'available').then(({ data }) => {
+      if (data) setVehicles(data as Vehicle[]);
+    });
   }, [lang]);
+
+  const bookingCategory = categories.find(c => c.id === bookingCatId);
 
   return (
     <PublicLayout>
@@ -26,32 +31,32 @@ export default function Fleet() {
           <h1 className="section-title">{t('nav.fleet')}</h1>
           <div className="section-line" />
           <p className="section-subtitle mb-10">{t('vehicles.subtitle')}</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {categories.map((cat) => {
-              const tr = getVehicleTranslation(cat, lang);
-              return (
-              <div key={cat.id} className="bg-card rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.08)] overflow-hidden hover:shadow-lg transition-shadow">
-                {cat.image_url && <img src={cat.image_url} alt={tr.name} className="w-full aspect-video object-cover" loading="lazy" />}
-                <div className="p-5">
-                  <InsuranceBadges className="mb-3" />
-                  <h3 className="font-bold text-lg text-foreground">{tr.name}</h3>
-                  <div className="grid grid-cols-2 gap-2 mt-3 text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1.5"><Users className="h-4 w-4" />{cat.seats_min}-{cat.seats_max}p</span>
-                    <span className="flex items-center gap-1.5"><Settings2 className="h-4 w-4" />{tr.transmission_note}</span>
-                    <span className="flex items-center gap-1.5"><Fuel className="h-4 w-4" />{tr.energy_type}</span>
-                  </div>
-                  <p className="mt-4 text-xl font-bold text-primary">{t('vehicles.from')} €{cat.price_per_day}{t('vehicles.per_day')}</p>
-                  <Link to={lp(`/reservar/detalle/${cat.id}`)} className="mt-4 block w-full bg-cta text-cta-foreground font-bold text-sm text-center py-3 rounded-lg hover:opacity-90 transition-opacity">
-                    {t('vehicles.book')} →
-                  </Link>
-                </div>
+
+          <div className="flex flex-wrap justify-center gap-6">
+            {categories.map(cat => (
+              <div key={cat.id} className="w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)]">
+                <CategoryCard
+                  category={cat}
+                  vehicles={vehicles.filter(v => v.category_id === cat.id).slice(0, 2)}
+                  onBook={setBookingCatId}
+                />
               </div>
-              );
-            })}
+            ))}
           </div>
-          {categories.length === 0 && <p className="text-center text-muted-foreground mt-10">{t('vehicles.loading')}</p>}
+
+          {categories.length === 0 && (
+            <p className="text-center text-muted-foreground mt-10">{t('vehicles.loading')}</p>
+          )}
         </div>
       </div>
+
+      {bookingCatId && bookingCategory && (
+        <FleetBookingModal
+          categoryId={bookingCatId}
+          category={bookingCategory}
+          onClose={() => setBookingCatId(null)}
+        />
+      )}
     </PublicLayout>
   );
 }
