@@ -32,57 +32,53 @@ export default function VehicleResultCard({ vehicle, days, params, lp, t }: Prop
   const baseQuery = `${params.toString()}&categoryId=${vehicle.categoryId}`;
 
   return (
-    <div className="bg-card rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.08)] overflow-hidden hover:shadow-lg transition-shadow flex flex-col">
-      {/* Image */}
+    <div className="bg-card rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.08)] overflow-hidden hover:shadow-lg transition-shadow flex flex-col md:flex-row">
+      {/* Image — left side */}
       {vehicle.imageUrl ? (
         <img
           src={vehicle.imageUrl}
           alt={displayName}
-          className="w-full aspect-[4/3] object-cover"
+          className="w-full md:w-[38%] aspect-[4/3] md:aspect-auto object-cover shrink-0"
           loading="lazy"
         />
       ) : (
-        <div className="w-full aspect-[4/3] bg-muted flex items-center justify-center">
+        <div className="w-full md:w-[38%] aspect-[4/3] md:aspect-auto bg-muted flex items-center justify-center shrink-0">
           <Fuel className="h-12 w-12 text-muted-foreground/30" />
         </div>
       )}
 
-      {/* Content */}
-      <div className="p-5 flex flex-col flex-1">
-        {/* Category badge */}
-        <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
-          {vehicle.categoryName}
-        </span>
-
-        {/* Vehicle name */}
-        <h3 className="font-bold text-lg text-foreground mb-4">{displayName}</h3>
+      {/* Content — right side */}
+      <div className="p-5 flex flex-col flex-1 justify-between gap-4">
+        {/* Top: name + category */}
+        <div>
+          <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            {vehicle.categoryName}
+          </span>
+          <h3 className="font-bold text-lg text-foreground mt-0.5">{displayName}</h3>
+        </div>
 
         {/* Pricing */}
-        <div className="mt-auto space-y-2">
-          <div className="text-center">
-            <p className="text-2xl font-bold text-primary">{totalAmount} €</p>
-            <p className="text-xs text-muted-foreground">
-              {perDay} €{t('booking.per_day')} · {days} {days > 1 ? t('booking.days') : t('booking.day')}
-            </p>
-          </div>
+        <div>
+          <p className="text-2xl font-bold text-primary">{totalAmount} €</p>
+          <p className="text-xs text-muted-foreground">
+            {perDay} €{t('booking.per_day')} · {days} {days > 1 ? t('booking.days') : t('booking.day')}
+          </p>
+        </div>
 
-          {/* CTA Buttons */}
-          <div className="grid grid-cols-1 gap-2 pt-2">
-            <Link
-              to={lp(`/reservar/extras?${baseQuery}&paymentMode=online`)}
-              className="w-full font-bold text-sm text-center py-3 rounded-lg transition-opacity hover:opacity-90"
-              style={{ backgroundColor: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}
-            >
-              {t('booking.pay_now')} — {totalOnline} €
-            </Link>
-            <Link
-              to={lp(`/reservar/extras?${baseQuery}&paymentMode=office`)}
-              className="w-full font-bold text-sm text-center py-3 rounded-lg transition-opacity hover:opacity-90"
-              style={{ backgroundColor: 'hsl(var(--cta))', color: 'hsl(var(--cta-foreground))' }}
-            >
-              {t('booking.pay_office')} — {totalAmount} €
-            </Link>
-          </div>
+        {/* CTA Buttons */}
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Link
+            to={lp(`/reservar/extras?${baseQuery}&paymentMode=online`)}
+            className="flex-1 font-bold text-sm text-center py-3 rounded-lg transition-opacity hover:opacity-90 bg-primary text-primary-foreground"
+          >
+            {t('booking.pay_now')} — {totalOnline} €
+          </Link>
+          <Link
+            to={lp(`/reservar/extras?${baseQuery}&paymentMode=office`)}
+            className="flex-1 font-bold text-sm text-center py-3 rounded-lg transition-opacity hover:opacity-90 bg-cta text-cta-foreground"
+          >
+            {t('booking.pay_office')} — {totalAmount} €
+          </Link>
         </div>
       </div>
     </div>

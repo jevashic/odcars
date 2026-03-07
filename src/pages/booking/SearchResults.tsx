@@ -178,7 +178,7 @@ export default function SearchResults() {
               ) : results.length === 0 ? (
                 <p className="text-center text-muted-foreground py-20">{t('booking.no_results')}</p>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {results.map((vehicle) => (
                     <VehicleResultCard
                       key={vehicle.vehicleId}
