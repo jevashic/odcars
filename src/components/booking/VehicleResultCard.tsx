@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Fuel, Users, Settings2, ShieldCheck, Gauge, CreditCard, Headphones } from 'lucide-react';
-import { getVehicleImage } from '@/utils/vehicleImage';
+
 
 interface VehicleResult {
   vehicleId: string;
@@ -109,7 +109,7 @@ export default function VehicleResultCard({ vehicle, days, params, lp, t }: Prop
             >
               {t('booking.pay_now')} — {totalOnline} €
             </Link>
-            <p className="text-center text-xs font-semibold text-green-600">
+            <p className="text-center text-xs font-semibold text-primary">
               {t('booking.save')} {savings} € (10%)
             </p>
 
