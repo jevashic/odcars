@@ -15,11 +15,11 @@ export default function BannerZone({ position }: { position: string }) {
             ? { href: banner.link_url, target: banner.link_target ?? '_self', rel: 'noopener noreferrer' }
             : {};
           return (
-            <Wrapper key={banner.id} {...linkProps} className="block overflow-hidden rounded-xl">
+            <Wrapper key={banner.id} {...linkProps} className="block overflow-hidden rounded-xl bg-muted min-h-[180px] md:min-h-[220px] flex items-center justify-center">
               <img
                 src={banner.image_url}
                 alt={banner.name || 'Banner'}
-                className="w-full object-cover rounded-xl aspect-[16/5]"
+                className="w-full h-full object-contain rounded-xl"
                 loading="lazy"
               />
             </Wrapper>
