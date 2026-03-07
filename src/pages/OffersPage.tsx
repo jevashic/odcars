@@ -1,12 +1,12 @@
 import PublicLayout from '@/components/layout/PublicLayout';
 import OffersSection from '@/components/home/OffersSection';
-import { useLang } from '@/contexts/LanguageContext';
+import BannerZone from '@/components/home/BannerZone';
 
 export default function OffersPage() {
-  const { t } = useLang();
   return (
     <PublicLayout>
       <div className="pt-20">
+        <BannerZone position="offers_top" />
         <OffersSection />
       </div>
     </PublicLayout>

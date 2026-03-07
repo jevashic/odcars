@@ -6,7 +6,7 @@ import Advantages from '@/components/home/Advantages';
 import DiscoverGranCanaria from '@/components/home/DiscoverGranCanaria';
 import OffersSection from '@/components/home/OffersSection';
 import ReviewsSection from '@/components/home/ReviewsSection';
-import BannerSection from '@/components/home/BannerSection';
+import BannerZone from '@/components/home/BannerZone';
 import NewsletterSection from '@/components/home/NewsletterSection';
 
 export default function Index() {
@@ -14,12 +14,14 @@ export default function Index() {
     <PublicLayout className="!pt-0">
       <HeroSection />
       <SearchBar />
+      <BannerZone position="home_top" />
       <FeaturedVehicles />
       <Advantages />
+      <BannerZone position="home_middle" />
       <DiscoverGranCanaria />
       <OffersSection />
       <ReviewsSection />
-      <BannerSection position="home_bottom" />
+      <BannerZone position="home_bottom" />
       <NewsletterSection />
     </PublicLayout>
   );

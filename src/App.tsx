@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ConfigProvider } from "@/contexts/ConfigContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { BannerProvider } from "@/contexts/BannerContext";
 import '@/i18n';
 
 import Index from "./pages/Index";
@@ -89,6 +90,7 @@ function LangRoutes() {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ConfigProvider>
+      <BannerProvider>
       <TooltipProvider>
         <Toaster />
         <Sonner />
@@ -135,6 +137,7 @@ const App = () => (
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
+      </BannerProvider>
     </ConfigProvider>
   </QueryClientProvider>
 );
