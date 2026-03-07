@@ -1,11 +1,12 @@
 import { CardElement } from '@stripe/react-stripe-js';
 
 const CARD_OPTIONS = {
+  hidePostalCode: true,
   style: {
     base: {
       fontSize: '16px',
-      color: '#333333',
-      '::placeholder': { color: '#9CA3AF' },
+      color: '#424770',
+      '::placeholder': { color: '#aab7c4' },
     },
   },
 };
