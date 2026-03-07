@@ -185,6 +185,7 @@ export default function MyReservations() {
                     <div>
                       <p className="text-xs text-muted-foreground">{t('reservations.return')}</p>
                       <p className="font-semibold">{reservation.end_date ? fmtDate(reservation.end_date) : '—'}</p>
+                    </div>
                   </div>
                 </div>
 
