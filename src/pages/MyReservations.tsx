@@ -44,24 +44,33 @@ export default function MyReservations() {
     setLoading(true);
     setError('');
     try {
+      // Step 1: find customer by email
+      const { data: customer } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('email', email.toLowerCase().trim())
+        .maybeSingle();
+
+      if (!customer) {
+        setAttempts(a => a + 1);
+        setError(t('reservations.not_found'));
+        setLoading(false);
+        return;
+      }
+
+      // Step 2: find reservation by number + customer_id
       const { data, error: qErr } = await supabase
         .from('reservations')
         .select(`id, reservation_number, status, start_date, end_date, total_amount, delivery_charge, delivery_details, sale_channel, created_at, base_amount, extras_amount, discount_amount, insurance_tier, payment_method, pickup_time, return_time, notes, customers(first_name, last_name, email, phone), vehicle_categories(name, image_url), vehicles(plate, brand, model), reservation_extras(extra_name, quantity, unit_price, subtotal), pickup_locations:branches!reservations_pickup_branch_id_fkey(name), return_locations:branches!reservations_return_branch_id_fkey(name)`)
-        .eq('reservation_number', code)
-        .single();
+        .eq('reservation_number', code.trim().toUpperCase())
+        .eq('customer_id', customer.id)
+        .maybeSingle();
 
       if (qErr || !data) {
-        console.error('Search error:', qErr);
         setAttempts(a => a + 1);
         setError(t('reservations.not_found'));
       } else {
-        // Verify email matches
-        if ((data.customers as any)?.email?.toLowerCase() !== email.toLowerCase()) {
-          setAttempts(a => a + 1);
-          setError(t('reservations.not_found'));
-        } else {
-          setReservation(data);
-        }
+        setReservation(data);
       }
     } catch {
       setAttempts(a => a + 1);
