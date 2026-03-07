@@ -130,6 +130,14 @@ export default function SearchResults() {
 
     // Sort by price
     vehicleCards.sort((a, b) => (a.pricePerDay || 0) - (b.pricePerDay || 0));
+
+    // Mark middle-priced category as recommended
+    const uniqueCats = [...new Set(vehicleCards.map(v => v.categoryId))];
+    if (uniqueCats.length >= 2) {
+      const recommendedCatId = uniqueCats[Math.floor(uniqueCats.length / 2)];
+      vehicleCards.forEach(v => { v.isRecommended = v.categoryId === recommendedCatId; });
+    }
+
     setResults(vehicleCards);
     setLoading(false);
   }, []);
