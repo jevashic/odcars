@@ -80,38 +80,6 @@ export default function PlaceDetail() {
             </Link>
           </div>
 
-          {/* Banner 1 – Reservar */}
-          <Link to={lp('/reservar')} className="block mt-8 rounded-xl p-8 text-primary-foreground no-underline hover:opacity-95 transition-opacity" style={{ background: 'linear-gradient(135deg, hsl(var(--primary)), #0F2A38)' }}>
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div className="flex items-start gap-3">
-                <span className="text-2xl">🚗</span>
-                <div>
-                  <p className="font-bold text-lg text-white">{t('place.banner1_title')}</p>
-                  <p className="text-white/70 text-sm mt-1">{t('place.banner1_subtitle')}</p>
-                </div>
-              </div>
-              <span className="inline-flex items-center justify-center bg-cta text-cta-foreground font-bold px-6 py-3 rounded-lg whitespace-nowrap shrink-0">
-                {t('place.banner1_cta')}
-              </span>
-            </div>
-          </Link>
-
-          {/* Banner 2 – Ver flota */}
-          <Link to={lp('/flota')} className="block mt-4 rounded-xl p-8 bg-cta no-underline hover:opacity-95 transition-opacity">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div className="flex items-start gap-3">
-                <span className="text-2xl">🛡️</span>
-                <div>
-                  <p className="font-bold text-lg text-cta-foreground">{t('place.banner2_title')}</p>
-                  <p className="text-cta-foreground/70 text-sm mt-1">{t('place.banner2_subtitle')}</p>
-                </div>
-              </div>
-              <span className="inline-flex items-center justify-center bg-primary text-primary-foreground font-bold px-6 py-3 rounded-lg whitespace-nowrap shrink-0">
-                {t('place.banner2_cta')}
-              </span>
-            </div>
-          </Link>
-
           <BannerZone position="gc_bottom" />
         </div>
       </div>
