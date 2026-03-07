@@ -38,18 +38,46 @@ export default function MyReservations() {
     if (em) setEmail(em);
   }, [params]);
 
+  const [debugInfo, setDebugInfo] = useState<any>(null);
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (attempts >= 5) { setError(t('reservations.too_many')); return; }
     setLoading(true);
     setError('');
+    setDebugInfo(null);
+
+    const numeroLimpio = code.trim().toUpperCase();
+    const emailLimpio = email.trim().toLowerCase();
+    console.log('Buscando:', numeroLimpio, emailLimpio);
+
     try {
-      // Step 1: find customer by email
-      const { data: customer } = await supabase
+      // Debug: buscar cliente con ilike
+      const { data: customer, error: customerError } = await supabase
         .from('customers')
-        .select('id')
-        .eq('email', email.toLowerCase().trim())
+        .select('id, email')
+        .ilike('email', emailLimpio)
         .maybeSingle();
+
+      console.log('Cliente encontrado:', customer, customerError);
+
+      // Debug: buscar reserva sin filtro de customer
+      const { data: reservaDebug, error: reservaDebugError } = await supabase
+        .from('reservations')
+        .select('id, reservation_number, customer_id, status')
+        .ilike('reservation_number', numeroLimpio)
+        .maybeSingle();
+
+      console.log('Reserva encontrada:', reservaDebug, reservaDebugError);
+
+      setDebugInfo({
+        numeroLimpio,
+        emailLimpio,
+        customer: customer || null,
+        customerError: customerError?.message || null,
+        reservaDebug: reservaDebug || null,
+        reservaDebugError: reservaDebugError?.message || null,
+      });
 
       if (!customer) {
         setAttempts(a => a + 1);
@@ -58,13 +86,15 @@ export default function MyReservations() {
         return;
       }
 
-      // Step 2: find reservation by number + customer_id
+      // Buscar reserva completa con customer_id
       const { data, error: qErr } = await supabase
         .from('reservations')
         .select(`id, reservation_number, status, start_date, end_date, total_amount, delivery_charge, delivery_details, sale_channel, created_at, base_amount, extras_amount, discount_amount, insurance_tier, payment_method, pickup_time, return_time, notes, customers(first_name, last_name, email, phone), vehicle_categories(name, image_url), vehicles(plate, brand, model), reservation_extras(extra_name, quantity, unit_price, subtotal), pickup_locations:branches!reservations_pickup_branch_id_fkey(name), return_locations:branches!reservations_return_branch_id_fkey(name)`)
-        .eq('reservation_number', code.trim().toUpperCase())
+        .eq('reservation_number', numeroLimpio)
         .eq('customer_id', customer.id)
         .maybeSingle();
+
+      console.log('Reserva completa:', data, qErr);
 
       if (qErr || !data) {
         setAttempts(a => a + 1);
@@ -72,7 +102,8 @@ export default function MyReservations() {
       } else {
         setReservation(data);
       }
-    } catch {
+    } catch (err: any) {
+      console.error('Error general:', err);
       setAttempts(a => a + 1);
       setError(t('reservations.not_found'));
     }
