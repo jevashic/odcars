@@ -61,6 +61,7 @@ export default function ModifyReservationForm({ reservation, onUpdated, onCancel
   const [totalFinal, setTotalFinal] = useState(0);
   const [loadingQuote, setLoadingQuote] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [unavailableMsg, setUnavailableMsg] = useState<string | null>(null);
 
   // Load locations & extras
   useEffect(() => {
@@ -112,6 +113,7 @@ export default function ModifyReservationForm({ reservation, onUpdated, onCancel
 
     setLoadingQuote(true);
     setQuote(null);
+    setUnavailableMsg(null);
     try {
       const { data: quote, error: quoteError } = await supabase.rpc('get_quote', {
         p_category_id: reservation.category_id,
@@ -136,15 +138,20 @@ export default function ModifyReservationForm({ reservation, onUpdated, onCancel
         return;
       }
 
-      // When modifying an existing reservation, ignore availability errors
-      // since check_availability counts the current reservation as occupied
-      if (!quote.available && !quote.total_amount) {
-        toast({ title: 'Sin disponibilidad', description: quote.error || 'No hay vehículos disponibles para esas fechas.', variant: 'destructive' });
+      const originalDays = Math.max(1, differenceInDays(parseISO(reservation.end_date), parseISO(reservation.start_date)));
+      const newDaysCalc = Math.max(1, differenceInDays(endDate, startDate));
+
+      // If extending days and no availability → show contact message, no confirm
+      if (newDaysCalc > originalDays && !quote.available) {
+        setUnavailableMsg(
+          'No hay disponibilidad para las fechas seleccionadas. Si necesitas ampliar tu reserva ponte en contacto con nuestra oficina: reservas@oceandrive.es o llámanos al +34 928 XXX XXX'
+        );
         setLoadingQuote(false);
         return;
       }
 
-      // quote IS the object directly from supabase.rpc — no .data or [0]
+      // Shortening days or same days → always allow (ignore availability)
+      // Extending days with availability → also allow
       const pickupLoc = locations.find(l => l.id === pickupLocationId);
       const dc = pickupLoc?.extra_charge ?? 0;
       const tf = (quote.total_amount ?? 0) + dc;
@@ -351,6 +358,13 @@ export default function ModifyReservationForm({ reservation, onUpdated, onCancel
         {loadingQuote ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
         CALCULAR NUEVO PRECIO
       </Button>
+
+      {/* Unavailability message */}
+      {unavailableMsg && (
+        <div className="bg-orange-50 border border-orange-300 text-orange-800 rounded-lg p-4 text-sm">
+          {unavailableMsg}
+        </div>
+      )}
 
       {/* Quote preview */}
       {quote && (
