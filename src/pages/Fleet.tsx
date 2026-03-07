@@ -5,6 +5,7 @@ import PublicLayout from '@/components/layout/PublicLayout';
 import { useLang } from '@/contexts/LanguageContext';
 import { useLangNavigate } from '@/hooks/useLangNavigate';
 import { getVehicleImage } from '@/utils/vehicleImage';
+import BannerZone from '@/components/home/BannerZone';
 
 interface VehicleCard {
   id: string;
@@ -83,6 +84,8 @@ export default function Fleet() {
           <h1 className="section-title">{t('nav.fleet')}</h1>
           <div className="section-line" />
           <p className="section-subtitle mb-10">{t('vehicles.subtitle')}</p>
+
+          <BannerZone position="fleet_top" />
 
           {error && (
             <div className="bg-destructive/10 border border-destructive text-destructive rounded-lg p-4 mb-6 text-sm">
