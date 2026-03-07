@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, AlertCircle, Calendar, Shield, X, FileText, Loader2 } from 'lucide-react';
+import { Search, AlertCircle, Calendar, Shield, X, FileText, Loader2, Edit } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { format, differenceInDays, parseISO, addHours } from 'date-fns';
 import PublicLayout from '@/components/layout/PublicLayout';
@@ -11,6 +11,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
 } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
+import ModifyReservationForm from '@/components/reservations/ModifyReservationForm';
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
   pending: { label: 'Pendiente de confirmación', color: 'bg-yellow-100 text-yellow-800' },
@@ -30,6 +31,7 @@ export default function MyReservations() {
   const [loading, setLoading] = useState(false);
   const [attempts, setAttempts] = useState(0);
   const [cancelling, setCancelling] = useState(false);
+  const [modifying, setModifying] = useState(false);
 
   useEffect(() => {
     const ref = params.get('ref');
@@ -47,7 +49,7 @@ export default function MyReservations() {
     try {
       const { data, error: qErr } = await supabase
         .from('reservations')
-        .select(`id, reservation_number, status, start_date, end_date, total_amount, extras_total, discount_amount, delivery_charge, delivery_details, insurance_tier_snapshot, tax_amount, sale_channel, notes, created_at, customers(first_name, last_name, email, phone), vehicle_categories(name, image_url), vehicles(plate, brand, model), reservation_extras(extra_name, quantity, unit_price, subtotal)`)
+        .select(`id, reservation_number, status, start_date, end_date, total_amount, extras_total, discount_amount, delivery_charge, delivery_details, insurance_tier_snapshot, tax_amount, sale_channel, notes, created_at, category_id, pickup_location_id, return_location_id, customers(first_name, last_name, email, phone), vehicle_categories(name, image_url), vehicles(plate, brand, model), reservation_extras(extra_name, quantity, unit_price, subtotal)`)
         .ilike('reservation_number', code.trim())
         .maybeSingle();
 
@@ -118,7 +120,7 @@ export default function MyReservations() {
     reservation.start_date &&
     new Date(reservation.start_date) > addHours(new Date(), 48);
 
-  const _canModify = reservation && ['pending', 'confirmed'].includes(reservation.status);
+  const canModify = reservation && ['pending', 'confirmed'].includes(reservation.status);
 
   const days = reservation?.start_date && reservation?.end_date
     ? Math.max(1, differenceInDays(parseISO(reservation.end_date), parseISO(reservation.start_date)))
@@ -257,6 +259,15 @@ export default function MyReservations() {
                 )}
               </div>
 
+              {/* Modify form */}
+              {modifying && canModify && (
+                <ModifyReservationForm
+                  reservation={reservation}
+                  onUpdated={(updated) => { setReservation(updated); setModifying(false); }}
+                  onCancel={() => setModifying(false)}
+                />
+              )}
+
               {/* SECTION 2: Actions */}
               <div className="bg-card rounded-2xl shadow-sm p-6 md:p-8 space-y-4">
                 {reservation.status === 'cancelled' && (
@@ -286,6 +297,11 @@ export default function MyReservations() {
                     </AlertDialogContent>
                   </AlertDialog>
                 )}
+
+                {canModify && !modifying && (
+                  <Button onClick={() => setModifying(true)} className="w-full" variant="outline">
+                    <Edit className="h-4 w-4 mr-2" /> MODIFICAR RESERVA
+                  </Button>
 
                 {reservation.status === 'completed' && (
                   <Button onClick={handleDownloadInvoice} className="w-full">
