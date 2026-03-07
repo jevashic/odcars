@@ -86,7 +86,9 @@ export default function SearchResults() {
             p_end_date: ed,
             p_exclude_reservation_id: null,
           });
-          availCache[catId] = avail?.available ?? false;
+          // Handle both shapes: direct boolean or { available: boolean }
+          const isAvail = typeof avail === 'boolean' ? avail : (avail?.available ?? false);
+          availCache[catId] = isAvail;
         } catch (err) {
           console.error('Error check_availability:', catId, err);
           availCache[catId] = false;
