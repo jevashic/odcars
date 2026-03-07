@@ -178,6 +178,17 @@ export default function MyReservations() {
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                 {t('reservations.search_button')}
               </button>
+              {debugInfo && (
+                <div className="bg-muted rounded-lg p-4 text-xs font-mono space-y-1 overflow-auto max-h-64 border border-border">
+                  <p className="font-bold text-foreground">🔍 Debug info:</p>
+                  <p><strong>Nº limpio:</strong> {debugInfo.numeroLimpio}</p>
+                  <p><strong>Email limpio:</strong> {debugInfo.emailLimpio}</p>
+                  <p><strong>Cliente:</strong> {debugInfo.customer ? `✅ id=${debugInfo.customer.id}, email=${debugInfo.customer.email}` : '❌ No encontrado'}</p>
+                  {debugInfo.customerError && <p className="text-destructive"><strong>Error cliente:</strong> {debugInfo.customerError}</p>}
+                  <p><strong>Reserva (sin filtro customer):</strong> {debugInfo.reservaDebug ? `✅ id=${debugInfo.reservaDebug.id}, num=${debugInfo.reservaDebug.reservation_number}, customer_id=${debugInfo.reservaDebug.customer_id}, status=${debugInfo.reservaDebug.status}` : '❌ No encontrada'}</p>
+                  {debugInfo.reservaDebugError && <p className="text-destructive"><strong>Error reserva:</strong> {debugInfo.reservaDebugError}</p>}
+                </div>
+              )}
             </form>
           ) : (
             <div className="space-y-6">
