@@ -122,6 +122,7 @@ export default function ModifyReservationForm({ reservation, onUpdated, onCancel
         p_insurance_tier: reservation.insurance_tier_snapshot ?? 'premium',
         p_extra_ids: selectedExtraIds ?? [],
         p_discount_code: null,
+        p_exclude_reservation_id: reservation.id,
       });
 
       console.log('Quote completo:', JSON.stringify(quote));
