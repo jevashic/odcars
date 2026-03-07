@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
+import { Badge } from '@/components/ui/badge';
 import { Users, Settings2, Fuel, Car, Check, AlertTriangle, Star, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import PublicLayout from '@/components/layout/PublicLayout';
