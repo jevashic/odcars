@@ -302,6 +302,7 @@ export default function MyReservations() {
                   <Button onClick={() => setModifying(true)} className="w-full" variant="outline">
                     <Edit className="h-4 w-4 mr-2" /> MODIFICAR RESERVA
                   </Button>
+                )}
 
                 {reservation.status === 'completed' && (
                   <Button onClick={handleDownloadInvoice} className="w-full">
