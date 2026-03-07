@@ -7,10 +7,9 @@ import PublicLayout from '@/components/layout/PublicLayout';
 import BookingTimer, { markBookingCompleted } from '@/components/booking/BookingTimer';
 import { useLang } from '@/contexts/LanguageContext';
 import { useLangNavigate } from '@/hooks/useLangNavigate';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '@/integrations/supabase/client';
 import { stripePromise } from '@/integrations/stripe/client';
 import StripeCardInput from '@/components/stripe/StripeCardInput';
-import { createReservation, type ReservationPayload } from '@/integrations/supabase/createReservation';
 import { toast } from '@/hooks/use-toast';
 
 function parseExtrasPrices(param: string): Record<string, number> {
