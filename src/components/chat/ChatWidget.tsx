@@ -1,48 +1,86 @@
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Bot } from 'lucide-react';
+import { MessageCircle, X, Send, Bot, Mic } from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/integrations/supabase/client';
 
-interface Message {
-  role: 'bot' | 'user';
-  text: string;
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
 }
 
-const INITIAL_MSG: Message = {
-  role: 'bot',
-  text: '¡Hola! 👋 Soy el asistente de Ocean Drive.\nPuedo ayudarte con información sobre nuestros vehículos, precios y reservas.\n¿En qué puedo ayudarte?',
-};
-
-const PLACEHOLDER_REPLY: Message = {
-  role: 'bot',
-  text: 'Estamos configurando el asistente.\nEn breve estará disponible.\nMientras puedes contactarnos por teléfono.',
-};
+const WELCOME_MSG = '¡Hola! Soy Guaci, tu asistente personal de Ocean Drive.\n¿En qué puedo ayudarte?';
 
 export default function ChatWidget() {
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([INITIAL_MSG]);
+  const [history, setHistory] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [typing, setTyping] = useState(false);
+  const [listening, setListening] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, typing]);
+  }, [history, typing]);
 
-  const send = () => {
+  const send = async () => {
     const text = input.trim();
-    if (!text) return;
-    setMessages((m) => [...m, { role: 'user', text }]);
+    if (!text || typing) return;
+
+    const userMsg: ChatMessage = { role: 'user', content: text };
+    const updated = [...history, userMsg];
+    setHistory(updated);
     setInput('');
     setTyping(true);
-    setTimeout(() => {
-      setMessages((m) => [...m, PLACEHOLDER_REPLY]);
+
+    try {
+      const response = await fetch(
+        `${SUPABASE_URL}/functions/v1/chat_assistant`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({ messages: updated }),
+        }
+      );
+      const data = await response.json();
+      const reply = data.reply || 'Lo siento, no pude procesar tu mensaje. Inténtalo de nuevo.';
+      setHistory((h) => [...h, { role: 'assistant', content: reply }]);
+    } catch {
+      setHistory((h) => [
+        ...h,
+        { role: 'assistant', content: 'Error de conexión. Inténtalo de nuevo más tarde.' },
+      ]);
+    } finally {
       setTyping(false);
-    }, 1200);
+    }
   };
+
+  const startListening = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'es-ES';
+    recognition.onstart = () => setListening(true);
+    recognition.onend = () => setListening(false);
+    recognition.onerror = () => setListening(false);
+    recognition.onresult = (event: any) => {
+      const texto = event.results[0][0].transcript;
+      setInput(texto);
+    };
+    recognition.start();
+  };
+
+  // Display messages: prepend welcome message as assistant
+  const displayMessages: { role: 'user' | 'assistant'; content: string }[] = [
+    { role: 'assistant', content: WELCOME_MSG },
+    ...history,
+  ];
 
   return (
     <>
-      {/* Floating button */}
       {!open && (
         <Tooltip>
           <TooltipTrigger asChild>
@@ -58,7 +96,6 @@ export default function ChatWidget() {
         </Tooltip>
       )}
 
-      {/* Chat panel */}
       {open && (
         <div className="fixed bottom-6 right-6 z-[9999] flex flex-col rounded-2xl shadow-2xl border border-border overflow-hidden bg-background w-[360px] h-[500px] max-sm:inset-4 max-sm:w-auto max-sm:h-auto max-sm:bottom-4 max-sm:right-4 max-sm:left-4 max-sm:top-16">
           {/* Header */}
@@ -66,7 +103,7 @@ export default function ChatWidget() {
             <div className="h-9 w-9 rounded-full bg-primary-foreground/20 flex items-center justify-center">
               <Bot className="h-5 w-5" />
             </div>
-            <span className="font-semibold text-sm flex-1">Asistente Ocean Drive</span>
+            <span className="font-semibold text-sm flex-1">Guaci – Ocean Drive</span>
             <button onClick={() => setOpen(false)} className="hover:opacity-80">
               <X className="h-5 w-5" />
             </button>
@@ -74,7 +111,7 @@ export default function ChatWidget() {
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {messages.map((m, i) => (
+            {displayMessages.map((m, i) => (
               <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div
                   className={`max-w-[80%] rounded-xl px-3 py-2 text-sm whitespace-pre-line ${
@@ -83,7 +120,7 @@ export default function ChatWidget() {
                       : 'bg-muted text-foreground rounded-bl-sm'
                   }`}
                 >
-                  {m.text}
+                  {m.content}
                 </div>
               </div>
             ))}
@@ -107,8 +144,19 @@ export default function ChatWidget() {
               className="flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
             />
             <button
+              onClick={startListening}
+              className={`h-9 w-9 rounded-lg flex items-center justify-center transition-colors ${
+                listening
+                  ? 'bg-destructive text-destructive-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-accent'
+              }`}
+              aria-label="Micrófono"
+            >
+              <Mic className="h-4 w-4" />
+            </button>
+            <button
               onClick={send}
-              disabled={!input.trim()}
+              disabled={!input.trim() || typing}
               className="h-9 w-9 rounded-lg bg-cta text-cta-foreground flex items-center justify-center disabled:opacity-40"
             >
               <Send className="h-4 w-4" />
