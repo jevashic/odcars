@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, AlertCircle, Calendar, MapPin, Shield, CreditCard, X, FileText, Loader2 } from 'lucide-react';
+import { Search, AlertCircle, Calendar, MapPin, Shield, X, FileText, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { format, differenceInDays, parseISO, addHours } from 'date-fns';
 import PublicLayout from '@/components/layout/PublicLayout';
@@ -47,7 +47,7 @@ export default function MyReservations() {
     try {
       const { data, error: qErr } = await supabase
         .from('reservations')
-        .select(`id, reservation_number, status, start_date, end_date, total_amount, delivery_charge, delivery_details, sale_channel, created_at, base_amount, extras_amount, discount_amount, insurance_tier, payment_method, pickup_time, return_time, notes, customers(first_name, last_name, email, phone), vehicle_categories(name, image_url), vehicles(plate, brand, model), reservation_extras(extra_name, quantity, unit_price, subtotal), pickup_locations:branches!reservations_pickup_branch_id_fkey(name), return_locations:branches!reservations_return_branch_id_fkey(name)`)
+        .select(`id, reservation_number, status, start_date, end_date, total_amount, extras_total, discount_amount, delivery_charge, delivery_details, insurance_tier_snapshot, tax_amount, sale_channel, notes, created_at, customers(first_name, last_name, email, phone), vehicle_categories(name, image_url), vehicles(plate, brand, model), reservation_extras(extra_name, quantity, unit_price, subtotal)`)
         .ilike('reservation_number', code.trim())
         .maybeSingle();
 
@@ -177,35 +177,17 @@ export default function MyReservations() {
                     <Calendar className="h-5 w-5 text-primary shrink-0" />
                     <div>
                       <p className="text-xs text-muted-foreground">{t('reservations.pickup')}</p>
-                      <p className="font-semibold">{reservation.start_date ? fmtDate(reservation.start_date) : '—'} {reservation.pickup_time || ''}</p>
+                      <p className="font-semibold">{reservation.start_date ? fmtDate(reservation.start_date) : '—'}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <Calendar className="h-5 w-5 text-primary shrink-0" />
                     <div>
                       <p className="text-xs text-muted-foreground">{t('reservations.return')}</p>
-                      <p className="font-semibold">{reservation.end_date ? fmtDate(reservation.end_date) : '—'} {reservation.return_time || ''}</p>
-                    </div>
+                      <p className="font-semibold">{reservation.end_date ? fmtDate(reservation.end_date) : '—'}</p>
                   </div>
                 </div>
 
-                {/* Locations */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="flex items-center gap-3">
-                    <MapPin className="h-5 w-5 text-primary shrink-0" />
-                    <div>
-                      <p className="text-xs text-muted-foreground">{t('booking.pickup_location')}</p>
-                      <p className="font-semibold">{reservation.pickup_locations?.name || '—'}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <MapPin className="h-5 w-5 text-primary shrink-0" />
-                    <div>
-                      <p className="text-xs text-muted-foreground">{t('booking.return_location')}</p>
-                      <p className="font-semibold">{reservation.return_locations?.name || '—'}</p>
-                    </div>
-                  </div>
-                </div>
 
                 {/* Days */}
                 {days > 0 && (
@@ -215,7 +197,7 @@ export default function MyReservations() {
                 {/* Insurance */}
                 <div className="flex items-center gap-3">
                   <Shield className="h-5 w-5 text-emerald-500 shrink-0" />
-                  <p className="font-semibold">{reservation.insurance_tier === 'premium' ? 'Seguro Premium incluido' : reservation.insurance_tier || '—'}</p>
+                  <p className="font-semibold">{reservation.insurance_tier_snapshot === 'premium' ? 'Seguro Premium incluido' : reservation.insurance_tier_snapshot || '—'}</p>
                 </div>
 
                 {/* Extras */}
@@ -235,16 +217,10 @@ export default function MyReservations() {
 
                 {/* Financial breakdown */}
                 <div className="border-t border-border pt-4 space-y-2 text-sm">
-                  {reservation.base_amount != null && (
-                    <div className="flex justify-between">
-                      <span>{t('booking.rental')}</span>
-                      <span>{Number(reservation.base_amount).toFixed(2)} €</span>
-                    </div>
-                  )}
-                  {reservation.extras_amount != null && Number(reservation.extras_amount) > 0 && (
+                  {reservation.extras_total != null && Number(reservation.extras_total) > 0 && (
                     <div className="flex justify-between">
                       <span>Extras</span>
-                      <span>{Number(reservation.extras_amount).toFixed(2)} €</span>
+                      <span>{Number(reservation.extras_total).toFixed(2)} €</span>
                     </div>
                   )}
                   {reservation.discount_amount != null && Number(reservation.discount_amount) > 0 && (
@@ -259,16 +235,16 @@ export default function MyReservations() {
                       <span>{Number(reservation.delivery_charge).toFixed(2)} €</span>
                     </div>
                   )}
+                  {reservation.tax_amount != null && Number(reservation.tax_amount) > 0 && (
+                    <div className="flex justify-between">
+                      <span>IGIC</span>
+                      <span>{Number(reservation.tax_amount).toFixed(2)} €</span>
+                    </div>
+                  )}
                   <div className="flex justify-between font-bold text-lg pt-2 border-t border-border">
                     <span>{t('booking.total_label')}</span>
                     <span className="text-primary">{reservation.total_amount != null ? `${Number(reservation.total_amount).toFixed(2)} €` : '—'}</span>
                   </div>
-                </div>
-
-                {/* Payment method */}
-                <div className="flex items-center gap-3">
-                  <CreditCard className="h-5 w-5 text-primary shrink-0" />
-                  <p className="text-sm">{reservation.payment_method === 'card_online' ? 'Pago online' : 'Pago en oficina'}</p>
                 </div>
 
                 {/* Delivery details / notes */}
