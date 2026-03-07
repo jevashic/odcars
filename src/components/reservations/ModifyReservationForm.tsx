@@ -136,6 +136,14 @@ export default function ModifyReservationForm({ reservation, onUpdated, onCancel
         return;
       }
 
+      // When modifying an existing reservation, ignore availability errors
+      // since check_availability counts the current reservation as occupied
+      if (!quote.available && !quote.total_amount) {
+        toast({ title: 'Sin disponibilidad', description: quote.error || 'No hay vehículos disponibles para esas fechas.', variant: 'destructive' });
+        setLoadingQuote(false);
+        return;
+      }
+
       // quote IS the object directly from supabase.rpc — no .data or [0]
       const pickupLoc = locations.find(l => l.id === pickupLocationId);
       const dc = pickupLoc?.extra_charge ?? 0;
