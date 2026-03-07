@@ -199,11 +199,22 @@ export default function SearchResults() {
                     const totalOnline = Math.round(totalOffice * 0.85);
                     const perDayOnline = Math.round(perDayOffice * 0.85);
                     const savings = totalOffice - totalOnline;
-                    const isRecommended = idx === 0;
+                    const availableResults = results.filter(r => r.isAvailable);
+                    const isRecommended = v.isAvailable && availableResults[0]?.id === v.id;
+                    const unavailable = !v.isAvailable;
 
                     return (
-                      <div key={v.id} className="bg-card rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.08)] overflow-hidden relative">
-                        {isRecommended && (
+                      <div key={v.id} className={cn(
+                        'bg-card rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.08)] overflow-hidden relative',
+                        unavailable && 'opacity-60'
+                      )}>
+                        {unavailable && (
+                          <div className="bg-destructive text-destructive-foreground px-5 py-3 flex items-center gap-2">
+                            <AlertTriangle className="h-4 w-4" />
+                            <span className="font-bold text-sm">Sin disponibilidad para las fechas seleccionadas</span>
+                          </div>
+                        )}
+                        {!unavailable && isRecommended && (
                           <div className="bg-primary text-primary-foreground px-5 py-3 flex items-center gap-2">
                             <Star className="h-4 w-4 fill-cta text-cta" />
                             <span className="font-bold text-sm">{t('booking.recommended')}</span>
@@ -245,36 +256,44 @@ export default function SearchResults() {
 
                           {/* Pricing columns */}
                           <div className="p-5 border-t lg:border-t-0 lg:border-l border-border">
-                            <div className="grid grid-cols-2 gap-4 h-full">
-                              <div className="flex flex-col items-center text-center justify-between py-2">
-                                <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">{t('booking.pay_office')}</h4>
-                                <div>
-                                  <p className="text-2xl font-bold text-foreground">{perDayOffice} €<span className="text-xs font-normal text-muted-foreground">{t('booking.per_day')}</span></p>
-                                  <p className="text-xs text-muted-foreground mt-1">{t('booking.total')} {totalOffice} €</p>
-                                </div>
-                                <Link
-                                  to={lp(`/reservar/extras?${params.toString()}&categoryId=${v.category_id}&vehicleId=${v.id}&paymentMode=office`)}
-                                  className="mt-3 w-full border-2 border-primary text-primary font-bold text-sm text-center py-2.5 rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors"
-                                >
-                                  {t('booking.select')}
-                                </Link>
+                            {unavailable ? (
+                              <div className="flex flex-col items-center justify-center h-full text-center py-4">
+                                <AlertTriangle className="h-8 w-8 text-destructive mb-2" />
+                                <p className="text-sm font-semibold text-destructive">No disponible</p>
+                                <p className="text-xs text-muted-foreground mt-1">Prueba con otras fechas</p>
                               </div>
+                            ) : (
+                              <div className="grid grid-cols-2 gap-4 h-full">
+                                <div className="flex flex-col items-center text-center justify-between py-2">
+                                  <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">{t('booking.pay_office')}</h4>
+                                  <div>
+                                    <p className="text-2xl font-bold text-foreground">{perDayOffice} €<span className="text-xs font-normal text-muted-foreground">{t('booking.per_day')}</span></p>
+                                    <p className="text-xs text-muted-foreground mt-1">{t('booking.total')} {totalOffice} €</p>
+                                  </div>
+                                  <Link
+                                    to={lp(`/reservar/extras?${params.toString()}&categoryId=${v.category_id}&vehicleId=${v.id}&paymentMode=office`)}
+                                    className="mt-3 w-full border-2 border-primary text-primary font-bold text-sm text-center py-2.5 rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors"
+                                  >
+                                    {t('booking.select')}
+                                  </Link>
+                                </div>
 
-                              <div className="flex flex-col items-center text-center justify-between py-2 bg-accent/50 rounded-xl px-3 -m-1">
-                                <h4 className="text-[10px] font-bold text-primary uppercase tracking-wider mb-2">{t('booking.pay_now')}</h4>
-                                <div>
-                                  <p className="text-2xl font-bold text-primary">{perDayOnline} €<span className="text-xs font-normal text-muted-foreground">{t('booking.per_day')}</span></p>
-                                  <p className="text-xs text-muted-foreground mt-1">{t('booking.total')} {totalOnline} €</p>
-                                  <span className="inline-block mt-1 text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">{t('booking.savings')} {savings} €</span>
+                                <div className="flex flex-col items-center text-center justify-between py-2 bg-accent/50 rounded-xl px-3 -m-1">
+                                  <h4 className="text-[10px] font-bold text-primary uppercase tracking-wider mb-2">{t('booking.pay_now')}</h4>
+                                  <div>
+                                    <p className="text-2xl font-bold text-primary">{perDayOnline} €<span className="text-xs font-normal text-muted-foreground">{t('booking.per_day')}</span></p>
+                                    <p className="text-xs text-muted-foreground mt-1">{t('booking.total')} {totalOnline} €</p>
+                                    <span className="inline-block mt-1 text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">{t('booking.savings')} {savings} €</span>
+                                  </div>
+                                  <Link
+                                    to={lp(`/reservar/extras?${params.toString()}&categoryId=${v.category_id}&vehicleId=${v.id}&paymentMode=online`)}
+                                    className="mt-3 w-full bg-cta text-cta-foreground font-bold text-sm text-center py-2.5 rounded-lg hover:opacity-90 transition-opacity"
+                                  >
+                                    {t('booking.select')}
+                                  </Link>
                                 </div>
-                                <Link
-                                  to={lp(`/reservar/extras?${params.toString()}&categoryId=${v.category_id}&vehicleId=${v.id}&paymentMode=online`)}
-                                  className="mt-3 w-full bg-cta text-cta-foreground font-bold text-sm text-center py-2.5 rounded-lg hover:opacity-90 transition-opacity"
-                                >
-                                  {t('booking.select')}
-                                </Link>
                               </div>
-                            </div>
+                            )}
                           </div>
                         </div>
                       </div>
