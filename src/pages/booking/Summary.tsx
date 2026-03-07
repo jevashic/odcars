@@ -75,9 +75,17 @@ function SummaryForm() {
       try {
         const cardElement = elements.getElement(CardElement);
         if (!cardElement) throw new Error(t('booking.card_not_found'));
-        const { error: pmError, paymentMethod } = await stripe.createPaymentMethod({ type: 'card', card: cardElement });
+        const { error: pmError, paymentMethod } = await stripe.createPaymentMethod({
+          type: 'card',
+          card: cardElement,
+          billing_details: {
+            name: `${form.firstName} ${form.lastName}`,
+            email: form.email,
+          },
+        });
         if (pmError) throw new Error(pmError.message);
-        const payload: ReservationPayload = {
+
+        const body = {
           customer: { first_name: form.firstName, last_name: form.lastName, email: form.email, phone: form.phone, license_number: form.licenseNumber, license_expiry: form.licenseExpiry },
           category_id: params.get('categoryId') || '',
           pickup_location_id: params.get('pickup') || '',
@@ -85,21 +93,45 @@ function SummaryForm() {
           start_date: startDate, end_date: endDate,
           start_time: params.get('pickupTime') || '09:00', end_time: params.get('returnTime') || '09:00',
           insurance_tier: 'premium', extra_ids: selectedExtras, payment_method: 'card_office',
-          stripe_setup_intent_id: paymentMethod?.id, sale_channel: 'web',
+          sale_channel: 'web',
+          sale_branch_id: 'a58b7a55-b6a3-456a-b0f6-eed247cf3137',
+          pickup_branch_id: 'a58b7a55-b6a3-456a-b0f6-eed247cf3137',
+          return_branch_id: 'a58b7a55-b6a3-456a-b0f6-eed247cf3137',
+          pay_signal: false,
+          pay_office_guarantee: true,
+          payment_method_id: paymentMethod!.id,
         };
-        const result = await createReservation(payload);
+
+        const response = await fetch(
+          `${SUPABASE_URL}/functions/v1/create_reservation`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify(body),
+          }
+        );
+        const data = await response.json();
+        console.log('Respuesta reserva oficina:', data);
+
+        if (!data.success || !data.data?.reservation_number) {
+          throw new Error(data.error || data.message || 'Error al crear la reserva');
+        }
+
         markBookingCompleted();
         navigate(`/reservar/confirmacion`, {
           state: {
             reservation: {
-              reservation_number: result.reservation_number,
+              reservation_number: data.data.reservation_number,
               start_date: startDate, end_date: endDate,
               start_time: params.get('pickupTime') || '09:00', end_time: params.get('returnTime') || '09:00',
               category_name: params.get('categoryName') || '',
               pickup_location: branchName || '', return_location: branchName || '',
               insurance_tier: 'premium', extras: selectedExtras,
               payment_method: 'card_office', total_amount: total,
-              ...(result as any),
+              ...data.data,
             },
             customer: { first_name: form.firstName, last_name: form.lastName, email: form.email, phone: form.phone },
           },
