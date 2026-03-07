@@ -1,22 +1,26 @@
 
 
-## Diagnosis: Why fleet shows on desktop but not mobile
+## Fix: Conoce Gran Canaria admin module
 
-The `/flota` page queries the `vehicles` table filtering by `status = 'available'`. This query returns **zero results** because there are no individual vehicles with that status in the database. This is the same on both desktop and mobile -- the page shows "No hay vehiculos disponibles" on both.
+### Problem
+`/admin/conoce-gran-canaria` has no route in `App.tsx`, so it falls through to `/:lang/*` (with `lang="admin"`) and renders the public DiscoverGC page.
 
-The homepage "Flota" section (`FeaturedVehicles`) works because it queries `vehicle_categories` (which has 3 active categories) and also has hardcoded fallback data. This is what you see working.
+### Changes
 
-## Plan: Fix /flota to show categories instead of individual vehicles
+**1. Create `src/pages/admin/TouristPlaces.tsx`** (~500 lines)
 
-Since the database has **vehicle categories** with data but no individual vehicles marked as available, the `/flota` page should display categories (like the homepage does) instead of querying individual vehicles.
+Full CRUD following existing patterns (Branches.tsx, ContentManagement.tsx):
 
-### Changes to `src/pages/Fleet.tsx`:
+- **Listing:** Query `tourist_places` with inner select of `tourist_place_translations` filtered to `lang=es` and `tourist_place_photos`. Table columns: cover photo thumbnail, name (es), slug, featured badge, sort_order, active badge, edit/delete buttons. Filters for active/inactive and featured/not.
+- **Delete:** Confirmation dialog. Deletes `tourist_place_photos` → `tourist_place_translations` → `tourist_places` (in order). Audit log.
+- **Create/Edit modal** with two tabs (Radix Tabs):
+  - **Tab 1 - General:** slug (validated: lowercase, no spaces), google_maps_url, is_featured toggle, is_active toggle, sort_order input, photo upload (up to 3 images to `tourist-places` bucket via `supabase.storage`, stored in `tourist_place_photos` with field_name photo_1/photo_2/photo_3).
+  - **Tab 2 - Translations:** Section per language (es/en/de/sv/no/fr) with name, short_description (textarea), long_description (textarea). Saves to `tourist_place_translations` with upsert logic (insert or update by place_id + lang).
+- All operations logged to `audit_log` via `writeAudit`.
 
-1. **Replace the Supabase query** -- query `vehicle_categories` (with translations) instead of `vehicles`, matching the pattern used by `FeaturedVehicles.tsx`
-2. **Use the `CategoryCard` component** that already exists at `src/components/fleet/CategoryCard.tsx` for rendering each category
-3. **Use `getVehicleTranslation`** for i18n support (already used in CategoryCard)
-4. **Keep the grid responsive** -- `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3` so it works on all screen sizes
-5. **Remove the 2-per-category limit logic** since we're showing categories directly
+**2. Edit `src/App.tsx`**
+- Import `TouristPlaces` from `./pages/admin/TouristPlaces`
+- Add route: `<Route path="/admin/conoce-gran-canaria" element={<TouristPlaces />} />` inside the AdminLayout routes
 
-This aligns `/flota` with the data model that actually has content and ensures it works on all devices.
+No other files modified.
 
