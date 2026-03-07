@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, AlertCircle, Calendar, MapPin, Shield, X, FileText, Loader2 } from 'lucide-react';
+import { Search, AlertCircle, Calendar, Shield, X, FileText, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { format, differenceInDays, parseISO, addHours } from 'date-fns';
 import PublicLayout from '@/components/layout/PublicLayout';
