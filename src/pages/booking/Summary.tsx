@@ -49,7 +49,7 @@ function SummaryForm() {
   const extrasPricesMap = parseExtrasPrices(params.get('extrasPrices') || '');
 
   const baseTotal = 39 * days;
-  const extrasTotal = selectedExtras.reduce((sum, id) => sum + (extrasPricesMap[id] || 0) * days, 0);
+  const extrasTotal = selectedExtras.reduce((sum, id) => sum + (extrasPricesMap[id] || 0), 0);
   const surchargeAmount = hasSurcharge ? 15 : 0;
   const subtotal = baseTotal + extrasTotal + surchargeAmount;
   const discount = paymentMode === 'online' ? Math.round(subtotal * 0.15) : 0;
@@ -164,7 +164,7 @@ function SummaryForm() {
         {selectedExtras.map(id => extrasPricesMap[id] !== undefined && (
           <div key={id} className="flex justify-between">
             <span>Extra</span>
-            <span className="font-medium">{extrasPricesMap[id] * days} €</span>
+            <span className="font-medium">{extrasPricesMap[id]} €</span>
           </div>
         ))}
         {hasSurcharge && (

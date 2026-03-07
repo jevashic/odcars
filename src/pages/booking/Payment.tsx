@@ -33,7 +33,7 @@ function PaymentForm() {
     const [id, price] = entry.split(':');
     if (id && price) extrasPricesMap[id] = parseFloat(price);
   });
-  const extrasTotal = selectedExtras.reduce((sum, id) => sum + (extrasPricesMap[id] || 0) * days, 0);
+  const extrasTotal = selectedExtras.reduce((sum, id) => sum + (extrasPricesMap[id] || 0), 0);
   const subtotal = baseTotal + extrasTotal;
   const total = Math.round(subtotal * 0.85);
 
