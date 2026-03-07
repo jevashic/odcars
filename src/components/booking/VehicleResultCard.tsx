@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
-import { Fuel, Users, Settings2 } from 'lucide-react';
-import { getVehicleImage } from '@/utils/vehicleImage';
+import { Fuel, Users, Settings2, ShieldCheck, Gauge, CreditCard, Headphones } from 'lucide-react';
+
 
 interface VehicleResult {
   vehicleId: string;
@@ -25,10 +25,18 @@ interface Props {
   t: (key: string) => string;
 }
 
+const benefits = [
+  { icon: ShieldCheck, label: 'Seguro Premium incluido' },
+  { icon: CreditCard, label: '0€ Fianza' },
+  { icon: Gauge, label: 'Km ilimitados' },
+  { icon: Headphones, label: 'Asistencia 24h' },
+];
+
 export default function VehicleResultCard({ vehicle, days, params, lp, t }: Props) {
-  const totalAmount = vehicle.quote?.total_amount ?? vehicle.pricePerDay * days;
+  const totalOffice = vehicle.quote?.total_amount ?? vehicle.pricePerDay * days;
   const perDay = vehicle.quote?.price_per_day ?? vehicle.pricePerDay;
-  const totalOnline = Math.round(totalAmount * 0.85);
+  const totalOnline = Math.round(totalOffice * 0.90);
+  const savings = totalOffice - totalOnline;
 
   const displayName = `${vehicle.brand} ${vehicle.model}${vehicle.year ? ` (${vehicle.year})` : ''}`;
   const baseQuery = `${params.toString()}&categoryId=${vehicle.categoryId}`;
@@ -40,25 +48,28 @@ export default function VehicleResultCard({ vehicle, days, params, lp, t }: Prop
         <img
           src={vehicle.imageUrl}
           alt={displayName}
-          className="w-full md:w-[40%] aspect-[4/3] md:aspect-auto object-cover shrink-0"
+          className="w-full md:w-[280px] lg:w-[320px] aspect-[4/3] md:aspect-auto object-cover shrink-0"
           loading="lazy"
         />
       ) : (
-        <div className="w-full md:w-[40%] aspect-[4/3] md:aspect-auto min-h-[200px] bg-muted flex items-center justify-center shrink-0">
+        <div className="w-full md:w-[280px] lg:w-[320px] aspect-[4/3] md:aspect-auto min-h-[220px] bg-muted flex items-center justify-center shrink-0">
           <Fuel className="h-12 w-12 text-muted-foreground/30" />
         </div>
       )}
 
       {/* Content */}
-      <div className="p-5 flex flex-col flex-1 justify-between gap-3">
-        <div>
-          <span className="inline-block text-[11px] font-bold uppercase tracking-wider bg-accent text-muted-foreground px-2.5 py-1 rounded-full mb-2">
-            {vehicle.categoryName}
-          </span>
-          <h3 className="font-bold text-lg text-foreground">{displayName}</h3>
+      <div className="flex-1 flex flex-col lg:flex-row">
+        {/* Left: vehicle info + specs + benefits */}
+        <div className="flex-1 p-5 flex flex-col gap-3">
+          <div>
+            <span className="inline-block text-[11px] font-bold uppercase tracking-wider bg-accent text-muted-foreground px-2.5 py-1 rounded-full mb-1.5">
+              {vehicle.categoryName}
+            </span>
+            <h3 className="font-bold text-lg text-foreground leading-tight">{displayName}</h3>
+          </div>
 
           {/* Specs */}
-          <div className="flex flex-wrap gap-3 mt-2 text-xs text-muted-foreground">
+          <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
             {vehicle.seats && (
               <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{vehicle.seats} plazas</span>
             )}
@@ -69,30 +80,46 @@ export default function VehicleResultCard({ vehicle, days, params, lp, t }: Prop
               <span className="flex items-center gap-1"><Fuel className="h-3.5 w-3.5" />{vehicle.fuelType}</span>
             )}
           </div>
+
+          {/* Benefits */}
+          <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-1">
+            {benefits.map((b, i) => (
+              <span key={i} className="flex items-center gap-1.5 text-xs text-primary font-medium">
+                <b.icon className="h-3.5 w-3.5" />
+                {b.label}
+              </span>
+            ))}
+          </div>
         </div>
 
-        {/* Price */}
-        <div>
-          <p className="text-2xl font-bold text-primary">{totalAmount} €</p>
-          <p className="text-xs text-muted-foreground">
-            {perDay} €{t('booking.per_day')} · {days} {days > 1 ? t('booking.days') : t('booking.day')}
-          </p>
-        </div>
+        {/* Right: pricing + CTAs */}
+        <div className="lg:w-[240px] shrink-0 p-5 lg:border-l border-border flex flex-col justify-between gap-4 bg-accent/30">
+          <div>
+            <p className="text-xs text-muted-foreground mb-1">
+              {perDay} €/{t('booking.day')} · {days} {days > 1 ? t('booking.days') : t('booking.day')}
+            </p>
+            <p className="text-2xl font-extrabold text-foreground">{totalOffice} €</p>
+            <p className="text-[11px] text-muted-foreground">{t('booking.total')}</p>
+          </div>
 
-        {/* Buttons */}
-        <div className="flex flex-col sm:flex-row gap-2">
-          <Link
-            to={lp(`/reservar/extras?${baseQuery}&paymentMode=online`)}
-            className="flex-1 font-bold text-sm text-center py-3 rounded-lg transition-opacity hover:opacity-90 bg-primary text-primary-foreground"
-          >
-            {t('booking.pay_now')} — {totalOnline} €
-          </Link>
-          <Link
-            to={lp(`/reservar/extras?${baseQuery}&paymentMode=office`)}
-            className="flex-1 font-bold text-sm text-center py-3 rounded-lg transition-opacity hover:opacity-90 bg-cta text-cta-foreground"
-          >
-            {t('booking.pay_office')} — {totalAmount} €
-          </Link>
+          <div className="flex flex-col gap-2">
+            <Link
+              to={lp(`/reservar/extras?${baseQuery}&paymentMode=online`)}
+              className="block font-bold text-sm text-center py-3 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+            >
+              {t('booking.pay_now')} — {totalOnline} €
+            </Link>
+            <p className="text-center text-xs font-semibold text-primary">
+              {t('booking.save')} {savings} € (10%)
+            </p>
+
+            <Link
+              to={lp(`/reservar/extras?${baseQuery}&paymentMode=office`)}
+              className="block font-bold text-sm text-center py-3 rounded-lg bg-cta text-cta-foreground hover:opacity-90 transition-opacity"
+            >
+              {t('booking.pay_office')} — {totalOffice} €
+            </Link>
+          </div>
         </div>
       </div>
     </div>
