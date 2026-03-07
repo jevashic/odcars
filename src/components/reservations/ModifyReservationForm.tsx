@@ -113,28 +113,39 @@ export default function ModifyReservationForm({ reservation, onUpdated, onCancel
     setLoadingQuote(true);
     setQuote(null);
     try {
-      const { data, error } = await supabase.rpc('get_quote', {
+      const { data: quote, error: quoteError } = await supabase.rpc('get_quote', {
         p_category_id: reservation.category_id,
         p_start_date: format(startDate, 'yyyy-MM-dd'),
         p_end_date: format(endDate, 'yyyy-MM-dd'),
         p_insurance_tier: reservation.insurance_tier_snapshot ?? 'premium',
-        p_extra_ids: selectedExtraIds,
+        p_extra_ids: selectedExtraIds ?? [],
         p_discount_code: null,
       });
 
-      console.log('Quote completo:', JSON.stringify(data));
+      console.log('Quote completo:', JSON.stringify(quote));
 
-      if (error || !data) {
-        toast({ title: 'Error calculando precio', description: error?.message ?? 'Error calculando precio', variant: 'destructive' });
+      if (quoteError) {
+        toast({ title: 'Error calculando precio', description: quoteError.message, variant: 'destructive' });
         setLoadingQuote(false);
         return;
       }
 
+      if (!quote) {
+        toast({ title: 'Error', description: 'No se recibió respuesta del cálculo.', variant: 'destructive' });
+        setLoadingQuote(false);
+        return;
+      }
+
+      // quote IS the object directly from supabase.rpc — no .data or [0]
       const pickupLoc = locations.find(l => l.id === pickupLocationId);
       const dc = pickupLoc?.extra_charge ?? 0;
-      const tf = (Number(data.total_amount) || 0) + dc;
+      const tf = (quote.total_amount ?? 0) + dc;
 
-      setQuote(data);
+      console.log('total_amount:', quote.total_amount);
+      console.log('deliveryCharge:', dc);
+      console.log('totalFinal:', tf);
+
+      setQuote(quote);
       setDeliveryCharge(dc);
       setTotalFinal(tf);
     } catch (err: any) {
@@ -339,7 +350,7 @@ export default function ModifyReservationForm({ reservation, onUpdated, onCancel
           <p className="text-xs text-muted-foreground uppercase tracking-wider">Desglose del nuevo precio</p>
           {quote.subtotal_car != null && (
             <div className="flex justify-between text-sm">
-              <span>Alquiler ({newDays} {newDays > 1 ? 'días' : 'día'})</span>
+              <span>Alquiler ({quote.total_days ?? newDays} {(quote.total_days ?? newDays) > 1 ? 'días' : 'día'})</span>
               <span>{Number(quote.subtotal_car).toFixed(2)} €</span>
             </div>
           )}
