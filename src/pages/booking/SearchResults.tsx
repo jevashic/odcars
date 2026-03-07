@@ -1,14 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { cn } from '@/lib/utils';
-import { Users, Settings2, Fuel, Car, Check, AlertTriangle, Star, Search } from 'lucide-react';
+
+import { Users, Settings2, Fuel, Check, AlertTriangle, Star, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import PublicLayout from '@/components/layout/PublicLayout';
 import SearchBar from '@/components/home/SearchBar';
 import { useLang } from '@/contexts/LanguageContext';
 import { useLangPath } from '@/hooks/useLangNavigate';
 import { differenceInDays } from 'date-fns';
-import { getVehicleImage } from '@/utils/vehicleImage';
 
 export default function SearchResults() {
   const { t } = useLang();
@@ -44,97 +43,66 @@ export default function SearchResults() {
     setLoading(true);
     setHasSearched(true);
 
-    // Load all available vehicles with their category data
-    const { data: vehicles, error: vehError } = await supabase
-      .from('vehicles')
-      .select(`
-        id, brand, model, year, color,
-        transmission, seats, category_id, images,
-        vehicle_categories(
-          id, name, price_per_day, image_url,
-          energy_type, transmission_note, seats_min, seats_max,
-          is_active
-        )
-      `)
-      .eq('status', 'available');
+    // 1. Load all active categories
+    const { data: categories, error: catError } = await supabase
+      .from('vehicle_categories')
+      .select('id, name, image_url, price_per_day, energy_type, transmission_note, seats_min, seats_max')
+      .eq('is_active', true)
+      .order('price_per_day');
 
-    if (vehError || !vehicles) {
-      console.error('Error vehicles:', vehError);
+    if (catError || !categories) {
+      console.error('Error categorías:', catError);
       setResults([]);
       setLoading(false);
       return;
     }
 
-    // Filter only vehicles from active categories
-    const activeVehicles = vehicles.filter((v: any) => {
-      const cat = v.vehicle_categories as any;
-      return cat && cat.is_active;
-    });
+    // 2. Check availability + get quotes per category
+    const enriched = await Promise.all(categories.map(async (cat: any) => {
+      let isAvailable = true;
+      let quote: any = null;
 
-    // Check availability + get quotes per category (cache to avoid duplicate RPC calls)
-    const quoteCache: Record<string, any> = {};
-    const availCache: Record<string, boolean> = {};
-
-    // First, check availability for each unique category
-    const uniqueCategoryIds = [...new Set(activeVehicles.map((v: any) => v.category_id))];
-    if (sd && ed) {
-      await Promise.all(uniqueCategoryIds.map(async (catId: string) => {
+      if (sd && ed) {
+        // Check availability
         try {
           const { data: avail } = await supabase.rpc('check_availability', {
-            p_category_id: catId,
+            p_category_id: cat.id,
             p_start_date: sd,
             p_end_date: ed,
             p_exclude_reservation_id: null,
           });
-          // Handle both shapes: direct boolean or { available: boolean }
-          const isAvail = typeof avail === 'boolean' ? avail : (avail?.available ?? false);
-          availCache[catId] = isAvail;
+          const available = typeof avail === 'boolean' ? avail : (avail?.available ?? false);
+          isAvailable = available;
         } catch (err) {
-          console.error('Error check_availability:', catId, err);
-          availCache[catId] = false;
+          console.error('Error check_availability:', cat.id, err);
+          isAvailable = false;
         }
-      }));
-    }
 
-    const enriched = await Promise.all(activeVehicles.map(async (v: any) => {
-      const cat = v.vehicle_categories as any;
-      const resolvedImage = getVehicleImage(v.images, cat?.image_url);
-      const isAvailable = availCache[v.category_id] ?? true;
-
-      let quote: any = null;
-      if (sd && ed && cat && isAvailable) {
-        if (!quoteCache[v.category_id]) {
+        // Get quote if available
+        if (isAvailable) {
           try {
             const { data: q } = await supabase.rpc('get_quote', {
-              p_category_id: v.category_id,
+              p_category_id: cat.id,
               p_start_date: sd,
               p_end_date: ed,
               p_insurance_tier: 'premium',
               p_extra_ids: [],
               p_discount_code: null,
             });
-            quoteCache[v.category_id] = q ?? null;
+            quote = q ?? null;
           } catch (err) {
-            console.error('Error get_quote:', v.category_id, err);
-            quoteCache[v.category_id] = null;
+            console.error('Error get_quote:', cat.id, err);
           }
         }
-        quote = quoteCache[v.category_id];
       }
 
-      return {
-        ...v,
-        cat,
-        resolvedImage,
-        quote,
-        isAvailable,
-      };
+      return { ...cat, quote, isAvailable };
     }));
 
-    // Sort: available first, unavailable last
-    enriched.sort((a, b) => (a.isAvailable === b.isAvailable ? 0 : a.isAvailable ? -1 : 1));
+    // 3. Show only available categories (filter out unavailable)
+    const available = enriched.filter(c => c.isAvailable);
 
-    setResults(enriched);
+    setResults(available);
     setLoading(false);
   }, []);
 
@@ -147,14 +115,14 @@ export default function SearchResults() {
     loadResults(newParams);
   };
 
-  const getTotal = (v: any) => {
-    if (v.quote?.total_amount) return v.quote.total_amount;
-    return (v.cat?.price_per_day || 0) * days;
+  const getTotal = (cat: any) => {
+    if (cat.quote?.total_amount) return cat.quote.total_amount;
+    return (cat.price_per_day || 0) * days;
   };
 
-  const getPerDay = (v: any) => {
-    if (v.quote?.price_per_day) return v.quote.price_per_day;
-    return v.cat?.price_per_day || 0;
+  const getPerDay = (cat: any) => {
+    if (cat.quote?.price_per_day) return cat.quote.price_per_day;
+    return cat.price_per_day || 0;
   };
 
   return (
@@ -195,28 +163,17 @@ export default function SearchResults() {
                 <p className="text-center text-muted-foreground py-20">{t('booking.no_results')}</p>
               ) : (
                 <div className="space-y-6">
-                  {results.map((v, idx) => {
-                    const totalOffice = getTotal(v);
-                    const perDayOffice = getPerDay(v);
+                  {results.map((cat, idx) => {
+                    const totalOffice = getTotal(cat);
+                    const perDayOffice = getPerDay(cat);
                     const totalOnline = Math.round(totalOffice * 0.85);
                     const perDayOnline = Math.round(perDayOffice * 0.85);
                     const savings = totalOffice - totalOnline;
-                    const availableResults = results.filter(r => r.isAvailable);
-                    const isRecommended = v.isAvailable && availableResults[0]?.id === v.id;
-                    const unavailable = !v.isAvailable;
+                    const isRecommended = idx === 0;
 
                     return (
-                      <div key={v.id} className={cn(
-                        'bg-card rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.08)] overflow-hidden relative',
-                        unavailable && 'opacity-60'
-                      )}>
-                        {unavailable && (
-                          <div className="bg-destructive text-destructive-foreground px-5 py-3 flex items-center gap-2">
-                            <AlertTriangle className="h-4 w-4" />
-                            <span className="font-bold text-sm">Sin disponibilidad para las fechas seleccionadas</span>
-                          </div>
-                        )}
-                        {!unavailable && isRecommended && (
+                      <div key={cat.id} className="bg-card rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.08)] overflow-hidden relative">
+                        {isRecommended && (
                           <div className="bg-primary text-primary-foreground px-5 py-3 flex items-center gap-2">
                             <Star className="h-4 w-4 fill-cta text-cta" />
                             <span className="font-bold text-sm">{t('booking.recommended')}</span>
@@ -225,21 +182,20 @@ export default function SearchResults() {
                         )}
 
                         <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr_auto] gap-0">
-                          {/* Vehicle image + details */}
+                          {/* Category image */}
                           <div className="p-5 flex flex-col">
-                            {v.resolvedImage ? (
-                              <img src={v.resolvedImage} alt={`${v.brand} ${v.model}`} className="w-full aspect-[4/3] object-cover rounded-xl mb-4" loading="lazy" />
+                            {cat.image_url ? (
+                              <img src={cat.image_url} alt={cat.name} className="w-full aspect-[4/3] object-cover rounded-xl mb-4" loading="lazy" />
                             ) : (
                               <div className="w-full aspect-[4/3] rounded-xl mb-4 bg-muted flex items-center justify-center">
-                                <Car className="h-12 w-12 text-muted-foreground/30" />
+                                <Fuel className="h-12 w-12 text-muted-foreground/30" />
                               </div>
                             )}
-                            <h3 className="font-bold text-lg text-foreground">{v.brand} {v.model}</h3>
-                            <p className="text-xs text-muted-foreground mb-3">{v.year} · {v.color}</p>
-                            <div className="grid grid-cols-3 gap-x-3 gap-y-2 text-xs text-muted-foreground">
-                              <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{v.seats}p</span>
-                              <span className="flex items-center gap-1"><Settings2 className="h-3.5 w-3.5" />{v.transmission}</span>
-                              <span className="flex items-center gap-1"><Fuel className="h-3.5 w-3.5" />{v.cat?.energy_type ?? '—'}</span>
+                            <h3 className="font-bold text-lg text-foreground">{cat.name}</h3>
+                            <div className="grid grid-cols-3 gap-x-3 gap-y-2 text-xs text-muted-foreground mt-2">
+                              <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{cat.seats_min}-{cat.seats_max}p</span>
+                              <span className="flex items-center gap-1"><Settings2 className="h-3.5 w-3.5" />{cat.transmission_note ?? '—'}</span>
+                              <span className="flex items-center gap-1"><Fuel className="h-3.5 w-3.5" />{cat.energy_type ?? '—'}</span>
                             </div>
                           </div>
 
@@ -258,44 +214,36 @@ export default function SearchResults() {
 
                           {/* Pricing columns */}
                           <div className="p-5 border-t lg:border-t-0 lg:border-l border-border">
-                            {unavailable ? (
-                              <div className="flex flex-col items-center justify-center h-full text-center py-4">
-                                <AlertTriangle className="h-8 w-8 text-destructive mb-2" />
-                                <p className="text-sm font-semibold text-destructive">No disponible</p>
-                                <p className="text-xs text-muted-foreground mt-1">Prueba con otras fechas</p>
-                              </div>
-                            ) : (
-                              <div className="grid grid-cols-2 gap-4 h-full">
-                                <div className="flex flex-col items-center text-center justify-between py-2">
-                                  <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">{t('booking.pay_office')}</h4>
-                                  <div>
-                                    <p className="text-2xl font-bold text-foreground">{perDayOffice} €<span className="text-xs font-normal text-muted-foreground">{t('booking.per_day')}</span></p>
-                                    <p className="text-xs text-muted-foreground mt-1">{t('booking.total')} {totalOffice} €</p>
-                                  </div>
-                                  <Link
-                                    to={lp(`/reservar/extras?${params.toString()}&categoryId=${v.category_id}&vehicleId=${v.id}&paymentMode=office`)}
-                                    className="mt-3 w-full border-2 border-primary text-primary font-bold text-sm text-center py-2.5 rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors"
-                                  >
-                                    {t('booking.select')}
-                                  </Link>
+                            <div className="grid grid-cols-2 gap-4 h-full">
+                              <div className="flex flex-col items-center text-center justify-between py-2">
+                                <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">{t('booking.pay_office')}</h4>
+                                <div>
+                                  <p className="text-2xl font-bold text-foreground">{perDayOffice} €<span className="text-xs font-normal text-muted-foreground">{t('booking.per_day')}</span></p>
+                                  <p className="text-xs text-muted-foreground mt-1">{t('booking.total')} {totalOffice} €</p>
                                 </div>
+                                <Link
+                                  to={lp(`/reservar/extras?${params.toString()}&categoryId=${cat.id}&paymentMode=office`)}
+                                  className="mt-3 w-full border-2 border-primary text-primary font-bold text-sm text-center py-2.5 rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors"
+                                >
+                                  {t('booking.select')}
+                                </Link>
+                              </div>
 
-                                <div className="flex flex-col items-center text-center justify-between py-2 bg-accent/50 rounded-xl px-3 -m-1">
-                                  <h4 className="text-[10px] font-bold text-primary uppercase tracking-wider mb-2">{t('booking.pay_now')}</h4>
-                                  <div>
-                                    <p className="text-2xl font-bold text-primary">{perDayOnline} €<span className="text-xs font-normal text-muted-foreground">{t('booking.per_day')}</span></p>
-                                    <p className="text-xs text-muted-foreground mt-1">{t('booking.total')} {totalOnline} €</p>
-                                    <span className="inline-block mt-1 text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">{t('booking.savings')} {savings} €</span>
-                                  </div>
-                                  <Link
-                                    to={lp(`/reservar/extras?${params.toString()}&categoryId=${v.category_id}&vehicleId=${v.id}&paymentMode=online`)}
-                                    className="mt-3 w-full bg-cta text-cta-foreground font-bold text-sm text-center py-2.5 rounded-lg hover:opacity-90 transition-opacity"
-                                  >
-                                    {t('booking.select')}
-                                  </Link>
+                              <div className="flex flex-col items-center text-center justify-between py-2 bg-accent/50 rounded-xl px-3 -m-1">
+                                <h4 className="text-[10px] font-bold text-primary uppercase tracking-wider mb-2">{t('booking.pay_now')}</h4>
+                                <div>
+                                  <p className="text-2xl font-bold text-primary">{perDayOnline} €<span className="text-xs font-normal text-muted-foreground">{t('booking.per_day')}</span></p>
+                                  <p className="text-xs text-muted-foreground mt-1">{t('booking.total')} {totalOnline} €</p>
+                                  <span className="inline-block mt-1 text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">{t('booking.savings')} {savings} €</span>
                                 </div>
+                                <Link
+                                  to={lp(`/reservar/extras?${params.toString()}&categoryId=${cat.id}&paymentMode=online`)}
+                                  className="mt-3 w-full bg-cta text-cta-foreground font-bold text-sm text-center py-2.5 rounded-lg hover:opacity-90 transition-opacity"
+                                >
+                                  {t('booking.select')}
+                                </Link>
                               </div>
-                            )}
+                            </div>
                           </div>
                         </div>
                       </div>
