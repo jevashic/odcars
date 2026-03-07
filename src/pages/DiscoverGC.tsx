@@ -68,7 +68,7 @@ export default function DiscoverGC() {
           </div>
         </div>
       )}
-      <BannerZone position="gc_bottom" />
+      
       {places.length === 0 && (
         <div className="section-padding bg-accent">
           <div className="container">

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { MapPin, Car } from 'lucide-react';
+import BannerZone from '@/components/home/BannerZone';
 import { supabase } from '@/integrations/supabase/client';
 import PublicLayout from '@/components/layout/PublicLayout';
 import { useLang } from '@/contexts/LanguageContext';
@@ -110,6 +111,8 @@ export default function PlaceDetail() {
               </span>
             </div>
           </Link>
+
+          <BannerZone position="gc_bottom" />
         </div>
       </div>
     </PublicLayout>
