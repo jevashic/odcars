@@ -7,9 +7,9 @@ import PublicLayout from '@/components/layout/PublicLayout';
 import BookingTimer, { markBookingCompleted } from '@/components/booking/BookingTimer';
 import { useLang } from '@/contexts/LanguageContext';
 import { useLangNavigate } from '@/hooks/useLangNavigate';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/integrations/supabase/client';
 import { stripePromise } from '@/integrations/stripe/client';
 import StripeCardInput from '@/components/stripe/StripeCardInput';
-import { createReservation, type ReservationPayload } from '@/integrations/supabase/createReservation';
 import { toast } from '@/hooks/use-toast';
 
 function PaymentForm() {
@@ -47,7 +47,7 @@ function PaymentForm() {
       const lastName = params.get('lastName') || '';
       const email = params.get('email') || '';
 
-      const payload: ReservationPayload = {
+      const body = {
         customer: { first_name: firstName, last_name: lastName, email, phone: params.get('phone') || '', license_number: params.get('licenseNumber') || '', license_expiry: params.get('licenseExpiry') || '' },
         category_id: params.get('categoryId') || '',
         pickup_location_id: params.get('pickup') || '',
@@ -55,13 +55,37 @@ function PaymentForm() {
         start_date: startDate, end_date: endDate,
         start_time: params.get('pickupTime') || '09:00', end_time: params.get('returnTime') || '09:00',
         insurance_tier: 'premium', extra_ids: selectedExtras, payment_method: 'card_online',
-        sale_channel: 'web', pay_signal: true,
+        sale_channel: 'web',
+        sale_branch_id: 'a58b7a55-b6a3-456a-b0f6-eed247cf3137',
+        pickup_branch_id: 'a58b7a55-b6a3-456a-b0f6-eed247cf3137',
+        return_branch_id: 'a58b7a55-b6a3-456a-b0f6-eed247cf3137',
+        pay_signal: true,
+        pay_office_guarantee: false,
       };
-      const result = await createReservation(payload);
 
-      if (!result.signal_client_secret) throw new Error('No se recibió client_secret de Stripe');
+      const response = await fetch(
+        `${SUPABASE_URL}/functions/v1/create_reservation`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify(body),
+        }
+      );
+      const data = await response.json();
+      console.log('Respuesta reserva online:', data);
 
-      const { error: stripeError } = await stripe.confirmCardPayment(result.signal_client_secret, {
+      if (!data.success || !data.data?.reservation_number) {
+        throw new Error(data.error || data.message || 'Error al crear la reserva');
+      }
+
+      if (!data.data.signal_client_secret) {
+        throw new Error('No se recibió client_secret de Stripe');
+      }
+
+      const { error: stripeError } = await stripe.confirmCardPayment(data.data.signal_client_secret, {
         payment_method: {
           card: cardElement,
           billing_details: { name: `${firstName} ${lastName}`, email },
@@ -73,15 +97,15 @@ function PaymentForm() {
       navigate(`/reservar/confirmacion`, {
         state: {
           reservation: {
-            reservation_number: result.reservation_number,
+            reservation_number: data.data.reservation_number,
             start_date: startDate, end_date: endDate,
             start_time: params.get('pickupTime') || '09:00', end_time: params.get('returnTime') || '09:00',
             category_name: params.get('categoryName') || '',
             insurance_tier: 'premium', extras: selectedExtras,
             payment_method: 'card_online', total_amount: total,
-            ...(result as any),
+            ...data.data,
           },
-          customer: { first_name: params.get('firstName') || '', last_name: params.get('lastName') || '', email: params.get('email') || '', phone: params.get('phone') || '' },
+          customer: { first_name: firstName, last_name: lastName, email, phone: params.get('phone') || '' },
         },
       });
     } catch (err: any) {
