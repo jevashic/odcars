@@ -70,15 +70,36 @@ export default function SearchResults() {
       return cat && cat.is_active;
     });
 
-    // Get quotes per category (cache to avoid duplicate RPC calls)
+    // Check availability + get quotes per category (cache to avoid duplicate RPC calls)
     const quoteCache: Record<string, any> = {};
+    const availCache: Record<string, boolean> = {};
+
+    // First, check availability for each unique category
+    const uniqueCategoryIds = [...new Set(activeVehicles.map((v: any) => v.category_id))];
+    if (sd && ed) {
+      await Promise.all(uniqueCategoryIds.map(async (catId: string) => {
+        try {
+          const { data: avail } = await supabase.rpc('check_availability', {
+            p_category_id: catId,
+            p_start_date: sd,
+            p_end_date: ed,
+            p_exclude_reservation_id: null,
+          });
+          availCache[catId] = avail?.available ?? false;
+        } catch (err) {
+          console.error('Error check_availability:', catId, err);
+          availCache[catId] = false;
+        }
+      }));
+    }
 
     const enriched = await Promise.all(activeVehicles.map(async (v: any) => {
       const cat = v.vehicle_categories as any;
       const resolvedImage = getVehicleImage(v.images, cat?.image_url);
+      const isAvailable = availCache[v.category_id] ?? true;
 
       let quote: any = null;
-      if (sd && ed && cat) {
+      if (sd && ed && cat && isAvailable) {
         if (!quoteCache[v.category_id]) {
           try {
             const { data: q } = await supabase.rpc('get_quote', {
@@ -103,8 +124,12 @@ export default function SearchResults() {
         cat,
         resolvedImage,
         quote,
+        isAvailable,
       };
     }));
+
+    // Sort: available first, unavailable last
+    enriched.sort((a, b) => (a.isAvailable === b.isAvailable ? 0 : a.isAvailable ? -1 : 1));
 
     setResults(enriched);
     setLoading(false);
