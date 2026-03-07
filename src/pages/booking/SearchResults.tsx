@@ -88,10 +88,10 @@ export default function SearchResults() {
         console.error('Error get_quote:', cat.id, err);
       }
 
-      // Load up to 2 vehicles with status = 'available'
+      // Load up to 2 individual vehicles
       const { data: vehicles } = await supabase
         .from('vehicles')
-        .select('id, brand, model, images, category_id')
+        .select('id, brand, model, year, images, transmission, fuel_type, seats, category_id')
         .eq('category_id', cat.id)
         .eq('status', 'available')
         .limit(2);
@@ -102,6 +102,10 @@ export default function SearchResults() {
             vehicleId: v.id,
             brand: v.brand,
             model: v.model,
+            year: v.year,
+            transmission: v.transmission,
+            fuelType: v.fuel_type,
+            seats: v.seats,
             imageUrl: getVehicleImage(v.images, cat.image_url),
             categoryId: cat.id,
             categoryName: cat.name,
@@ -110,7 +114,7 @@ export default function SearchResults() {
           });
         });
       } else {
-        // No individual vehicles but category is available — show category card
+        // No individual vehicles — show category as fallback
         vehicleCards.push({
           vehicleId: cat.id,
           brand: cat.name,
@@ -178,7 +182,7 @@ export default function SearchResults() {
               ) : results.length === 0 ? (
                 <p className="text-center text-muted-foreground py-20">{t('booking.no_results')}</p>
               ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="space-y-6">
                   {results.map((vehicle) => (
                     <VehicleResultCard
                       key={vehicle.vehicleId}
