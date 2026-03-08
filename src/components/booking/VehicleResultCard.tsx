@@ -39,7 +39,7 @@ const benefits = [
 ];
 
 export default function VehicleResultCard({ vehicle, days, params, lp, t }: Props) {
-  const { online_multiplier, online_discount_percent } = useConfig();
+  const { online_multiplier } = useConfig();
   const totalOffice = vehicle.quote?.total_amount ?? vehicle.pricePerDay * days;
   const perDayOffice = Math.round(totalOffice / days);
   const totalOnline = Math.round(totalOffice * online_multiplier);
