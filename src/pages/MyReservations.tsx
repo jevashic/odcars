@@ -24,6 +24,7 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = {
 
 export default function MyReservations() {
   const { t } = useLang();
+  const { online_discount_percent } = useConfig();
   const [params] = useSearchParams();
   const [code, setCode] = useState('');
   const [email, setEmail] = useState('');
