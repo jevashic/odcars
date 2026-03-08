@@ -50,6 +50,7 @@ interface NavItem {
 const mainLinks: NavItem[] = [
   { to: "/admin/reservas", icon: CalendarDays, label: "Reservas", roles: ["employee", "manager", "admin"] },
   { to: "/admin/vehiculos", icon: Car, label: "Flota", roles: ["employee", "manager", "admin"] },
+  { to: "/admin/estado-flota", icon: Car, label: "Estado Flota", roles: ["employee", "manager", "admin"] },
   { to: "/admin/clientes", icon: Users, label: "Clientes", roles: ["employee", "manager", "admin"] },
   { to: "/admin/categorias", icon: Layers, label: "Categorías", roles: ["manager", "admin"] },
   

@@ -38,6 +38,7 @@ import AdminReservations from "./pages/admin/Reservations";
 import AdminReservationDetail from "./pages/admin/ReservationDetail";
 import AdminVehicleCategories from "./pages/admin/VehicleCategories";
 import AdminVehiclesByCategory from "./pages/admin/VehiclesByCategory";
+import AdminFleetStatus from "./pages/admin/FleetStatus";
 
 import AdminExtras from "./pages/admin/Extras";
 import AdminDiscounts from "./pages/admin/Discounts";
@@ -112,6 +113,7 @@ const App = () => (
               <Route path="/admin/reservas" element={<AdminReservations />} />
               <Route path="/admin/vehiculos" element={<AdminVehicleCategories />} />
               <Route path="/admin/vehiculos/:categoryId" element={<AdminVehiclesByCategory />} />
+              <Route path="/admin/estado-flota" element={<AdminFleetStatus />} />
               <Route path="/admin/categorias" element={<AdminCategories />} />
               <Route path="/admin/precios" element={<AdminStub />} />
               <Route path="/admin/extras" element={<AdminExtras />} />
