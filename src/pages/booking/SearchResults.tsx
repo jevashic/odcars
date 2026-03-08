@@ -106,6 +106,10 @@ export default function SearchResults() {
             transmission: v.transmission,
             fuelType: v.fuel_type,
             seats: v.seats,
+            seatsMin: cat.seats_min,
+            seatsMax: cat.seats_max,
+            transmissionNote: cat.transmission_note,
+            energyType: cat.energy_type,
             imageUrl: getVehicleImage(v.images, cat.image_url),
             categoryId: cat.id,
             categoryName: cat.name,
@@ -114,11 +118,14 @@ export default function SearchResults() {
           });
         });
       } else {
-        // No individual vehicles — show category as fallback
         vehicleCards.push({
           vehicleId: cat.id,
           brand: cat.name,
           model: '',
+          seatsMin: cat.seats_min,
+          seatsMax: cat.seats_max,
+          transmissionNote: cat.transmission_note,
+          energyType: cat.energy_type,
           imageUrl: cat.image_url,
           categoryId: cat.id,
           categoryName: cat.name,
