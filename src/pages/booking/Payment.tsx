@@ -19,7 +19,7 @@ function PaymentForm() {
   const navigate = useLangNavigate();
   const stripe = useStripe();
   const elements = useElements();
-  const { online_multiplier } = useConfig();
+  const { online_multiplier, online_discount_percent } = useConfig();
   const [loading, setLoading] = useState(false);
 
   const startDate = params.get('pickupDate') || '';
@@ -133,7 +133,7 @@ function PaymentForm() {
                 <p className="text-muted-foreground">✚ {t('booking.extras_label')} {selectedExtras.join(', ')}</p>
               )}
               <p className="font-bold text-primary text-lg mt-2">{t('booking.total')} {total} €</p>
-              <p className="text-[10px] text-muted-foreground">{t('booking.igic_discount')}</p>
+              <p className="text-[10px] text-muted-foreground">{t('booking.igic_discount', { discount: online_discount_percent })}</p>
             </div>
 
             <div className="flex items-center gap-2 mb-4">

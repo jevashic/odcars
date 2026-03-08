@@ -26,7 +26,7 @@ function parseExtrasPrices(param: string): Record<string, number> {
 function SummaryForm() {
   const [params] = useSearchParams();
   const { t } = useLang();
-  const { online_multiplier } = useConfig();
+  const { online_multiplier, online_discount_percent } = useConfig();
   const navigate = useLangNavigate();
   const stripe = useStripe();
   const elements = useElements();
@@ -177,7 +177,7 @@ function SummaryForm() {
         )}
         {discount > 0 && (
           <div className="flex justify-between text-emerald-600">
-            <span>{t('booking.online_discount')}</span>
+            <span>{t('booking.online_discount', { discount: online_discount_percent })}</span>
             <span className="font-medium">−{discount} €</span>
           </div>
         )}
