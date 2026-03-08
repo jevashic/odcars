@@ -50,10 +50,10 @@ function SummaryForm() {
   const selectedExtras = extrasParam ? extrasParam.split(',') : [];
   const extrasPricesMap = parseExtrasPrices(params.get('extrasPrices') || '');
 
-  const baseTotal = 39 * days;
+  const quoteTotal = parseFloat(params.get('quoteTotal') || '0');
   const extrasTotal = selectedExtras.reduce((sum, id) => sum + (extrasPricesMap[id] || 0), 0);
   const surchargeAmount = hasSurcharge ? 15 : 0;
-  const subtotal = baseTotal + extrasTotal + surchargeAmount;
+  const subtotal = quoteTotal + extrasTotal + surchargeAmount;
   const discount = paymentMode === 'online' ? Math.round(subtotal * (1 - online_multiplier)) : 0;
   const total = subtotal - discount;
 
@@ -161,7 +161,7 @@ function SummaryForm() {
       <div className="space-y-2 text-sm">
         <div className="flex justify-between">
           <span>{t('booking.rental')} ({days} {days > 1 ? t('booking.days') : t('booking.day')})</span>
-          <span className="font-medium">{baseTotal} €</span>
+          <span className="font-medium">{quoteTotal} €</span>
         </div>
         {selectedExtras.map(id => extrasPricesMap[id] !== undefined && (
           <div key={id} className="flex justify-between">

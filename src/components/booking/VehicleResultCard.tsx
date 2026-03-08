@@ -47,7 +47,7 @@ export default function VehicleResultCard({ vehicle, days, params, lp, t }: Prop
   const savings = totalOffice - totalOnline;
 
   const displayName = `${vehicle.brand} ${vehicle.model}`.trim();
-  const baseQuery = `${params.toString()}&categoryId=${vehicle.categoryId}`;
+  const baseQuery = `${params.toString()}&categoryId=${vehicle.categoryId}&quoteTotal=${totalOffice}`;
 
   const seatsLabel = vehicle.seatsMin && vehicle.seatsMax
     ? `${vehicle.seatsMin}-${vehicle.seatsMax}`

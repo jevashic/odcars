@@ -26,7 +26,7 @@ function PaymentForm() {
   const endDate = params.get('returnDate') || '';
   const days = startDate && endDate ? Math.max(differenceInDays(new Date(endDate), new Date(startDate)), 1) : 1;
 
-  const baseTotal = 39 * days;
+  const quoteTotal = parseFloat(params.get('quoteTotal') || '0');
   const extrasParam = params.get('extras') || '';
   const selectedExtras = extrasParam ? extrasParam.split(',') : [];
   const extrasPricesParam = params.get('extrasPrices') || '';
@@ -36,7 +36,7 @@ function PaymentForm() {
     if (id && price) extrasPricesMap[id] = parseFloat(price);
   });
   const extrasTotal = selectedExtras.reduce((sum, id) => sum + (extrasPricesMap[id] || 0), 0);
-  const subtotal = baseTotal + extrasTotal;
+  const subtotal = quoteTotal + extrasTotal;
   const total = Math.round(subtotal * online_multiplier);
 
   const handlePay = async () => {
