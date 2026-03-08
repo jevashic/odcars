@@ -45,7 +45,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   const t = useCallback(
     (key: string, params?: Record<string, string | number>) => {
-      const val = i18t(key, params as any);
+      const val = i18t(key, params as any) as string;
       return val === key ? key : val;
     },
     [i18t],
