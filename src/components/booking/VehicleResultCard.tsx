@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Car, Users, DoorOpen, Settings2, Fuel, Snowflake, Check } from 'lucide-react';
+import { useConfig } from '@/contexts/ConfigContext';
 
 interface VehicleResult {
   vehicleId: string;
@@ -38,9 +39,10 @@ const benefits = [
 ];
 
 export default function VehicleResultCard({ vehicle, days, params, lp, t }: Props) {
+  const { online_multiplier, online_discount_percent } = useConfig();
   const totalOffice = vehicle.quote?.total_amount ?? vehicle.pricePerDay * days;
   const perDayOffice = Math.round(totalOffice / days);
-  const totalOnline = Math.round(totalOffice * 0.85);
+  const totalOnline = Math.round(totalOffice * online_multiplier);
   const perDayOnline = Math.round(totalOnline / days);
   const savings = totalOffice - totalOnline;
 

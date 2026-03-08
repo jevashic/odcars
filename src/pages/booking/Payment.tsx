@@ -11,6 +11,7 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/integrations/supabase/client'
 import { stripePromise } from '@/integrations/stripe/client';
 import StripeCardInput from '@/components/stripe/StripeCardInput';
 import { toast } from '@/hooks/use-toast';
+import { useConfig } from '@/contexts/ConfigContext';
 
 function PaymentForm() {
   const [params] = useSearchParams();
@@ -18,6 +19,7 @@ function PaymentForm() {
   const navigate = useLangNavigate();
   const stripe = useStripe();
   const elements = useElements();
+  const { online_multiplier } = useConfig();
   const [loading, setLoading] = useState(false);
 
   const startDate = params.get('pickupDate') || '';
@@ -35,7 +37,7 @@ function PaymentForm() {
   });
   const extrasTotal = selectedExtras.reduce((sum, id) => sum + (extrasPricesMap[id] || 0), 0);
   const subtotal = baseTotal + extrasTotal;
-  const total = Math.round(subtotal * 0.85);
+  const total = Math.round(subtotal * online_multiplier);
 
   const handlePay = async () => {
     if (!stripe || !elements) return;
