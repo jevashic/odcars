@@ -6,6 +6,7 @@ import { Elements, useStripe, useElements, CardElement } from '@stripe/react-str
 import PublicLayout from '@/components/layout/PublicLayout';
 import BookingTimer, { markBookingCompleted } from '@/components/booking/BookingTimer';
 import { useLang } from '@/contexts/LanguageContext';
+import { useConfig } from '@/contexts/ConfigContext';
 import { useLangNavigate } from '@/hooks/useLangNavigate';
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '@/integrations/supabase/client';
 import { stripePromise } from '@/integrations/stripe/client';
@@ -25,6 +26,7 @@ function parseExtrasPrices(param: string): Record<string, number> {
 function SummaryForm() {
   const [params] = useSearchParams();
   const { t } = useLang();
+  const { online_multiplier } = useConfig();
   const navigate = useLangNavigate();
   const stripe = useStripe();
   const elements = useElements();
@@ -52,7 +54,7 @@ function SummaryForm() {
   const extrasTotal = selectedExtras.reduce((sum, id) => sum + (extrasPricesMap[id] || 0), 0);
   const surchargeAmount = hasSurcharge ? 15 : 0;
   const subtotal = baseTotal + extrasTotal + surchargeAmount;
-  const discount = paymentMode === 'online' ? Math.round(subtotal * 0.15) : 0;
+  const discount = paymentMode === 'online' ? Math.round(subtotal * (1 - online_multiplier)) : 0;
   const total = subtotal - discount;
 
   useEffect(() => {
