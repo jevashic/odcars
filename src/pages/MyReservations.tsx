@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { format, differenceInDays, parseISO, addHours } from 'date-fns';
 import PublicLayout from '@/components/layout/PublicLayout';
 import { useLang } from '@/contexts/LanguageContext';
+import { useConfig } from '@/contexts/ConfigContext';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -23,6 +24,7 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = {
 
 export default function MyReservations() {
   const { t } = useLang();
+  const { online_discount_percent } = useConfig();
   const [params] = useSearchParams();
   const [code, setCode] = useState('');
   const [email, setEmail] = useState('');
@@ -228,7 +230,7 @@ export default function MyReservations() {
                   )}
                   {reservation.discount_amount != null && Number(reservation.discount_amount) > 0 && (
                     <div className="flex justify-between text-emerald-600">
-                      <span>{t('booking.online_discount')}</span>
+                      <span>{t('booking.online_discount', { discount: online_discount_percent })}</span>
                       <span>−{Number(reservation.discount_amount).toFixed(2)} €</span>
                     </div>
                   )}

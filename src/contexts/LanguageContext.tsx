@@ -6,7 +6,7 @@ import i18n, { isSupportedLang, type Lang } from '@/i18n';
 interface LangCtx {
   lang: Lang;
   setLang: (l: Lang) => void;
-  t: (key: string) => string;
+  t: (key: string, params?: Record<string, string | number>) => string;
 }
 
 const LanguageContext = createContext<LangCtx>({
@@ -44,8 +44,8 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   );
 
   const t = useCallback(
-    (key: string) => {
-      const val = i18t(key);
+    (key: string, params?: Record<string, string | number>) => {
+      const val = i18t(key, params as any) as string;
       return val === key ? key : val;
     },
     [i18t],

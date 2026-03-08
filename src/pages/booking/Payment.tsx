@@ -19,14 +19,14 @@ function PaymentForm() {
   const navigate = useLangNavigate();
   const stripe = useStripe();
   const elements = useElements();
-  const { online_multiplier } = useConfig();
+  const { online_multiplier, online_discount_percent } = useConfig();
   const [loading, setLoading] = useState(false);
 
   const startDate = params.get('pickupDate') || '';
   const endDate = params.get('returnDate') || '';
   const days = startDate && endDate ? Math.max(differenceInDays(new Date(endDate), new Date(startDate)), 1) : 1;
 
-  const baseTotal = 39 * days;
+  const quoteTotal = parseFloat(params.get('quoteTotal') || '0');
   const extrasParam = params.get('extras') || '';
   const selectedExtras = extrasParam ? extrasParam.split(',') : [];
   const extrasPricesParam = params.get('extrasPrices') || '';
@@ -36,7 +36,7 @@ function PaymentForm() {
     if (id && price) extrasPricesMap[id] = parseFloat(price);
   });
   const extrasTotal = selectedExtras.reduce((sum, id) => sum + (extrasPricesMap[id] || 0), 0);
-  const subtotal = baseTotal + extrasTotal;
+  const subtotal = quoteTotal + extrasTotal;
   const total = Math.round(subtotal * online_multiplier);
 
   const handlePay = async () => {
@@ -133,7 +133,7 @@ function PaymentForm() {
                 <p className="text-muted-foreground">✚ {t('booking.extras_label')} {selectedExtras.join(', ')}</p>
               )}
               <p className="font-bold text-primary text-lg mt-2">{t('booking.total')} {total} €</p>
-              <p className="text-[10px] text-muted-foreground">{t('booking.igic_discount')}</p>
+              <p className="text-[10px] text-muted-foreground">{t('booking.igic_discount', { discount: online_discount_percent })}</p>
             </div>
 
             <div className="flex items-center gap-2 mb-4">
