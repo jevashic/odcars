@@ -39,6 +39,7 @@ import AdminReservationDetail from "./pages/admin/ReservationDetail";
 import AdminVehicleCategories from "./pages/admin/VehicleCategories";
 import AdminVehiclesByCategory from "./pages/admin/VehiclesByCategory";
 import AdminFleetStatus from "./pages/admin/FleetStatus";
+import AdminMovements from "./pages/admin/Movements";
 
 import AdminExtras from "./pages/admin/Extras";
 import AdminDiscounts from "./pages/admin/Discounts";
