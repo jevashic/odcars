@@ -46,7 +46,7 @@ export default function VehicleResultCard({ vehicle, days, params, lp, t }: Prop
   const perDayOnline = Math.round(totalOnline / days);
   const savings = totalOffice - totalOnline;
 
-  const displayName = `${vehicle.brand} ${vehicle.model}`.trim();
+  const displayName = `${vehicle.brand} ${vehicle.model}${vehicle.year ? ` ${vehicle.year}` : ''}`.trim();
   const baseQuery = `${params.toString()}&categoryId=${vehicle.categoryId}&quoteTotal=${totalOffice}`;
 
   const seatsLabel = vehicle.seatsMin && vehicle.seatsMax
