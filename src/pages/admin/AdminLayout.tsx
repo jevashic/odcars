@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -13,9 +13,10 @@ import {
 } from "@/components/ui/dialog";
 import {
   CalendarDays,
+  CalendarClock,
   Car,
   Layers,
-  DollarSign,
+  
   Package,
   Percent,
   Users,
@@ -31,7 +32,6 @@ import {
   Receipt,
   LogOut,
   ChevronDown,
-  
   Compass,
   Sliders,
 } from "lucide-react";
@@ -49,11 +49,11 @@ interface NavItem {
 
 const mainLinks: NavItem[] = [
   { to: "/admin/reservas", icon: CalendarDays, label: "Reservas", roles: ["employee", "manager", "admin"] },
+  { to: "/admin/movimientos", icon: CalendarClock, label: "Movimientos", roles: ["employee", "manager", "admin"] },
   { to: "/admin/vehiculos", icon: Car, label: "Flota", roles: ["employee", "manager", "admin"] },
   { to: "/admin/estado-flota", icon: Car, label: "Estado Flota", roles: ["employee", "manager", "admin"] },
   { to: "/admin/clientes", icon: Users, label: "Clientes", roles: ["employee", "manager", "admin"] },
   { to: "/admin/categorias", icon: Layers, label: "Categorías", roles: ["manager", "admin"] },
-  
   { to: "/admin/extras", icon: Package, label: "Extras", roles: ["manager", "admin"] },
   { to: "/admin/descuentos", icon: Percent, label: "Descuentos", roles: ["manager", "admin"] },
   { to: "/admin/facturacion", icon: Receipt, label: "Facturación", roles: ["manager", "admin"] },
@@ -74,7 +74,7 @@ const configLinks: NavItem[] = [
   { to: "/admin/historial", icon: Sliders, label: "Historial de cambios", roles: ["admin"] },
 ];
 
-function SidebarLink({ item, active }: { item: NavItem; active: boolean }) {
+function SidebarLink({ item, active, badge }: { item: NavItem; active: boolean; badge?: number }) {
   return (
     <Link
       to={item.to}
@@ -85,7 +85,12 @@ function SidebarLink({ item, active }: { item: NavItem; active: boolean }) {
       }`}
     >
       <item.icon className="h-4 w-4" />
-      {item.label}
+      <span className="flex-1">{item.label}</span>
+      {badge != null && badge > 0 && (
+        <span className="ml-auto bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+          {badge}
+        </span>
+      )}
     </Link>
   );
 }
@@ -94,10 +99,25 @@ function AdminLayoutInner() {
   const location = useLocation();
   const { user, logout } = useAdminAuth();
   const [configOpen, setConfigOpen] = useState(false);
+  const [movementsBadge, setMovementsBadge] = useState(0);
 
   const role = (user?.role ?? "employee") as AdminRole;
   const visibleMain = mainLinks.filter((l) => l.roles.includes(role));
   const isAdmin = role === "admin";
+
+  // Fetch movements badge count
+  useEffect(() => {
+    const fetchBadge = async () => {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const [unassigned, pickups, returns] = await Promise.all([
+        supabase.from("reservations").select("id", { count: "exact", head: true }).is("vehicle_id", null).eq("status", "confirmed"),
+        supabase.from("reservations").select("id", { count: "exact", head: true }).eq("start_date", todayStr).in("status", ["confirmed", "active"]),
+        supabase.from("reservations").select("id", { count: "exact", head: true }).eq("end_date", todayStr).eq("status", "active"),
+      ]);
+      setMovementsBadge((unassigned.count ?? 0) + (pickups.count ?? 0) + (returns.count ?? 0));
+    };
+    fetchBadge();
+  }, []);
 
   // Check if any config link is active to auto-expand
   const configActive = configLinks.some((l) => location.pathname.startsWith(l.to));
@@ -153,7 +173,12 @@ function AdminLayoutInner() {
         </div>
         <nav className="flex-1 py-2 overflow-y-auto">
           {visibleMain.map((l) => (
-            <SidebarLink key={l.to} item={l} active={location.pathname.startsWith(l.to)} />
+            <SidebarLink
+              key={l.to}
+              item={l}
+              active={location.pathname.startsWith(l.to)}
+              badge={l.to === "/admin/movimientos" ? movementsBadge : undefined}
+            />
           ))}
 
           {/* Admin-only collapsible config section */}
