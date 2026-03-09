@@ -314,6 +314,7 @@ export default function AdminReservations() {
               <TableHead>Fechas</TableHead>
               <TableHead className="text-center">Días</TableHead>
               <TableHead className="text-right">Total</TableHead>
+              <TableHead>Pago</TableHead>
               <TableHead>Canal</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
