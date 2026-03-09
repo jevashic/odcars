@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Navigation, Baby, Package } from 'lucide-react';
 import PublicLayout from '@/components/layout/PublicLayout';
 import { useLang } from '@/contexts/LanguageContext';
