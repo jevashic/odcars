@@ -29,35 +29,30 @@ export default function SearchResults() {
     const ed = searchParams.get('returnDate');
 
     if (pickupId) {
-      const { data } = await supabase.from('branches').select('show_surcharge_warning').eq('id', pickupId).single();
+      const { data } = await supabase.from('branches').select('show_surcharge_warning').eq('id', pickupId).maybeSingle();
       setShowSurcharge(!!data?.show_surcharge_warning);
     }
 
     setLoading(true);
     setHasSearched(true);
 
-    // 1. Load all active categories
+    if (!sd || !ed) { setResults([]); setLoading(false); return; }
+
+    // PASO 1: Load all active categories and check availability
     const { data: categories, error: catError } = await supabase
       .from('vehicle_categories')
-      .select('id, name, image_url, price_per_day, energy_type, transmission_note, seats_min, seats_max')
+      .select('id, name, image_url, price_per_day')
       .eq('is_active', true)
       .order('price_per_day');
 
     if (catError || !categories) {
-      console.error('Error categorías:', catError);
-      setResults([]);
-      setLoading(false);
-      return;
+      console.error('PASO 1 ERROR categorías:', catError);
+      setResults([]); setLoading(false); return;
     }
+    console.log('PASO 1: Categorías activas:', categories.map(c => ({ id: c.id, name: c.name })));
 
-    // 2. For each category: check availability → load vehicles + quote
-    const vehicleCards: any[] = [];
-
-    await Promise.all(categories.map(async (cat: any) => {
-      if (!sd || !ed) return;
-
-      // Check availability via RPC
-      let isAvailable = false;
+    const availableCatIds: string[] = [];
+    await Promise.all(categories.map(async (cat) => {
       try {
         const { data: avail } = await supabase.rpc('check_availability', {
           p_category_id: cat.id,
@@ -65,69 +60,96 @@ export default function SearchResults() {
           p_end_date: ed,
           p_exclude_reservation_id: null,
         });
-        isAvailable = typeof avail === 'boolean' ? avail : (avail?.available ?? false);
+        const isAvail = typeof avail === 'boolean' ? avail : (avail?.available ?? false);
+        console.log(`PASO 1 check_availability cat=${cat.name} (${cat.id}):`, avail, '→', isAvail);
+        if (isAvail) availableCatIds.push(cat.id);
       } catch (err) {
-        console.error('Error check_availability:', cat.id, err);
+        console.error('PASO 1 check_availability error:', cat.id, err);
       }
+    }));
+    console.log('PASO 1 RESULT: category_ids disponibles:', availableCatIds);
 
-      if (!isAvailable) return;
+    if (availableCatIds.length === 0) {
+      console.log('PASO 1: No hay categorías disponibles');
+      setResults([]); setLoading(false); return;
+    }
 
-      // Get quote
-      let quote: any = null;
+    // PASO 2: Single query for vehicles in available categories
+    const { data: vehicles, error: vehError } = await supabase
+      .from('vehicles')
+      .select('*, vehicle_categories(name, image_url, price_per_day)')
+      .in('category_id', availableCatIds)
+      .eq('status', 'available')
+      .order('created_at', { ascending: true });
+
+    console.log('PASO 2: Vehículos encontrados:', vehicles?.length, vehicles?.map(v => ({ id: v.id, brand: v.brand, model: v.model, cat: v.category_id, status: v.status })));
+    if (vehError) console.error('PASO 2 ERROR:', vehError);
+
+    if (!vehicles || vehicles.length === 0) {
+      console.log('PASO 2: No hay vehículos con status=available');
+      setResults([]); setLoading(false); return;
+    }
+
+    // PASO 3: Group by category_id, max 2 per category
+    const grouped: Record<string, any[]> = {};
+    vehicles.forEach(v => {
+      if (!grouped[v.category_id]) grouped[v.category_id] = [];
+      if (grouped[v.category_id].length < 2) grouped[v.category_id].push(v);
+    });
+    const selectedVehicles = Object.values(grouped).flat();
+    console.log('PASO 3: Vehículos seleccionados (max 2/cat):', selectedVehicles.map(v => ({ id: v.id, brand: v.brand, model: v.model, cat: v.category_id })));
+
+    // PASO 4: Get quotes for each unique category
+    const uniqueCatIds = [...new Set(selectedVehicles.map(v => v.category_id))];
+    const quotes: Record<string, any> = {};
+    await Promise.all(uniqueCatIds.map(async (catId) => {
       try {
         const { data: q } = await supabase.rpc('get_quote', {
-          p_category_id: cat.id,
+          p_category_id: catId,
           p_start_date: sd,
           p_end_date: ed,
           p_insurance_tier: 'premium',
           p_extra_ids: [],
           p_discount_code: null,
         });
-        quote = q ?? null;
+        quotes[catId] = q ?? null;
+        console.log(`PASO 4 get_quote cat=${catId}:`, q);
       } catch (err) {
-        console.error('Error get_quote:', cat.id, err);
+        console.error('PASO 4 get_quote error:', catId, err);
       }
-
-      // Load up to 2 individual vehicles
-      const { data: vehicles } = await supabase
-        .from('vehicles')
-        .select('id, brand, model, year, images, transmission, fuel_type, seats, category_id')
-        .eq('category_id', cat.id)
-        .eq('status', 'available')
-        .limit(2);
-
-      if (vehicles && vehicles.length > 0) {
-        vehicles.forEach((v: any) => {
-          vehicleCards.push({
-            vehicleId: v.id,
-            brand: v.brand,
-            model: v.model,
-            year: v.year,
-            transmission: v.transmission,
-            fuelType: v.fuel_type,
-            seats: v.seats,
-            doors: v.doors,
-            imageUrl: getVehicleImage(v.images, cat.image_url),
-            categoryId: cat.id,
-            categoryName: cat.name,
-            quote,
-            pricePerDay: cat.price_per_day,
-          });
-        });
-      }
-      // If no vehicles with status='available', skip category entirely
     }));
+
+    // Build result cards
+    const vehicleCards = selectedVehicles.map(v => {
+      const cat = v.vehicle_categories as any;
+      return {
+        vehicleId: v.id,
+        brand: v.brand,
+        model: v.model,
+        year: v.year,
+        transmission: v.transmission,
+        fuelType: v.fuel_type,
+        seats: v.seats,
+        doors: v.doors,
+        imageUrl: getVehicleImage(v.images, cat?.image_url),
+        categoryId: v.category_id,
+        categoryName: cat?.name || '',
+        quote: quotes[v.category_id],
+        pricePerDay: cat?.price_per_day || 0,
+      };
+    });
 
     // Sort by price
     vehicleCards.sort((a, b) => (a.pricePerDay || 0) - (b.pricePerDay || 0));
 
-    // Mark middle-priced category as recommended
-    const uniqueCats = [...new Set(vehicleCards.map(v => v.categoryId))];
-    if (uniqueCats.length >= 2) {
-      const recommendedCatId = uniqueCats[Math.floor(uniqueCats.length / 2)];
-      vehicleCards.forEach(v => { v.isRecommended = v.categoryId === recommendedCatId; });
+    // Mark middle category as recommended
+    const recCats = [...new Set(vehicleCards.map(v => v.categoryId))];
+    if (recCats.length >= 2) {
+      const recommendedCatId = recCats[Math.floor(recCats.length / 2)];
+      vehicleCards.forEach(v => { (v as any).isRecommended = v.categoryId === recommendedCatId; });
     }
 
+    console.log('RESULTADO FINAL:', vehicleCards.length, 'tarjetas');
     setResults(vehicleCards);
     setLoading(false);
   }, []);
