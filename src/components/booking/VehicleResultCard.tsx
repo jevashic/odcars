@@ -13,10 +13,6 @@ interface VehicleResult {
   transmission?: string;
   fuelType?: string;
   seats?: number;
-  seatsMin?: number;
-  seatsMax?: number;
-  transmissionNote?: string;
-  energyType?: string;
   doors?: number;
   quote: any;
   pricePerDay: number;
@@ -46,23 +42,21 @@ export default function VehicleResultCard({ vehicle, days, params, lp, t }: Prop
   const perDayOnline = Math.round(totalOnline / days);
   const savings = totalOffice - totalOnline;
 
-  const displayName = `${vehicle.brand} ${vehicle.model}`.trim();
+  const displayName = `${vehicle.brand} ${vehicle.model}${vehicle.year ? ` ${vehicle.year}` : ''}`.trim();
   const baseQuery = `${params.toString()}&categoryId=${vehicle.categoryId}&quoteTotal=${totalOffice}`;
 
-  const seatsLabel = vehicle.seatsMin && vehicle.seatsMax
-    ? `${vehicle.seatsMin}-${vehicle.seatsMax}`
-    : vehicle.seats ? `${vehicle.seats}` : null;
-
-  const transmissionLabel = vehicle.transmissionNote || vehicle.transmission || null;
-  const fuelLabel = vehicle.energyType || vehicle.fuelType || null;
+  const seatsLabel = vehicle.seats ? `${vehicle.seats}` : null;
+  const transmissionLabel = vehicle.transmission || null;
+  const fuelLabel = vehicle.fuelType || null;
 
   return (
     <div className="rounded-2xl overflow-hidden shadow-[0_2px_16px_rgba(0,0,0,0.08)] bg-card flex flex-col md:flex-row">
       {/* ZONE 1 — Vehicle Info */}
       <div className="md:w-1/4 p-4 flex flex-col items-center justify-between border-b md:border-b-0 md:border-r border-border">
         <h3 className="font-bold text-base text-foreground text-center leading-tight">
-          {displayName} <span className="font-normal text-muted-foreground">o similar</span>
+          {displayName}
         </h3>
+        <p className="text-xs text-muted-foreground">{vehicle.categoryName}</p>
 
         <div className="flex-1 flex items-center justify-center py-3 w-full">
           {vehicle.imageUrl ? (
