@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/table";
 
 // ---------- helpers ----------
-const today = () => format(new Date(), "yyyy-MM-dd");
+
 
 const fmtDate = (d: string) => {
   try { return format(parseISO(d), "dd/MM/yyyy"); } catch { return d; }
