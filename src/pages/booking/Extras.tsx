@@ -105,7 +105,7 @@ export default function Extras() {
           )}
 
           <div className="mt-8 flex gap-4">
-            <button onClick={() => navigate(-1 as any)} className="px-6 py-3.5 border-2 border-primary text-primary font-bold rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors">
+            <button onClick={() => rawNavigate(-1)} className="px-6 py-3.5 border-2 border-primary text-primary font-bold rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors">
               {t('booking.back')}
             </button>
             <button onClick={handleContinue} className="flex-1 bg-cta text-cta-foreground font-bold text-center py-3.5 rounded-lg hover:opacity-90 transition-opacity">
