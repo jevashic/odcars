@@ -56,6 +56,7 @@ function PaymentForm() {
         return_location_id: params.get('return') || params.get('pickup') || '',
         start_date: startDate, end_date: endDate,
         start_time: params.get('pickupTime') || '09:00', end_time: params.get('returnTime') || '09:00',
+        pickup_time: params.get('pickupTime') || '09:00', return_time: params.get('returnTime') || '09:00',
         insurance_tier: 'premium', extra_ids: selectedExtras, payment_method: 'card_online',
         sale_channel: 'web',
         sale_branch_id: 'a58b7a55-b6a3-456a-b0f6-eed247cf3137',
