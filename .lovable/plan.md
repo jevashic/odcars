@@ -1,26 +1,20 @@
 
 
-## Fix: Conoce Gran Canaria admin module
+## Problem
 
-### Problem
-`/admin/conoce-gran-canaria` has no route in `App.tsx`, so it falls through to `/:lang/*` (with `lang="admin"`) and renders the public DiscoverGC page.
+The back button in `src/pages/booking/Extras.tsx` (line 105) calls `navigate(-1 as any)`. The `useLangNavigate` hook only supports string paths — it prepends a language prefix, so passing `-1` results in navigating to a broken URL like `/es/-1` instead of going back in history.
 
-### Changes
+## Fix
 
-**1. Create `src/pages/admin/TouristPlaces.tsx`** (~500 lines)
+Replace `navigate(-1 as any)` with `useNavigate()` from react-router-dom for the back button, using the standard `nav(-1)` call for browser history navigation. Alternatively, construct the correct previous route URL from the current search params and use `navigate` with that path.
 
-Full CRUD following existing patterns (Branches.tsx, ContentManagement.tsx):
+**Simplest approach:** Import `useNavigate` directly from react-router-dom alongside `useLangNavigate`, and use it for the back button:
 
-- **Listing:** Query `tourist_places` with inner select of `tourist_place_translations` filtered to `lang=es` and `tourist_place_photos`. Table columns: cover photo thumbnail, name (es), slug, featured badge, sort_order, active badge, edit/delete buttons. Filters for active/inactive and featured/not.
-- **Delete:** Confirmation dialog. Deletes `tourist_place_photos` → `tourist_place_translations` → `tourist_places` (in order). Audit log.
-- **Create/Edit modal** with two tabs (Radix Tabs):
-  - **Tab 1 - General:** slug (validated: lowercase, no spaces), google_maps_url, is_featured toggle, is_active toggle, sort_order input, photo upload (up to 3 images to `tourist-places` bucket via `supabase.storage`, stored in `tourist_place_photos` with field_name photo_1/photo_2/photo_3).
-  - **Tab 2 - Translations:** Section per language (es/en/de/sv/no/fr) with name, short_description (textarea), long_description (textarea). Saves to `tourist_place_translations` with upsert logic (insert or update by place_id + lang).
-- All operations logged to `audit_log` via `writeAudit`.
+```tsx
+const rawNavigate = useNavigate(); // from react-router-dom
+// ...
+<button onClick={() => rawNavigate(-1)} ...>
+```
 
-**2. Edit `src/App.tsx`**
-- Import `TouristPlaces` from `./pages/admin/TouristPlaces`
-- Add route: `<Route path="/admin/conoce-gran-canaria" element={<TouristPlaces />} />` inside the AdminLayout routes
-
-No other files modified.
+One line import change + one line in the click handler.
 
