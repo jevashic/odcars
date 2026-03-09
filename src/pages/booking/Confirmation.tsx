@@ -140,6 +140,13 @@ export default function Confirmation() {
                 <span className="text-2xl font-extrabold text-primary">{Number(reservation.total_amount).toFixed(2)} €</span>
               </div>
             )}
+
+            {/* Pending payment notice for office payment */}
+            {!reservation.pay_signal && (
+              <div className="bg-orange-50 border border-orange-300 text-orange-700 rounded-lg px-4 py-3 text-center font-bold text-sm tracking-wide">
+                PENDIENTE DE PAGO · Abona el importe al recoger el vehículo
+              </div>
+            )}
           </div>
 
           {/* Actions */}
