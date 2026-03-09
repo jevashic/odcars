@@ -281,8 +281,8 @@ export default function ReservationDetail() {
             <CardContent className="grid grid-cols-2 gap-4 text-sm">
               <div><span className="text-muted-foreground">Nº Reserva:</span> <span className="font-medium">{r.reservation_number ?? "—"}</span></div>
               <div><span className="text-muted-foreground">Canal:</span> {CHANNEL_MAP[r.sale_channel] ?? r.sale_channel ?? "—"}</div>
-              <div><span className="text-muted-foreground">Recogida:</span> {r.start_date ? format(parseISO(r.start_date), "dd/MM/yyyy HH:mm", { locale: es }) : "—"}</div>
-              <div><span className="text-muted-foreground">Devolución:</span> {r.end_date ? format(parseISO(r.end_date), "dd/MM/yyyy HH:mm", { locale: es }) : "—"}</div>
+              <div><span className="text-muted-foreground">Recogida:</span> {r.start_date ? `${format(parseISO(r.start_date), "dd 'de' MMMM 'de' yyyy", { locale: es })}${r.pickup_time ? ` · ${r.pickup_time}h` : ""}` : "—"}</div>
+              <div><span className="text-muted-foreground">Devolución:</span> {r.end_date ? `${format(parseISO(r.end_date), "dd 'de' MMMM 'de' yyyy", { locale: es })}${r.return_time ? ` · ${r.return_time}h` : ""}` : "—"}</div>
               <div><span className="text-muted-foreground">Días:</span> {days}</div>
               <div><span className="text-muted-foreground">Categoría:</span> {r.vehicle_categories?.name ?? "—"}</div>
               <div><span className="text-muted-foreground">Vehículo:</span> {r.vehicles ? `${r.vehicles.brand} ${r.vehicles.model} (${r.vehicles.plate})` : <span className="text-muted-foreground">Sin asignar</span>}</div>
