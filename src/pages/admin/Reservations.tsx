@@ -352,6 +352,11 @@ export default function AdminReservations() {
                     </TableCell>
                     <TableCell className="text-center">{days}</TableCell>
                     <TableCell className="text-right font-medium">{r.total_amount != null ? `${Number(r.total_amount).toFixed(2)} €` : "—"}</TableCell>
+                    <TableCell>
+                      {(r.payments as any[])?.some((p: any) => p.status === "paid" || p.status === "captured")
+                        ? <Badge className="bg-green-100 text-green-800 border-green-200 hover:bg-green-100">Pagado</Badge>
+                        : <Badge className="bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-100">Pendiente</Badge>}
+                    </TableCell>
                     <TableCell>{channel.icon} {channel.label}</TableCell>
                     <TableCell>{statusBadge(r.status)}</TableCell>
                     <TableCell className="text-right">

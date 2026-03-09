@@ -335,7 +335,15 @@ export default function ReservationDetail() {
               <div className="flex justify-between"><span className="text-muted-foreground">IGIC 7%:</span> <span>{igic.toFixed(2)} €</span></div>
               <div className="flex justify-between font-bold text-base"><span>Total:</span> <span>{r.total_amount != null ? `${Number(r.total_amount).toFixed(2)} €` : `${(subtotal + igic).toFixed(2)} €`}</span></div>
               <Separator />
-              <div className="flex justify-between"><span className="text-muted-foreground">Método de pago:</span> <span>{r.payment_method ?? "—"}</span></div>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Forma de pago:</span>
+                <div className="flex items-center gap-2">
+                  <span>{r.payment_method ?? "—"}</span>
+                  {payments.some((p: any) => p.status === "paid" || p.status === "captured")
+                    ? <Badge className="bg-green-100 text-green-800 border-green-200 hover:bg-green-100">Pagado</Badge>
+                    : <Badge className="bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-100">Pendiente de cobro</Badge>}
+                </div>
+              </div>
               {r.stripe_payment_intent_id && (
                 <div className="flex justify-between"><span className="text-muted-foreground">Stripe ID:</span> <span className="font-mono text-xs">{r.stripe_payment_intent_id}</span></div>
               )}
