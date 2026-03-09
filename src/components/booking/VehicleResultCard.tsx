@@ -49,12 +49,9 @@ export default function VehicleResultCard({ vehicle, days, params, lp, t }: Prop
   const displayName = `${vehicle.brand} ${vehicle.model}${vehicle.year ? ` ${vehicle.year}` : ''}`.trim();
   const baseQuery = `${params.toString()}&categoryId=${vehicle.categoryId}&quoteTotal=${totalOffice}`;
 
-  const seatsLabel = vehicle.seatsMin && vehicle.seatsMax
-    ? `${vehicle.seatsMin}-${vehicle.seatsMax}`
-    : vehicle.seats ? `${vehicle.seats}` : null;
-
-  const transmissionLabel = vehicle.transmissionNote || vehicle.transmission || null;
-  const fuelLabel = vehicle.energyType || vehicle.fuelType || null;
+  const seatsLabel = vehicle.seats ? `${vehicle.seats}` : null;
+  const transmissionLabel = vehicle.transmission || null;
+  const fuelLabel = vehicle.fuelType || null;
 
   return (
     <div className="rounded-2xl overflow-hidden shadow-[0_2px_16px_rgba(0,0,0,0.08)] bg-card flex flex-col md:flex-row">
