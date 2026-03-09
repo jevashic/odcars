@@ -99,10 +99,25 @@ function AdminLayoutInner() {
   const location = useLocation();
   const { user, logout } = useAdminAuth();
   const [configOpen, setConfigOpen] = useState(false);
+  const [movementsBadge, setMovementsBadge] = useState(0);
 
   const role = (user?.role ?? "employee") as AdminRole;
   const visibleMain = mainLinks.filter((l) => l.roles.includes(role));
   const isAdmin = role === "admin";
+
+  // Fetch movements badge count
+  useEffect(() => {
+    const fetchBadge = async () => {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const [unassigned, pickups, returns] = await Promise.all([
+        supabase.from("reservations").select("id", { count: "exact", head: true }).is("vehicle_id", null).eq("status", "confirmed"),
+        supabase.from("reservations").select("id", { count: "exact", head: true }).eq("start_date", todayStr).in("status", ["confirmed", "active"]),
+        supabase.from("reservations").select("id", { count: "exact", head: true }).eq("end_date", todayStr).eq("status", "active"),
+      ]);
+      setMovementsBadge((unassigned.count ?? 0) + (pickups.count ?? 0) + (returns.count ?? 0));
+    };
+    fetchBadge();
+  }, []);
 
   // Check if any config link is active to auto-expand
   const configActive = configLinks.some((l) => location.pathname.startsWith(l.to));
