@@ -344,8 +344,10 @@ export default function AdminReservations() {
                     <TableCell>{r.vehicles?.plate ?? <span className="text-muted-foreground">Sin asignar</span>}</TableCell>
                     <TableCell className="text-xs">
                       {r.start_date ? format(parseISO(r.start_date), "dd/MM/yy") : "—"}
+                      {r.pickup_time ? ` ${r.pickup_time}` : ""}
                       {" → "}
                       {r.end_date ? format(parseISO(r.end_date), "dd/MM/yy") : "—"}
+                      {r.return_time ? ` ${r.return_time}` : ""}
                     </TableCell>
                     <TableCell className="text-center">{days}</TableCell>
                     <TableCell className="text-right font-medium">{r.total_amount != null ? `${Number(r.total_amount).toFixed(2)} €` : "—"}</TableCell>
