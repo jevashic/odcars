@@ -13,10 +13,6 @@ interface VehicleResult {
   transmission?: string;
   fuelType?: string;
   seats?: number;
-  seatsMin?: number;
-  seatsMax?: number;
-  transmissionNote?: string;
-  energyType?: string;
   doors?: number;
   quote: any;
   pricePerDay: number;
