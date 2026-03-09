@@ -173,7 +173,12 @@ function AdminLayoutInner() {
         </div>
         <nav className="flex-1 py-2 overflow-y-auto">
           {visibleMain.map((l) => (
-            <SidebarLink key={l.to} item={l} active={location.pathname.startsWith(l.to)} />
+            <SidebarLink
+              key={l.to}
+              item={l}
+              active={location.pathname.startsWith(l.to)}
+              badge={l.to === "/admin/movimientos" ? movementsBadge : undefined}
+            />
           ))}
 
           {/* Admin-only collapsible config section */}
