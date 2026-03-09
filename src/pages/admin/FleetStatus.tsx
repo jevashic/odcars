@@ -114,14 +114,86 @@ export default function FleetStatus() {
 
   const filtered = filter === "all" ? vehicles : vehicles.filter((v) => v.status === filter);
 
+  const getExportRows = () =>
+    filtered.map((v) => {
+      const activeRes = v.reservations?.[0];
+      const customer = activeRes?.customers;
+      const returnDate = activeRes?.end_date
+        ? format(parseISO(activeRes.end_date), "dd/MM/yyyy")
+        : "—";
+      return {
+        Matrícula: v.plate,
+        Vehículo: `${v.brand} ${v.model} ${v.year}`,
+        Categoría: v.vehicle_categories?.name || "—",
+        Color: v.color || "—",
+        Km: v.mileage?.toLocaleString() ?? "—",
+        Estado: STATUS_CONFIG[v.status]?.label || v.status,
+        Cliente: customer ? `${customer.first_name} ${customer.last_name}` : "—",
+        Teléfono: customer?.phone || "—",
+        Devolución: v.status === "rented" ? returnDate : "—",
+        "Nº Reserva": activeRes?.reservation_number || "—",
+      };
+    });
+
+  const handlePrint = () => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    const rows = getExportRows();
+    const headers = Object.keys(rows[0] || {});
+    printWindow.document.write(`<html><head><title>Estado Flota</title>
+      <style>table{border-collapse:collapse;width:100%;font-family:sans-serif;font-size:12px}
+      th,td{border:1px solid #ddd;padding:6px 8px;text-align:left}
+      th{background:#0D3B5E;color:#fff}</style></head><body>
+      <h2>Estado de la Flota</h2>
+      <table><thead><tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr></thead>
+      <tbody>${rows.map((r) => `<tr>${headers.map((h) => `<td>${(r as any)[h]}</td>`).join("")}</tr>`).join("")}</tbody>
+      </table></body></html>`);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
+  const handleExportPDF = async () => {
+    const rows = getExportRows();
+    const headers = Object.keys(rows[0] || {});
+    const doc = new jsPDF({ orientation: "landscape" });
+    doc.setFontSize(16);
+    doc.text("Estado de la Flota", 14, 15);
+    autoTable(doc, {
+      startY: 22,
+      head: [headers],
+      body: rows.map((r) => headers.map((h) => (r as any)[h])),
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [13, 59, 94] },
+    });
+    doc.save("estado-flota.pdf");
+  };
+
+  const handleExportExcel = () => {
+    const rows = getExportRows();
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Flota");
+    XLSX.writeFile(wb, "estado-flota.xlsx");
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-primary">Estado de la Flota</h1>
-        <Button onClick={fetchData} variant="outline" disabled={loading} className="gap-2">
-          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          ACTUALIZAR
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={handlePrint} variant="outline" size="sm" className="gap-2">
+            <Printer className="h-4 w-4" /> Imprimir
+          </Button>
+          <Button onClick={handleExportPDF} variant="outline" size="sm" className="gap-2">
+            <FileDown className="h-4 w-4" /> PDF
+          </Button>
+          <Button onClick={handleExportExcel} variant="outline" size="sm" className="gap-2">
+            <FileSpreadsheet className="h-4 w-4" /> Excel
+          </Button>
+          <Button onClick={fetchData} variant="outline" size="sm" disabled={loading} className="gap-2">
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Actualizar
+          </Button>
+        </div>
       </div>
 
       {/* Summary pills */}
