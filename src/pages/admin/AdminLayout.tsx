@@ -16,7 +16,7 @@ import {
   CalendarClock,
   Car,
   Layers,
-  DollarSign,
+  
   Package,
   Percent,
   Users,
