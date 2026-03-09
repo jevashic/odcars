@@ -314,6 +314,7 @@ export default function AdminReservations() {
               <TableHead>Fechas</TableHead>
               <TableHead className="text-center">Días</TableHead>
               <TableHead className="text-right">Total</TableHead>
+              <TableHead>Pago</TableHead>
               <TableHead>Canal</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
@@ -322,7 +323,7 @@ export default function AdminReservations() {
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
                   No se encontraron reservas.
                 </TableCell>
               </TableRow>
@@ -351,6 +352,11 @@ export default function AdminReservations() {
                     </TableCell>
                     <TableCell className="text-center">{days}</TableCell>
                     <TableCell className="text-right font-medium">{r.total_amount != null ? `${Number(r.total_amount).toFixed(2)} €` : "—"}</TableCell>
+                    <TableCell>
+                      {(r.payments as any[])?.some((p: any) => p.status === "paid" || p.status === "captured")
+                        ? <Badge className="bg-green-100 text-green-800 border-green-200 hover:bg-green-100">Pagado</Badge>
+                        : <Badge className="bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-100">Pendiente</Badge>}
+                    </TableCell>
                     <TableCell>{channel.icon} {channel.label}</TableCell>
                     <TableCell>{statusBadge(r.status)}</TableCell>
                     <TableCell className="text-right">
