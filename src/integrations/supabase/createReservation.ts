@@ -35,6 +35,8 @@ export interface ReservationPayload {
 export async function createReservation(payload: ReservationPayload) {
   const body = {
     ...payload,
+    pickup_time: payload.start_time,
+    return_time: payload.end_time,
     sale_branch_id: BRANCH_MASPALOMAS,
     pickup_branch_id: BRANCH_MASPALOMAS,
     return_branch_id: BRANCH_MASPALOMAS,
