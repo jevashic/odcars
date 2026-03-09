@@ -54,7 +54,7 @@ export default function VehicleResultCard({ vehicle, days, params, lp, t }: Prop
       {/* ZONE 1 — Vehicle Info */}
       <div className="md:w-1/4 p-4 flex flex-col items-center justify-between border-b md:border-b-0 md:border-r border-border">
         <h3 className="font-bold text-base text-foreground text-center leading-tight">
-          {displayName}
+          {displayName} <span className="text-xs font-normal text-muted-foreground">o similar</span>
         </h3>
         <p className="text-xs text-muted-foreground">{vehicle.categoryName}</p>
 
