@@ -31,6 +31,7 @@ export default function Extras() {
   const [params] = useSearchParams();
   const { t } = useLang();
   const navigate = useLangNavigate();
+  const rawNavigate = useNavigate();
   const [selected, setSelected] = useState<string[]>([]);
   const [extras, setExtras] = useState<ExtraItem[]>([]);
   const [loading, setLoading] = useState(true);
