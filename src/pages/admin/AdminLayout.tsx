@@ -74,7 +74,7 @@ const configLinks: NavItem[] = [
   { to: "/admin/historial", icon: Sliders, label: "Historial de cambios", roles: ["admin"] },
 ];
 
-function SidebarLink({ item, active }: { item: NavItem; active: boolean }) {
+function SidebarLink({ item, active, badge }: { item: NavItem; active: boolean; badge?: number }) {
   return (
     <Link
       to={item.to}
@@ -85,7 +85,12 @@ function SidebarLink({ item, active }: { item: NavItem; active: boolean }) {
       }`}
     >
       <item.icon className="h-4 w-4" />
-      {item.label}
+      <span className="flex-1">{item.label}</span>
+      {badge != null && badge > 0 && (
+        <span className="ml-auto bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+          {badge}
+        </span>
+      )}
     </Link>
   );
 }
