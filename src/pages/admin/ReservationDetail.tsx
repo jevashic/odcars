@@ -339,8 +339,8 @@ export default function ReservationDetail() {
                 <span className="text-muted-foreground">Forma de pago:</span>
                 <div className="flex items-center gap-2">
                   <span>{r.payment_method ?? "—"}</span>
-                  {payments.some((p: any) => p.status === "paid" || p.status === "captured")
-                    ? <Badge className="bg-green-100 text-green-800 border-green-200 hover:bg-green-100">Pagado</Badge>
+                  {payments.some((p: any) => p.payment_type === "signal")
+                    ? <Badge className="bg-green-100 text-green-800 border-green-200 hover:bg-green-100">Pagado online</Badge>
                     : <Badge className="bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-100">Pendiente de cobro</Badge>}
                 </div>
               </div>
