@@ -233,6 +233,18 @@ function AdminLayoutInner() {
       <div className="flex-1 flex flex-col overflow-y-auto">
         {/* Top bar with quick actions */}
         <header className="bg-white border-b border-[#E2E8F0] px-8 py-3 flex items-center justify-end gap-3 shrink-0">
+          <button
+            onClick={() => navigate("/admin/movimientos")}
+            className="relative p-2 rounded-lg text-foreground/60 hover:bg-accent transition-colors"
+            title="Movimientos pendientes"
+          >
+            <Mail className="h-5 w-5" />
+            {movementsBadge > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                {movementsBadge}
+              </span>
+            )}
+          </button>
           <Button
             onClick={() => { setSearchModalOpen(true); setSearchError(""); setSearchQuery(""); }}
             variant="outline"
