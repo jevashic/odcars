@@ -46,9 +46,13 @@ export default function SearchResults() {
 
     if (!rawSd || !rawEd) { setResults([]); setLoading(false); return; }
 
-    const sd = formatDateToISO(rawSd);
-    const ed = formatDateToISO(rawEd);
-    console.log('Fechas normalizadas:', { raw: { rawSd, rawEd }, normalized: { sd, ed } });
+    const sd = typeof rawSd === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(rawSd)
+      ? rawSd
+      : `${new Date(rawSd).getFullYear()}-${String(new Date(rawSd).getMonth()+1).padStart(2,'0')}-${String(new Date(rawSd).getDate()).padStart(2,'0')}`;
+    const ed = typeof rawEd === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(rawEd)
+      ? rawEd
+      : `${new Date(rawEd).getFullYear()}-${String(new Date(rawEd).getMonth()+1).padStart(2,'0')}-${String(new Date(rawEd).getDate()).padStart(2,'0')}`;
+    console.log('Fechas enviadas:', sd, ed);
 
     // PASO 1: Load all active categories and check availability
     const { data: categories, error: catError } = await supabase
