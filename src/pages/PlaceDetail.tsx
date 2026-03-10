@@ -150,7 +150,7 @@ export default function PlaceDetail() {
           <BannerZone position="gc_bottom" />
 
           {/* Bottom back button */}
-          <div className="mt-10 mb-4">{backLink}</div>
+          {!isMobile && <div className="mt-10 mb-4">{backLink}</div>}
         </div>
       </div>
     </PublicLayout>
