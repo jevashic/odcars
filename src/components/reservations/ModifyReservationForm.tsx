@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { CalendarIcon, Loader2, Edit } from 'lucide-react';
+import { CalendarIcon, Loader2, Edit, CreditCard, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { stripePromise } from '@/integrations/stripe/client';
 
 interface Props {
   reservation: any;
@@ -37,7 +39,23 @@ const TYPE_ICON: Record<string, string> = {
   other: '📍',
 };
 
-export default function ModifyReservationForm({ reservation, onUpdated, onCancel }: Props) {
+const CARD_OPTIONS = {
+  hidePostalCode: true,
+  style: {
+    base: {
+      fontSize: '16px',
+      color: '#424770',
+      '::placeholder': { color: '#aab7c4' },
+    },
+  },
+};
+
+type DiffType = 'charge' | 'refund' | 'none';
+
+function ModifyFormInner({ reservation, onUpdated, onCancel }: Props) {
+  const stripe = useStripe();
+  const elements = useElements();
+
   // Section 1 — Dates
   const [startDate, setStartDate] = useState<Date | undefined>(
     reservation.start_date ? parseISO(reservation.start_date) : undefined
@@ -55,13 +73,21 @@ export default function ModifyReservationForm({ reservation, onUpdated, onCancel
   const [extras, setExtras] = useState<Extra[]>([]);
   const [selectedExtraIds, setSelectedExtraIds] = useState<string[]>([]);
 
-  // Quote
+  // Quote & price comparison
   const [quote, setQuote] = useState<any>(null);
   const [deliveryCharge, setDeliveryCharge] = useState(0);
   const [totalFinal, setTotalFinal] = useState(0);
   const [loadingQuote, setLoadingQuote] = useState(false);
   const [saving, setSaving] = useState(false);
   const [unavailableMsg, setUnavailableMsg] = useState<string | null>(null);
+
+  // Price difference
+  const [diffType, setDiffType] = useState<DiffType>('none');
+  const [diffAmount, setDiffAmount] = useState(0);
+  const oldTotal = Number(reservation.total_amount) || 0;
+
+  // Stripe card state
+  const [cardComplete, setCardComplete] = useState(false);
 
   // Load locations & extras
   useEffect(() => {
@@ -70,17 +96,13 @@ export default function ModifyReservationForm({ reservation, onUpdated, onCancel
       .select('id, name, type, extra_charge')
       .eq('is_active', true)
       .order('sort_order')
-      .then(({ data }) => {
-        if (data) setLocations(data);
-      });
+      .then(({ data }) => { if (data) setLocations(data); });
 
     supabase
       .from('extras')
       .select('id, name, price_per_reservation')
       .eq('is_active', true)
-      .then(({ data }) => {
-        if (data) setExtras(data);
-      });
+      .then(({ data }) => { if (data) setExtras(data); });
   }, []);
 
   // Pre-select existing extras
@@ -98,7 +120,7 @@ export default function ModifyReservationForm({ reservation, onUpdated, onCancel
     setSelectedExtraIds(prev =>
       prev.includes(extraId) ? prev.filter(id => id !== extraId) : [...prev, extraId]
     );
-    setQuote(null); // Reset quote when extras change
+    setQuote(null);
   };
 
   const handleGetQuote = async () => {
@@ -115,7 +137,7 @@ export default function ModifyReservationForm({ reservation, onUpdated, onCancel
     setQuote(null);
     setUnavailableMsg(null);
     try {
-      const { data: quote, error: quoteError } = await supabase.rpc('get_quote', {
+      const { data: quoteData, error: quoteError } = await supabase.rpc('get_quote', {
         p_category_id: reservation.category_id,
         p_start_date: format(startDate, 'yyyy-MM-dd'),
         p_end_date: format(endDate, 'yyyy-MM-dd'),
@@ -125,15 +147,12 @@ export default function ModifyReservationForm({ reservation, onUpdated, onCancel
         p_exclude_reservation_id: reservation.id,
       });
 
-      console.log('Quote completo:', JSON.stringify(quote));
-
       if (quoteError) {
         toast({ title: 'Error calculando precio', description: quoteError.message, variant: 'destructive' });
         setLoadingQuote(false);
         return;
       }
-
-      if (!quote) {
+      if (!quoteData) {
         toast({ title: 'Error', description: 'No se recibió respuesta del cálculo.', variant: 'destructive' });
         setLoadingQuote(false);
         return;
@@ -142,8 +161,7 @@ export default function ModifyReservationForm({ reservation, onUpdated, onCancel
       const originalDays = Math.max(1, differenceInDays(parseISO(reservation.end_date), parseISO(reservation.start_date)));
       const newDaysCalc = Math.max(1, differenceInDays(endDate, startDate));
 
-      // If extending days and no availability → show contact message, no confirm
-      if (newDaysCalc > originalDays && !quote.available) {
+      if (newDaysCalc > originalDays && !quoteData.available) {
         setUnavailableMsg(
           'No hay disponibilidad para las fechas seleccionadas. Si necesitas ampliar tu reserva ponte en contacto con nuestra oficina: reservas@oceandrive.es o llámanos al +34 928 XXX XXX'
         );
@@ -151,19 +169,21 @@ export default function ModifyReservationForm({ reservation, onUpdated, onCancel
         return;
       }
 
-      // Shortening days or same days → always allow (ignore availability)
-      // Extending days with availability → also allow
       const pickupLoc = locations.find(l => l.id === pickupLocationId);
       const dc = pickupLoc?.extra_charge ?? 0;
-      const tf = (quote.total_amount ?? 0) + dc;
+      const tf = (quoteData.total_amount ?? 0) + dc;
 
-      console.log('total_amount:', quote.total_amount);
-      console.log('deliveryCharge:', dc);
-      console.log('totalFinal:', tf);
+      // Calculate difference
+      const diff = tf - oldTotal;
+      let dt: DiffType = 'none';
+      if (diff > 0.01) dt = 'charge';
+      else if (diff < -0.01) dt = 'refund';
 
-      setQuote(quote);
+      setQuote(quoteData);
       setDeliveryCharge(dc);
       setTotalFinal(tf);
+      setDiffType(dt);
+      setDiffAmount(Math.abs(diff));
     } catch (err: any) {
       toast({ title: 'Error', description: err.message, variant: 'destructive' });
     }
@@ -174,22 +194,51 @@ export default function ModifyReservationForm({ reservation, onUpdated, onCancel
     if (!quote) return;
     setSaving(true);
     try {
-      // 1. Update reservation
+      let paymentMethodId: string | undefined;
+
+      // If charge, create payment method with Stripe
+      if (diffType === 'charge') {
+        if (!stripe || !elements) {
+          toast({ title: 'Error', description: 'Stripe no está listo.', variant: 'destructive' });
+          setSaving(false);
+          return;
+        }
+        const cardElement = elements.getElement(CardElement);
+        if (!cardElement) {
+          toast({ title: 'Error', description: 'Introduce los datos de la tarjeta.', variant: 'destructive' });
+          setSaving(false);
+          return;
+        }
+        const { error: pmError, paymentMethod } = await stripe.createPaymentMethod({
+          type: 'card',
+          card: cardElement,
+        });
+        if (pmError || !paymentMethod) {
+          toast({ title: 'Error de pago', description: pmError?.message || 'No se pudo crear el método de pago.', variant: 'destructive' });
+          setSaving(false);
+          return;
+        }
+        paymentMethodId = paymentMethod.id;
+      }
+
+      // Update reservation
+      const updatePayload: any = {
+        start_date: format(startDate!, 'yyyy-MM-dd'),
+        end_date: format(endDate!, 'yyyy-MM-dd'),
+        pickup_location_id: pickupLocationId || null,
+        return_location_id: returnLocationId || null,
+        total_amount: totalFinal,
+        delivery_charge: deliveryCharge,
+      };
+
       const { error } = await supabase
         .from('reservations')
-        .update({
-          start_date: format(startDate!, 'yyyy-MM-dd'),
-          end_date: format(endDate!, 'yyyy-MM-dd'),
-          pickup_location_id: pickupLocationId || null,
-          return_location_id: returnLocationId || null,
-          total_amount: totalFinal,
-          delivery_charge: deliveryCharge,
-        })
+        .update(updatePayload)
         .eq('id', reservation.id);
 
       if (error) throw error;
 
-      // 2. Sync extras: delete old, insert new
+      // Sync extras
       await supabase
         .from('reservation_extras')
         .delete()
@@ -212,7 +261,13 @@ export default function ModifyReservationForm({ reservation, onUpdated, onCancel
         if (extErr) throw extErr;
       }
 
-      toast({ title: 'Reserva modificada correctamente', description: 'Los cambios se han guardado.' });
+      // TODO: If paymentMethodId exists, call edge function to charge the difference
+      // For now log it
+      if (paymentMethodId) {
+        console.log('Payment method created for charge:', paymentMethodId, 'Amount:', diffAmount);
+      }
+
+      toast({ title: '✓ Reserva modificada', description: 'Los cambios se han guardado correctamente.' });
 
       // Re-fetch reservation
       const { data: updated } = await supabase
@@ -229,6 +284,10 @@ export default function ModifyReservationForm({ reservation, onUpdated, onCancel
   };
 
   const newDays = startDate && endDate ? Math.max(1, differenceInDays(endDate, startDate)) : 0;
+
+  const canConfirm = quote && !unavailableMsg && (
+    diffType !== 'charge' || cardComplete
+  );
 
   return (
     <div className="bg-card rounded-2xl shadow-sm p-6 md:p-8 space-y-8">
@@ -357,7 +416,7 @@ export default function ModifyReservationForm({ reservation, onUpdated, onCancel
       {/* Calculate quote button */}
       <Button onClick={handleGetQuote} disabled={loadingQuote} variant="outline" className="w-full">
         {loadingQuote ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-        CALCULAR NUEVO PRECIO
+        VER PRECIO
       </Button>
 
       {/* Unavailability message */}
@@ -367,38 +426,103 @@ export default function ModifyReservationForm({ reservation, onUpdated, onCancel
         </div>
       )}
 
-      {/* Quote preview */}
+      {/* Quote preview with price comparison */}
       {quote && (
-        <div className="bg-accent rounded-lg p-4 space-y-2">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">Desglose del nuevo precio</p>
-          {quote.subtotal_car != null && (
-            <div className="flex justify-between text-sm">
-              <span>Alquiler ({quote.total_days ?? newDays} {(quote.total_days ?? newDays) > 1 ? 'días' : 'día'})</span>
-              <span>{Number(quote.subtotal_car).toFixed(2)} €</span>
-            </div>
-          )}
-          {quote.extras_total != null && Number(quote.extras_total) > 0 && (
-            <div className="flex justify-between text-sm">
-              <span>Extras</span>
-              <span>{Number(quote.extras_total).toFixed(2)} €</span>
-            </div>
-          )}
-          {deliveryCharge > 0 && (
-            <div className="flex justify-between text-sm">
-              <span>Entrega/recogida</span>
-              <span>{deliveryCharge.toFixed(2)} €</span>
-            </div>
-          )}
-          {quote.discount_amount != null && Number(quote.discount_amount) > 0 && (
-            <div className="flex justify-between text-sm text-green-600">
-              <span>Descuento</span>
-              <span>-{Number(quote.discount_amount).toFixed(2)} €</span>
-            </div>
-          )}
-          <div className="flex justify-between font-bold text-lg pt-2 border-t border-border">
-            <span>TOTAL</span>
-            <span className="text-primary">{totalFinal.toFixed(2)} €</span>
+        <div className="space-y-4">
+          {/* Detailed breakdown */}
+          <div className="bg-accent rounded-lg p-4 space-y-2">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">Desglose del nuevo precio</p>
+            {quote.subtotal_car != null && (
+              <div className="flex justify-between text-sm">
+                <span>Alquiler ({quote.total_days ?? newDays} {(quote.total_days ?? newDays) > 1 ? 'días' : 'día'})</span>
+                <span>{Number(quote.subtotal_car).toFixed(2)} €</span>
+              </div>
+            )}
+            {quote.extras_total != null && Number(quote.extras_total) > 0 && (
+              <div className="flex justify-between text-sm">
+                <span>Extras</span>
+                <span>{Number(quote.extras_total).toFixed(2)} €</span>
+              </div>
+            )}
+            {deliveryCharge > 0 && (
+              <div className="flex justify-between text-sm">
+                <span>Entrega/recogida</span>
+                <span>{deliveryCharge.toFixed(2)} €</span>
+              </div>
+            )}
+            {quote.discount_amount != null && Number(quote.discount_amount) > 0 && (
+              <div className="flex justify-between text-sm text-emerald-600">
+                <span>Descuento</span>
+                <span>-{Number(quote.discount_amount).toFixed(2)} €</span>
+              </div>
+            )}
           </div>
+
+          {/* Price comparison */}
+          <div className="bg-card border border-border rounded-lg p-4 space-y-3">
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-muted-foreground">Precio anterior</span>
+              <span className="line-through text-muted-foreground">{oldTotal.toFixed(2)} €</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="font-bold text-base">Precio nuevo</span>
+              <span className="font-bold text-xl text-primary">{totalFinal.toFixed(2)} €</span>
+            </div>
+            <div className="border-t border-border pt-3">
+              {diffType === 'charge' && (
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold text-sm">Diferencia a cobrar</span>
+                  <span className="font-bold text-lg text-destructive">+{diffAmount.toFixed(2)} €</span>
+                </div>
+              )}
+              {diffType === 'refund' && (
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold text-sm">Diferencia a devolver</span>
+                  <span className="font-bold text-lg text-emerald-600">−{diffAmount.toFixed(2)} €</span>
+                </div>
+              )}
+              {diffType === 'none' && (
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold text-sm">Diferencia</span>
+                  <span className="font-bold text-sm text-muted-foreground">Sin coste adicional</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Conditional: Stripe card for charge */}
+          {diffType === 'charge' && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                <CreditCard className="h-4 w-4 text-primary" />
+                <span>Introduce tu tarjeta para abonar la diferencia</span>
+              </div>
+              <div className="border border-border rounded-lg p-4 bg-background">
+                <CardElement
+                  options={CARD_OPTIONS}
+                  onChange={(e) => setCardComplete(e.complete)}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Refund message */}
+          {diffType === 'refund' && (
+            <div className="bg-emerald-50 border border-emerald-300 text-emerald-700 rounded-lg p-4 text-sm flex items-start gap-2">
+              <CheckCircle className="h-5 w-5 shrink-0 mt-0.5" />
+              <p>
+                Tienes un saldo a tu favor de <strong>{diffAmount.toFixed(2)} €</strong>.
+                Nos pondremos en contacto contigo a la mayor brevedad para gestionar el reembolso.
+              </p>
+            </div>
+          )}
+
+          {/* No difference message */}
+          {diffType === 'none' && (
+            <div className="bg-accent border border-border text-foreground rounded-lg p-4 text-sm text-center font-medium">
+              Sin coste adicional
+            </div>
+          )}
         </div>
       )}
 
@@ -406,12 +530,25 @@ export default function ModifyReservationForm({ reservation, onUpdated, onCancel
       <div className="flex gap-3">
         <Button variant="outline" onClick={onCancel} className="flex-1">Cancelar</Button>
         {quote && (
-          <Button onClick={handleSave} disabled={saving} className="flex-1 bg-cta text-cta-foreground hover:opacity-90">
+          <Button
+            onClick={handleSave}
+            disabled={saving || !canConfirm}
+            className="flex-1 bg-cta text-cta-foreground hover:opacity-90"
+          >
             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
             CONFIRMAR CAMBIOS
           </Button>
         )}
       </div>
     </div>
+  );
+}
+
+// Wrapper with Stripe Elements provider
+export default function ModifyReservationForm(props: Props) {
+  return (
+    <Elements stripe={stripePromise}>
+      <ModifyFormInner {...props} />
+    </Elements>
   );
 }
