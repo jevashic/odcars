@@ -72,10 +72,17 @@ export default function SearchBar({ onSearch, initialParams }: SearchBarProps) {
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
+    const fmtLocal = (d: Date) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${dd}`;
+    };
+
     const params = new URLSearchParams({
       pickup,
-      pickupDate: pickupDate!.toISOString(),
-      returnDate: returnDate!.toISOString(),
+      pickupDate: fmtLocal(pickupDate!),
+      returnDate: fmtLocal(returnDate!),
       pickupTime,
       returnTime,
       age,
