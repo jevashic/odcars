@@ -109,30 +109,29 @@ function AdminLayoutInner() {
 
   // Reactive movements badge via react-query (refetches every 60s)
   const badgeQuery = useQuery({
-    queryKey: ["movements-badge"],
+    queryKey: ["movements-badge", user?.id],
+    enabled: !!user,
     queryFn: async () => {
+      // Ensure we have a valid session before querying
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.log("[MovementsBadge] No session, skipping");
+        return 0;
+      }
+
       const today = new Date().toISOString().split("T")[0];
 
-      const { count: sinVehiculo } = await supabase
-        .from("reservations")
-        .select("*", { count: "exact", head: true })
-        .is("vehicle_id", null)
-        .eq("status", "confirmed");
+      const [r1, r2, r3] = await Promise.all([
+        supabase.from("reservations").select("*", { count: "exact", head: true }).is("vehicle_id", null).eq("status", "confirmed"),
+        supabase.from("reservations").select("*", { count: "exact", head: true }).eq("start_date", today).in("status", ["confirmed", "active"]),
+        supabase.from("reservations").select("*", { count: "exact", head: true }).eq("end_date", today).eq("status", "active"),
+      ]);
 
-      const { count: entregasHoy } = await supabase
-        .from("reservations")
-        .select("*", { count: "exact", head: true })
-        .eq("start_date", today)
-        .in("status", ["confirmed", "active"]);
-
-      const { count: devolucionesHoy } = await supabase
-        .from("reservations")
-        .select("*", { count: "exact", head: true })
-        .eq("end_date", today)
-        .eq("status", "active");
-
-      const total = (sinVehiculo ?? 0) + (entregasHoy ?? 0) + (devolucionesHoy ?? 0);
-      console.log("[MovementsBadge]", { sinVehiculo, entregasHoy, devolucionesHoy, total, today });
+      const sinVehiculo = r1.count ?? 0;
+      const entregasHoy = r2.count ?? 0;
+      const devolucionesHoy = r3.count ?? 0;
+      const total = sinVehiculo + entregasHoy + devolucionesHoy;
+      console.log("[MovementsBadge]", { sinVehiculo, entregasHoy, devolucionesHoy, total, today, session: !!session });
       return total;
     },
     refetchInterval: 60_000,
