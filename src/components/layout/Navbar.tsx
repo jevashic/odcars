@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Menu, Globe } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Menu, Globe, ArrowLeft } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useLang } from '@/contexts/LanguageContext';
 import { useLangPath } from '@/hooks/useLangNavigate';
 import logoHorizontal from '@/assets/logo-horizontal.png';
