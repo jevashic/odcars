@@ -101,7 +101,7 @@ export default function AuditHistory() {
     const to = from + PAGE_SIZE - 1;
 
     let q = supabase
-      .from("audit_log")
+      .from("audit_logs")
       .select("*", { count: "exact" })
       .order("created_at", { ascending: false })
       .range(from, to);
