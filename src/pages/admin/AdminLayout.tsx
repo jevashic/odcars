@@ -107,19 +107,21 @@ function AdminLayoutInner() {
   const visibleMain = mainLinks.filter((l) => l.roles.includes(role));
   const isAdmin = role === "admin";
 
-  // Fetch movements badge count
-  useEffect(() => {
-    const fetchBadge = async () => {
+  // Reactive movements badge via react-query (refetches every 30s)
+  const badgeQuery = useQuery({
+    queryKey: ["movements-badge"],
+    queryFn: async () => {
       const todayStr = new Date().toISOString().slice(0, 10);
       const [unassigned, pickups, returns] = await Promise.all([
         supabase.from("reservations").select("id", { count: "exact", head: true }).is("vehicle_id", null).eq("status", "confirmed"),
         supabase.from("reservations").select("id", { count: "exact", head: true }).eq("start_date", todayStr).in("status", ["confirmed", "active"]),
         supabase.from("reservations").select("id", { count: "exact", head: true }).eq("end_date", todayStr).eq("status", "active"),
       ]);
-      setMovementsBadge((unassigned.count ?? 0) + (pickups.count ?? 0) + (returns.count ?? 0));
-    };
-    fetchBadge();
-  }, []);
+      return (unassigned.count ?? 0) + (pickups.count ?? 0) + (returns.count ?? 0);
+    },
+    refetchInterval: 30_000,
+  });
+  const movementsBadge = badgeQuery.data ?? 0;
 
   // Check if any config link is active to auto-expand
   const configActive = configLinks.some((l) => location.pathname.startsWith(l.to));
