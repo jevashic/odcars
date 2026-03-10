@@ -84,7 +84,7 @@ export default function ChatWidget() {
 
   // Display messages: prepend welcome message as assistant
   const displayMessages: { role: 'user' | 'assistant'; content: string }[] = [
-    { role: 'assistant', content: WELCOME_MSG },
+    { role: 'assistant', content: WELCOME[lang] || WELCOME.es },
     ...history,
   ];
 
