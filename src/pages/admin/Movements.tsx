@@ -43,7 +43,7 @@ function useUnassigned() {
         .from("reservations")
         .select("id, reservation_number, start_date, vehicle_categories(name), customers(first_name, last_name, phone)")
         .is("vehicle_id", null)
-        .eq("status", "confirmed")
+        .eq("status", "pending")
         .order("start_date");
       if (error) throw error;
       return data ?? [];
