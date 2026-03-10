@@ -91,7 +91,7 @@ export default function SearchResults() {
       .from('vehicles')
       .select('*, vehicle_categories(name, image_url, price_per_day)')
       .in('category_id', availableCatIds)
-      .not('status', 'in', '("maintenance","inactive")')
+      .in('status', ['available', 'rented'])
       .order('created_at', { ascending: true });
 
     console.log('PASO 2: Vehículos encontrados:', vehicles?.length, vehicles?.map(v => ({ id: v.id, brand: v.brand, model: v.model, cat: v.category_id, status: v.status })));
