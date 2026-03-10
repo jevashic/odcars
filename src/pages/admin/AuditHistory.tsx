@@ -118,6 +118,7 @@ export default function AuditHistory() {
     }
 
     const { data, error, count } = await q;
+    console.log("[AuditHistory] query result:", { data, error, count });
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
       setLoading(false);
