@@ -104,7 +104,7 @@ export default function AdminInvoiceDetail() {
     enabled: !!id,
     queryFn: async () => {
       const { data } = await supabase
-        .from("audit_log")
+        .from("audit_logs")
         .select("*")
         .eq("record_id", id!)
         .order("created_at", { ascending: false });

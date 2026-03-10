@@ -139,7 +139,7 @@ export default function ReservationDetail() {
     queryKey: ["admin-audit-reservation", id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("audit_log")
+        .from("audit_logs")
         .select("*")
         .eq("record_id", id!)
         .order("created_at", { ascending: false });

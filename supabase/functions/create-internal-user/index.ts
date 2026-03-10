@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
     }
 
     // 5. Audit log
-    await adminClient.from("audit_log").insert({
+    await adminClient.from("audit_logs").insert({
       performed_by: callerId,
       action: "insert",
       table_name: "internal_users",
