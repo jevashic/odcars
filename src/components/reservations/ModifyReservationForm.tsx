@@ -221,55 +221,35 @@ function ModifyFormInner({ reservation, onUpdated, onCancel }: Props) {
         paymentMethodId = paymentMethod.id;
       }
 
-      // Update reservation
-      const updatePayload: any = {
+      // Call Edge Function to handle everything server-side
+      const body: any = {
+        reservation_id: reservation.id,
         start_date: format(startDate!, 'yyyy-MM-dd'),
         end_date: format(endDate!, 'yyyy-MM-dd'),
-        pickup_location_id: pickupLocationId || null,
-        return_location_id: returnLocationId || null,
-        total_amount: totalFinal,
-        delivery_charge: deliveryCharge,
+        modified_by_role: 'customer',
       };
-
-      const { error } = await supabase
-        .from('reservations')
-        .update(updatePayload)
-        .eq('id', reservation.id);
-
-      if (error) throw error;
-
-      // Sync extras
-      await supabase
-        .from('reservation_extras')
-        .delete()
-        .eq('reservation_id', reservation.id);
-
-      if (selectedExtraIds.length > 0) {
-        const rows = selectedExtraIds.map(eid => {
-          const ext = extras.find(e => e.id === eid);
-          return {
-            reservation_id: reservation.id,
-            extra_id: eid,
-            extra_name: ext?.name || '',
-            quantity: 1,
-            unit_price: ext?.price_per_reservation || 0,
-          };
-        });
-        const { error: extErr } = await supabase
-          .from('reservation_extras')
-          .insert(rows);
-        if (extErr) throw extErr;
-      }
-
-      // TODO: If paymentMethodId exists, call edge function to charge the difference
-      // For now log it
       if (paymentMethodId) {
-        console.log('Payment method created for charge:', paymentMethodId, 'Amount:', diffAmount);
+        body.payment_method_id = paymentMethodId;
       }
+
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://sqmganbjiisitgumsztv.supabase.co';
+      const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNxbWdhbmJqaWlzaXRndW1zenR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2NjkwOTEsImV4cCI6MjA4NzI0NTA5MX0.NIVT-p-_wa0PKaufK8vPYsgyegDFAiHAuUw60uWQYrQ';
+
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/modify_reservation`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      const result = await res.json();
+      if (result.error) throw new Error(result.error);
 
       toast({ title: '✓ Reserva modificada', description: 'Los cambios se han guardado correctamente.' });
 
-      // Re-fetch reservation
+      // Re-fetch reservation to get updated data
       const { data: updated } = await supabase
         .from('reservations')
         .select(`id, reservation_number, status, start_date, end_date, total_amount, extras_total, discount_amount, delivery_charge, delivery_details, insurance_tier_snapshot, tax_amount, sale_channel, notes, created_at, category_id, pickup_location_id, return_location_id, customers(first_name, last_name, email, phone), vehicle_categories(name, image_url), vehicles(plate, brand, model), reservation_extras(extra_name, quantity, unit_price, subtotal)`)
