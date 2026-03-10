@@ -41,7 +41,7 @@ export default function ChatWidget() {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
           },
-          body: JSON.stringify({ messages: updated, lang }),
+          body: JSON.stringify({ messages: updated }),
         }
       );
       const data = await response.json();
