@@ -429,34 +429,6 @@ function ModifyFormInner({ reservation, onUpdated, onCancel }: Props) {
       {/* Quote preview with price comparison */}
       {quote && (
         <div className="space-y-4">
-          {/* Detailed breakdown */}
-          <div className="bg-accent rounded-lg p-4 space-y-2">
-            <p className="text-xs text-muted-foreground uppercase tracking-wider">Desglose del nuevo precio</p>
-            {quote.subtotal_car != null && (
-              <div className="flex justify-between text-sm">
-                <span>Alquiler ({quote.total_days ?? newDays} {(quote.total_days ?? newDays) > 1 ? 'días' : 'día'})</span>
-                <span>{Number(quote.subtotal_car).toFixed(2)} €</span>
-              </div>
-            )}
-            {quote.extras_total != null && Number(quote.extras_total) > 0 && (
-              <div className="flex justify-between text-sm">
-                <span>Extras</span>
-                <span>{Number(quote.extras_total).toFixed(2)} €</span>
-              </div>
-            )}
-            {deliveryCharge > 0 && (
-              <div className="flex justify-between text-sm">
-                <span>Entrega/recogida</span>
-                <span>{deliveryCharge.toFixed(2)} €</span>
-              </div>
-            )}
-            {quote.discount_amount != null && Number(quote.discount_amount) > 0 && (
-              <div className="flex justify-between text-sm text-emerald-600">
-                <span>Descuento</span>
-                <span>-{Number(quote.discount_amount).toFixed(2)} €</span>
-              </div>
-            )}
-          </div>
 
           {/* Price comparison */}
           <div className="bg-card border border-border rounded-lg p-4 space-y-3">
