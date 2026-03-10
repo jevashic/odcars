@@ -141,8 +141,12 @@ export default function Confirmation() {
               </div>
             )}
 
-            {/* Pending payment notice for office payment */}
-            {!reservation.pay_signal && (
+            {/* Payment status notice */}
+            {reservation.payment_method === 'card_online' ? (
+              <div className="bg-emerald-50 border border-emerald-300 text-emerald-700 rounded-lg px-4 py-3 text-center font-bold text-sm tracking-wide">
+                ✓ Pago realizado online con tarjeta
+              </div>
+            ) : (
               <div className="bg-orange-50 border border-orange-300 text-orange-700 rounded-lg px-4 py-3 text-center font-bold text-sm tracking-wide">
                 PENDIENTE DE PAGO · Abona el importe al recoger el vehículo
               </div>
