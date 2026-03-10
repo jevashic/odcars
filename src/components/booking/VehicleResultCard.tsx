@@ -137,7 +137,7 @@ export default function VehicleResultCard({ vehicle, days, params, lp, t }: Prop
               </div>
 
               {/* Pay online */}
-              <div className="p-3 flex flex-col items-center gap-1 bg-primary">
+              <div className="p-3 flex flex-col items-center gap-1" style={{ backgroundColor: '#1A3A4A' }}>
                 <p className="font-bold text-[10px] uppercase tracking-wider text-cta">
                   Pagar ahora
                 </p>
@@ -288,7 +288,7 @@ export default function VehicleResultCard({ vehicle, days, params, lp, t }: Prop
       </div>
 
       {/* ZONE 4 — Pay Online */}
-      <div className="md:w-1/4 p-4 flex flex-col items-center justify-center gap-2 md:rounded-r-2xl" style={{ backgroundColor: '#0D3B5E' }}>
+      <div className="md:w-1/4 p-4 flex flex-col items-center justify-center gap-2 md:rounded-r-2xl" style={{ backgroundColor: '#1A3A4A' }}>
         <p className="font-bold text-xs uppercase tracking-wider" style={{ color: '#F2B705' }}>
           Pagar ahora
         </p>
