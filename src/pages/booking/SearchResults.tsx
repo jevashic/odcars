@@ -23,10 +23,18 @@ export default function SearchResults() {
   const endDate = params.get('returnDate');
   const days = startDate && endDate ? Math.max(differenceInDays(new Date(endDate), new Date(startDate)), 1) : 1;
 
+  const formatDateToISO = (date: string | Date): string => {
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const loadResults = useCallback(async (searchParams: URLSearchParams) => {
     const pickupId = searchParams.get('pickup') || '';
-    const sd = searchParams.get('pickupDate');
-    const ed = searchParams.get('returnDate');
+    const rawSd = searchParams.get('pickupDate');
+    const rawEd = searchParams.get('returnDate');
 
     if (pickupId) {
       const { data } = await supabase.from('branches').select('show_surcharge_warning').eq('id', pickupId).maybeSingle();
@@ -36,7 +44,11 @@ export default function SearchResults() {
     setLoading(true);
     setHasSearched(true);
 
-    if (!sd || !ed) { setResults([]); setLoading(false); return; }
+    if (!rawSd || !rawEd) { setResults([]); setLoading(false); return; }
+
+    const sd = formatDateToISO(rawSd);
+    const ed = formatDateToISO(rawEd);
+    console.log('Fechas normalizadas:', { raw: { rawSd, rawEd }, normalized: { sd, ed } });
 
     // PASO 1: Load all active categories and check availability
     const { data: categories, error: catError } = await supabase
