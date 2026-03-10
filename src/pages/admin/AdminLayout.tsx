@@ -101,7 +101,7 @@ function AdminLayoutInner() {
   const location = useLocation();
   const { user, logout } = useAdminAuth();
   const [configOpen, setConfigOpen] = useState(false);
-  const [movementsBadge, setMovementsBadge] = useState(0);
+  
 
   const role = (user?.role ?? "employee") as AdminRole;
   const visibleMain = mainLinks.filter((l) => l.roles.includes(role));
