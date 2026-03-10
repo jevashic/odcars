@@ -75,7 +75,7 @@ function useReturns(date: string) {
         .from("reservations")
         .select("id, reservation_number, end_date, return_time, vehicles(plate, brand, model), customers(first_name, last_name, phone), return_locations(name)")
         .eq("end_date", date)
-        .eq("status", "active")
+        .in("status", ["pending", "confirmed", "active"])
         .order("return_time");
       if (error) throw error;
       return data ?? [];

@@ -122,9 +122,9 @@ function AdminLayoutInner() {
       const today = new Date().toISOString().split("T")[0];
 
       const [r1, r2, r3] = await Promise.all([
-        supabase.from("reservations").select("*", { count: "exact", head: true }).is("vehicle_id", null).eq("status", "confirmed"),
-        supabase.from("reservations").select("*", { count: "exact", head: true }).eq("start_date", today).in("status", ["confirmed", "active"]),
-        supabase.from("reservations").select("*", { count: "exact", head: true }).eq("end_date", today).eq("status", "active"),
+        supabase.from("reservations").select("*", { count: "exact", head: true }).is("vehicle_id", null).eq("status", "pending"),
+        supabase.from("reservations").select("*", { count: "exact", head: true }).eq("start_date", today).in("status", ["pending", "confirmed", "active"]),
+        supabase.from("reservations").select("*", { count: "exact", head: true }).eq("end_date", today).in("status", ["pending", "confirmed", "active"]),
       ]);
 
       const sinVehiculo = r1.count ?? 0;
