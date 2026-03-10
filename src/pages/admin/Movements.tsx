@@ -43,7 +43,7 @@ function useUnassigned() {
         .from("reservations")
         .select("id, reservation_number, start_date, vehicle_categories(name), customers(first_name, last_name, phone)")
         .is("vehicle_id", null)
-        .eq("status", "confirmed")
+        .eq("status", "pending")
         .order("start_date");
       if (error) throw error;
       return data ?? [];
@@ -59,7 +59,7 @@ function usePickups(date: string) {
         .from("reservations")
         .select("id, reservation_number, start_date, pickup_time, vehicles(plate, brand, model), customers(first_name, last_name, phone), pickup_locations(name)")
         .eq("start_date", date)
-        .in("status", ["confirmed", "active"])
+        .in("status", ["pending", "confirmed", "active"])
         .order("pickup_time");
       if (error) throw error;
       return data ?? [];
@@ -75,7 +75,7 @@ function useReturns(date: string) {
         .from("reservations")
         .select("id, reservation_number, end_date, return_time, vehicles(plate, brand, model), customers(first_name, last_name, phone), return_locations(name)")
         .eq("end_date", date)
-        .eq("status", "active")
+        .in("status", ["pending", "confirmed", "active"])
         .order("return_time");
       if (error) throw error;
       return data ?? [];
