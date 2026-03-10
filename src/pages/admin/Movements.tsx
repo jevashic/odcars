@@ -59,7 +59,7 @@ function usePickups(date: string) {
         .from("reservations")
         .select("id, reservation_number, start_date, pickup_time, vehicles(plate, brand, model), customers(first_name, last_name, phone), pickup_locations(name)")
         .eq("start_date", date)
-        .in("status", ["confirmed", "active"])
+        .in("status", ["pending", "confirmed", "active"])
         .order("pickup_time");
       if (error) throw error;
       return data ?? [];
