@@ -18,9 +18,15 @@ export default function Navbar() {
   const { t, lang, setLang } = useLang();
   const lp = useLangPath();
   const location = useLocation();
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const isHome = location.pathname === `/${lang}` || location.pathname === `/${lang}/`;
   const [scrolled, setScrolled] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
+
+  // Detect if we're on a place detail page
+  const isPlaceDetail = /\/conoce-gran-canaria\/[^/]+/.test(location.pathname);
+  const showBackArrow = isMobile && isPlaceDetail;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 80);
@@ -49,10 +55,21 @@ export default function Navbar() {
       className={`fixed top-0 left-0 right-0 z-50 h-20 transition-all duration-300 ${bgClass}`}
     >
       <nav className="container h-full flex items-center justify-between gap-4">
-        {/* Logo */}
-        <Link to={lp('/')} className="shrink-0">
-          <img src={logoHorizontal} alt="Ocean Drive Rent a Car" className="h-[50px] md:h-[76px]" />
-        </Link>
+        {/* Back arrow + Logo */}
+        <div className="flex items-center shrink-0">
+          {showBackArrow && (
+            <button
+              onClick={() => navigate(lp('/conoce-gran-canaria'))}
+              className="mr-2 p-1 -ml-1"
+              aria-label={t('discover.back')}
+            >
+              <ArrowLeft className="h-6 w-6 text-black" />
+            </button>
+          )}
+          <Link to={lp('/')} className="shrink-0">
+            <img src={logoHorizontal} alt="Ocean Drive Rent a Car" className="h-[50px] md:h-[76px]" />
+          </Link>
+        </div>
 
         {/* Desktop links */}
         <div className="hidden md:flex items-center gap-6">
