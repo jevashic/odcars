@@ -120,7 +120,7 @@ export default function PlaceDetail() {
     <PublicLayout>
       <div className="pt-20 section-padding">
         <div className="container max-w-4xl">
-          <div className="mb-6">{backLink}</div>
+          {!isMobile && <div className="mb-6">{backLink}</div>}
 
           {/* Photo gallery: carousel on mobile, grid on desktop */}
           {isMobile ? (
@@ -150,7 +150,7 @@ export default function PlaceDetail() {
           <BannerZone position="gc_bottom" />
 
           {/* Bottom back button */}
-          <div className="mt-10 mb-4">{backLink}</div>
+          {!isMobile && <div className="mt-10 mb-4">{backLink}</div>}
         </div>
       </div>
     </PublicLayout>
