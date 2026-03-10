@@ -137,7 +137,7 @@ export default function VehicleResultCard({ vehicle, days, params, lp, t }: Prop
               </div>
 
               {/* Pay online */}
-              <div className="p-3 flex flex-col items-center gap-1 bg-primary">
+              <div className="p-3 flex flex-col items-center gap-1" style={{ backgroundColor: '#1A3A4A' }}>
                 <p className="font-bold text-[10px] uppercase tracking-wider text-cta">
                   Pagar ahora
                 </p>
