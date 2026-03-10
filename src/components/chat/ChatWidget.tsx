@@ -2,15 +2,24 @@ import { useState, useRef, useEffect } from 'react';
 import { MessageCircle, X, Send, Bot, Mic } from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/integrations/supabase/client';
+import { useLang } from '@/contexts/LanguageContext';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
 }
 
-const WELCOME_MSG = '¡Hola! Soy Guaci, tu asistente personal de Ocean Drive.\n¿En qué puedo ayudarte?';
+const WELCOME: Record<string, string> = {
+  es: '¡Hola! Soy Guaci, tu asistente personal de Ocean Drive.\n¿En qué puedo ayudarte?',
+  en: "Hi! I'm Guaci, your Ocean Drive personal assistant.\nHow can I help you?",
+  de: 'Hallo! Ich bin Guaci, dein persönlicher Ocean Drive Assistent.\nWie kann ich dir helfen?',
+  sv: 'Hej! Jag är Guaci, din personliga Ocean Drive-assistent.\nHur kan jag hjälpa dig?',
+  no: 'Hei! Jeg er Guaci, din personlige Ocean Drive-assistent.\nHvordan kan jeg hjelpe deg?',
+  fr: "Bonjour ! Je suis Guaci, votre assistant personnel Ocean Drive.\nComment puis-je vous aider ?",
+};
 
 export default function ChatWidget() {
+  const { lang } = useLang();
   const [open, setOpen] = useState(false);
   const [history, setHistory] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -41,7 +50,7 @@ export default function ChatWidget() {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
           },
-          body: JSON.stringify({ messages: updated }),
+          body: JSON.stringify({ messages: updated, lang }),
         }
       );
       const data = await response.json();
@@ -75,7 +84,7 @@ export default function ChatWidget() {
 
   // Display messages: prepend welcome message as assistant
   const displayMessages: { role: 'user' | 'assistant'; content: string }[] = [
-    { role: 'assistant', content: WELCOME_MSG },
+    { role: 'assistant', content: WELCOME[lang] || WELCOME.es },
     ...history,
   ];
 
