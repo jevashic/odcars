@@ -48,7 +48,7 @@ const CHANNEL_MAP: Record<string, string> = {
 };
 
 async function writeAudit(userId: string, action: string, tableName: string, recordId: string, oldData: unknown, newData: unknown) {
-  await supabase.from("audit_log").insert({
+  await supabase.from("audit_logs").insert({
     performed_by: userId, action, table_name: tableName, record_id: recordId,
     old_data: oldData as any, new_data: newData as any,
   });
@@ -139,7 +139,7 @@ export default function ReservationDetail() {
     queryKey: ["admin-audit-reservation", id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("audit_log")
+        .from("audit_logs")
         .select("*")
         .eq("record_id", id!)
         .order("created_at", { ascending: false });

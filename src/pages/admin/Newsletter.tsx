@@ -39,7 +39,7 @@ async function writeAudit(
   userId: string, action: string, tableName: string,
   recordId: string, oldData: unknown, newData: unknown,
 ) {
-  await supabase.from("audit_log").insert({
+  await supabase.from("audit_logs").insert({
     performed_by: userId, action, table_name: tableName,
     record_id: recordId, old_data: oldData, new_data: newData,
   });

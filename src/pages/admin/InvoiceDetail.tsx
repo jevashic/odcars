@@ -28,7 +28,7 @@ async function writeAudit(
   userId: string, action: string, tableName: string,
   recordId: string, oldData: unknown, newData: unknown
 ) {
-  await supabase.from("audit_log").insert({
+  await supabase.from("audit_logs").insert({
     performed_by: userId, action, table_name: tableName,
     record_id: recordId, old_data: oldData as any, new_data: newData as any,
   });
@@ -104,7 +104,7 @@ export default function AdminInvoiceDetail() {
     enabled: !!id,
     queryFn: async () => {
       const { data } = await supabase
-        .from("audit_log")
+        .from("audit_logs")
         .select("*")
         .eq("record_id", id!)
         .order("created_at", { ascending: false });
