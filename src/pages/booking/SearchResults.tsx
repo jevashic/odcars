@@ -53,6 +53,8 @@ export default function SearchResults() {
       ? rawEd
       : `${new Date(rawEd).getFullYear()}-${String(new Date(rawEd).getMonth()+1).padStart(2,'0')}-${String(new Date(rawEd).getDate()).padStart(2,'0')}`;
     console.log('Fechas enviadas:', sd, ed);
+    // DEBUG TEMPORAL — borrar cuando se confirme que funciona
+    alert(`DEBUG fechas:\nrawSd=${rawSd}\nrawEd=${rawEd}\nsd=${sd}\ned=${ed}`);
 
     // PASO 1: Load all active categories and check availability
     const { data: categories, error: catError } = await supabase
