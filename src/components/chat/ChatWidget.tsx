@@ -11,7 +11,6 @@ interface ChatMessage {
 const WELCOME_MSG = '¡Hola! Soy Guaci, tu asistente personal de Ocean Drive.\n¿En qué puedo ayudarte?';
 
 export default function ChatWidget() {
-  const { lang } = useLang();
   const [open, setOpen] = useState(false);
   const [history, setHistory] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
