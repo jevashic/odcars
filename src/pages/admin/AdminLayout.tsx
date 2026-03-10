@@ -107,19 +107,35 @@ function AdminLayoutInner() {
   const visibleMain = mainLinks.filter((l) => l.roles.includes(role));
   const isAdmin = role === "admin";
 
-  // Reactive movements badge via react-query (refetches every 30s)
+  // Reactive movements badge via react-query (refetches every 60s)
   const badgeQuery = useQuery({
     queryKey: ["movements-badge"],
     queryFn: async () => {
-      const todayStr = new Date().toISOString().slice(0, 10);
-      const [unassigned, pickups, returns] = await Promise.all([
-        supabase.from("reservations").select("id", { count: "exact", head: true }).is("vehicle_id", null).eq("status", "confirmed"),
-        supabase.from("reservations").select("id", { count: "exact", head: true }).eq("start_date", todayStr).in("status", ["confirmed", "active"]),
-        supabase.from("reservations").select("id", { count: "exact", head: true }).eq("end_date", todayStr).eq("status", "active"),
-      ]);
-      return (unassigned.count ?? 0) + (pickups.count ?? 0) + (returns.count ?? 0);
+      const today = new Date().toISOString().split("T")[0];
+
+      const { count: sinVehiculo } = await supabase
+        .from("reservations")
+        .select("*", { count: "exact", head: true })
+        .is("vehicle_id", null)
+        .eq("status", "confirmed");
+
+      const { count: entregasHoy } = await supabase
+        .from("reservations")
+        .select("*", { count: "exact", head: true })
+        .eq("start_date", today)
+        .in("status", ["confirmed", "active"]);
+
+      const { count: devolucionesHoy } = await supabase
+        .from("reservations")
+        .select("*", { count: "exact", head: true })
+        .eq("end_date", today)
+        .eq("status", "active");
+
+      const total = (sinVehiculo ?? 0) + (entregasHoy ?? 0) + (devolucionesHoy ?? 0);
+      console.log("[MovementsBadge]", { sinVehiculo, entregasHoy, devolucionesHoy, total, today });
+      return total;
     },
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
   });
   const movementsBadge = badgeQuery.data ?? 0;
 
