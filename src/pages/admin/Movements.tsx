@@ -17,10 +17,13 @@ import {
 } from "@/components/ui/table";
 
 // ---------- helpers ----------
-
-
 const fmtDate = (d: string) => {
   try { return format(parseISO(d), "dd/MM/yyyy"); } catch { return d; }
+};
+
+const fmtTime = (t: string | null) => {
+  if (!t) return "—";
+  return t.substring(0, 5) + "h";
 };
 
 const daysUntil = (d: string) => {
@@ -38,7 +41,7 @@ function useUnassigned() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("reservations")
-        .select(`id, reservation_number, start_date, vehicle_categories(name), customers(first_name, last_name, phone)`)
+        .select("id, reservation_number, start_date, vehicle_categories(name), customers(first_name, last_name, phone)")
         .is("vehicle_id", null)
         .eq("status", "confirmed")
         .order("start_date");
@@ -54,10 +57,10 @@ function usePickups(date: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("reservations")
-        .select(`id, reservation_number, start_date, vehicles(plate, brand, model), vehicle_categories(name), customers(first_name, last_name, phone), pickup_locations(name)`)
+        .select("id, reservation_number, start_date, pickup_time, vehicles(plate, brand, model), customers(first_name, last_name, phone), pickup_locations(name)")
         .eq("start_date", date)
         .in("status", ["confirmed", "active"])
-        .order("start_date");
+        .order("pickup_time");
       if (error) throw error;
       return data ?? [];
     },
@@ -70,10 +73,10 @@ function useReturns(date: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("reservations")
-        .select(`id, reservation_number, end_date, vehicles(plate, brand, model), customers(first_name, last_name, phone), return_locations(name)`)
+        .select("id, reservation_number, end_date, return_time, vehicles(plate, brand, model), customers(first_name, last_name, phone), return_locations(name)")
         .eq("end_date", date)
         .eq("status", "active")
-        .order("end_date");
+        .order("return_time");
       if (error) throw error;
       return data ?? [];
     },
@@ -88,7 +91,8 @@ function filterBySearch<T extends Record<string, any>>(rows: T[], q: string): T[
     const num = (r.reservation_number ?? "").toLowerCase();
     const c = r.customers as any;
     const name = c ? `${c.first_name ?? ""} ${c.last_name ?? ""}`.toLowerCase() : "";
-    return num.includes(lower) || name.includes(lower);
+    const phone = c?.phone?.toLowerCase() ?? "";
+    return num.includes(lower) || name.includes(lower) || phone.includes(lower);
   });
 }
 
@@ -109,12 +113,7 @@ export default function Movements() {
   const filteredPickups = useMemo(() => filterBySearch(pickups.data ?? [], searchPickups), [pickups.data, searchPickups]);
   const filteredReturns = useMemo(() => filterBySearch(returns.data ?? [], searchReturns), [returns.data, searchReturns]);
 
-  const refreshAll = () => {
-    unassigned.refetch();
-    pickups.refetch();
-    returns.refetch();
-  };
-
+  const refreshAll = () => { unassigned.refetch(); pickups.refetch(); returns.refetch(); };
   const loading = unassigned.isLoading || pickups.isLoading || returns.isLoading;
 
   return (
@@ -131,12 +130,7 @@ export default function Movements() {
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="end">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={(d) => d && setSelectedDate(d)}
-                className="p-3 pointer-events-auto"
-              />
+              <Calendar mode="single" selected={selectedDate} onSelect={(d) => d && setSelectedDate(d)} className="p-3 pointer-events-auto" />
             </PopoverContent>
           </Popover>
           <Button variant="outline" size="icon" onClick={refreshAll} disabled={loading}>
@@ -154,7 +148,7 @@ export default function Movements() {
           </div>
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Buscar reserva o cliente…" className="pl-9" value={searchUnassigned} onChange={(e) => setSearchUnassigned(e.target.value)} />
+            <Input placeholder="Buscar…" className="pl-9" value={searchUnassigned} onChange={(e) => setSearchUnassigned(e.target.value)} />
           </div>
         </div>
         {unassigned.isLoading ? (
@@ -168,8 +162,9 @@ export default function Movements() {
                 <TableRow>
                   <TableHead>Nº Reserva</TableHead>
                   <TableHead>Cliente</TableHead>
+                  <TableHead>Teléfono</TableHead>
                   <TableHead>Categoría</TableHead>
-                  <TableHead>Fecha Entrega</TableHead>
+                  <TableHead>Fecha Recogida</TableHead>
                   <TableHead>Días Restantes</TableHead>
                 </TableRow>
               </TableHeader>
@@ -181,10 +176,8 @@ export default function Movements() {
                       <TableCell>
                         <Link to={`/admin/reservas/${r.id}`} className="text-primary font-semibold hover:underline">{r.reservation_number}</Link>
                       </TableCell>
-                      <TableCell>
-                        <div>{c ? `${c.first_name} ${c.last_name}` : "—"}</div>
-                        {c?.phone && <div className="text-xs text-muted-foreground">{c.phone}</div>}
-                      </TableCell>
+                      <TableCell>{c ? `${c.first_name} ${c.last_name}` : "—"}</TableCell>
+                      <TableCell>{c?.phone ?? "—"}</TableCell>
                       <TableCell>{(r.vehicle_categories as any)?.name ?? "—"}</TableCell>
                       <TableCell>{fmtDate(r.start_date)}</TableCell>
                       <TableCell>{daysUntil(r.start_date)}</TableCell>
@@ -207,7 +200,7 @@ export default function Movements() {
           </div>
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Buscar reserva o cliente…" className="pl-9" value={searchPickups} onChange={(e) => setSearchPickups(e.target.value)} />
+            <Input placeholder="Buscar…" className="pl-9" value={searchPickups} onChange={(e) => setSearchPickups(e.target.value)} />
           </div>
         </div>
         {pickups.isLoading ? (
@@ -221,9 +214,10 @@ export default function Movements() {
                 <TableRow>
                   <TableHead>Nº Reserva</TableHead>
                   <TableHead>Cliente</TableHead>
+                  <TableHead>Teléfono</TableHead>
                   <TableHead>Vehículo</TableHead>
-                  <TableHead>Categoría</TableHead>
-                  <TableHead>Lugar de Recogida</TableHead>
+                  <TableHead>Lugar Recogida</TableHead>
+                  <TableHead>Hora Recogida</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -235,20 +229,13 @@ export default function Movements() {
                       <TableCell>
                         <Link to={`/admin/reservas/${r.id}`} className="text-primary font-semibold hover:underline">{r.reservation_number}</Link>
                       </TableCell>
+                      <TableCell>{c ? `${c.first_name} ${c.last_name}` : "—"}</TableCell>
+                      <TableCell>{c?.phone ?? "—"}</TableCell>
                       <TableCell>
-                        <div>{c ? `${c.first_name} ${c.last_name}` : "—"}</div>
-                        {c?.phone && <div className="text-xs text-muted-foreground">{c.phone}</div>}
+                        {v ? <><span className="font-semibold">{v.plate}</span> <span className="text-muted-foreground">{v.brand} {v.model}</span></> : "—"}
                       </TableCell>
-                      <TableCell>
-                        {v ? (
-                          <div>
-                            <span className="font-semibold">{v.plate}</span>
-                            <span className="text-muted-foreground ml-1">{v.brand} {v.model}</span>
-                          </div>
-                        ) : "—"}
-                      </TableCell>
-                      <TableCell>{(r.vehicle_categories as any)?.name ?? "—"}</TableCell>
                       <TableCell>{(r.pickup_locations as any)?.name ?? "—"}</TableCell>
+                      <TableCell>{fmtTime(r.pickup_time)}</TableCell>
                     </TableRow>
                   );
                 })}
@@ -268,7 +255,7 @@ export default function Movements() {
           </div>
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Buscar reserva o cliente…" className="pl-9" value={searchReturns} onChange={(e) => setSearchReturns(e.target.value)} />
+            <Input placeholder="Buscar…" className="pl-9" value={searchReturns} onChange={(e) => setSearchReturns(e.target.value)} />
           </div>
         </div>
         {returns.isLoading ? (
@@ -282,8 +269,10 @@ export default function Movements() {
                 <TableRow>
                   <TableHead>Nº Reserva</TableHead>
                   <TableHead>Cliente</TableHead>
+                  <TableHead>Teléfono</TableHead>
                   <TableHead>Vehículo</TableHead>
-                  <TableHead>Lugar de Devolución</TableHead>
+                  <TableHead>Lugar Devolución</TableHead>
+                  <TableHead>Hora Devolución</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -295,19 +284,13 @@ export default function Movements() {
                       <TableCell>
                         <Link to={`/admin/reservas/${r.id}`} className="text-primary font-semibold hover:underline">{r.reservation_number}</Link>
                       </TableCell>
+                      <TableCell>{c ? `${c.first_name} ${c.last_name}` : "—"}</TableCell>
+                      <TableCell>{c?.phone ?? "—"}</TableCell>
                       <TableCell>
-                        <div>{c ? `${c.first_name} ${c.last_name}` : "—"}</div>
-                        {c?.phone && <div className="text-xs text-muted-foreground">{c.phone}</div>}
-                      </TableCell>
-                      <TableCell>
-                        {v ? (
-                          <div>
-                            <span className="font-semibold">{v.plate}</span>
-                            <span className="text-muted-foreground ml-1">{v.brand} {v.model}</span>
-                          </div>
-                        ) : "—"}
+                        {v ? <><span className="font-semibold">{v.plate}</span> <span className="text-muted-foreground">{v.brand} {v.model}</span></> : "—"}
                       </TableCell>
                       <TableCell>{(r.return_locations as any)?.name ?? "—"}</TableCell>
+                      <TableCell>{fmtTime(r.return_time)}</TableCell>
                     </TableRow>
                   );
                 })}
