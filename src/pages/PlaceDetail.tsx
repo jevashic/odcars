@@ -120,7 +120,7 @@ export default function PlaceDetail() {
     <PublicLayout>
       <div className="pt-20 section-padding">
         <div className="container max-w-4xl">
-          <div className="mb-6">{backLink}</div>
+          {!isMobile && <div className="mb-6">{backLink}</div>}
 
           {/* Photo gallery: carousel on mobile, grid on desktop */}
           {isMobile ? (
