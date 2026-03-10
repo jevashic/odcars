@@ -19,6 +19,7 @@ const WELCOME_MSGS: Record<string, string> = {
 };
 
 export default function ChatWidget() {
+  const { lang } = useLang();
   const [open, setOpen] = useState(false);
   const [history, setHistory] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
