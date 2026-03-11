@@ -43,7 +43,7 @@ function PaymentForm() {
     if (!stripe || !elements) return;
     setLoading(true);
     try {
-      const cardElement = elements.getElement(CardElement);
+      const cardElement = elements.getElement(CardNumberElement);
       if (!cardElement) throw new Error(t('booking.card_not_found'));
       const firstName = params.get('firstName') || '';
       const lastName = params.get('lastName') || '';
