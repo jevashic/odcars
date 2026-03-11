@@ -64,3 +64,21 @@
     @apply text-base md:text-lg text-muted-foreground text-center max-w-2xl mx-auto;
   }
 }
+
+@media print {
+  /* Hide admin sidebar, header, tabs navigation */
+  [data-sidebar], nav, header, .print\\:hidden {
+    display: none !important;
+  }
+  /* Full width content */
+  main, [role="main"], .print\\:p-4 {
+    margin: 0 !important;
+    padding: 1rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  body {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}
