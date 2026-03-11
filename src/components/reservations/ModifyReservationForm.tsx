@@ -203,7 +203,7 @@ function ModifyFormInner({ reservation, onUpdated, onCancel }: Props) {
           setSaving(false);
           return;
         }
-        const cardElement = elements.getElement(CardElement);
+        const cardElement = elements.getElement(CardNumberElement);
         if (!cardElement) {
           toast({ title: 'Error', description: 'Introduce los datos de la tarjeta.', variant: 'destructive' });
           setSaving(false);
