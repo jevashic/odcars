@@ -9,7 +9,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { getVehicleTranslation } from '@/utils/vehicleTranslation';
 import { createReservation, type ReservationPayload } from '@/integrations/supabase/createReservation';
-import { Elements, useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
+import { Elements, useStripe, useElements, CardNumberElement } from '@stripe/react-stripe-js';
 import { stripePromise } from '@/integrations/stripe/client';
 import StripeCardInput from '@/components/stripe/StripeCardInput';
 import { toast } from '@/hooks/use-toast';
