@@ -1,10 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { format, startOfMonth, endOfMonth, subDays, subMonths, startOfQuarter, startOfYear } from "date-fns";
 import { es } from "date-fns/locale";
+import * as XLSX from "xlsx";
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +17,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Line, ComposedChart, PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
-import { CalendarIcon, Download, FileText, TrendingUp, Car, Wrench, ArrowUpRight, ArrowDownRight, Activity } from "lucide-react";
+import { CalendarIcon, Download, FileText, TrendingUp, Car, Wrench, ArrowUpRight, ArrowDownRight, Activity, Printer } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const PIE_COLORS = [
@@ -37,19 +38,56 @@ const STATUS_MAP: Record<string, { label: string; variant: "default" | "secondar
   no_show: { label: "No show", variant: "destructive" },
 };
 
+/* ─── EXPORT HELPERS ─── */
+
+function handlePrint() {
+  window.print();
+}
+
+function exportToExcel(sheets: { name: string; data: Record<string, any>[] }[], fileName: string) {
+  const wb = XLSX.utils.book_new();
+  sheets.forEach(({ name, data }) => {
+    if (data.length > 0) {
+      const ws = XLSX.utils.json_to_sheet(data);
+      XLSX.utils.book_append_sheet(wb, ws, name.substring(0, 31));
+    }
+  });
+  XLSX.writeFile(wb, fileName);
+}
+
+function ExportButtons({ onExcel }: { onExcel: () => void }) {
+  return (
+    <div className="flex gap-2">
+      <Button variant="outline" size="sm" onClick={handlePrint}>
+        <Printer className="h-4 w-4 mr-2" />
+        Imprimir / PDF
+      </Button>
+      <Button variant="outline" size="sm" onClick={onExcel}>
+        <Download className="h-4 w-4 mr-2" />
+        Exportar Excel
+      </Button>
+    </div>
+  );
+}
+
 export default function AdminReports() {
   const { user } = useAdminAuth();
-  const { toast } = useToast();
   const canDetailed = user?.role === "admin" || user?.role === "manager";
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-primary mb-6">Informes</h1>
-      <Tabs defaultValue="operativo">
-        <TabsList className="mb-6">
-          <TabsTrigger value="operativo">Resumen Operativo</TabsTrigger>
-          {canDetailed && <TabsTrigger value="detallado">Informes Detallados</TabsTrigger>}
-        </TabsList>
+    <div className="print:p-4">
+      <Tabs defaultValue="dia">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6 print:hidden">
+          <h1 className="text-2xl font-bold text-primary">Informes</h1>
+          <TabsList>
+            <TabsTrigger value="dia">Informe del día</TabsTrigger>
+            <TabsTrigger value="operativo">Resumen Operativo</TabsTrigger>
+            {canDetailed && <TabsTrigger value="detallado">Informes Detallados</TabsTrigger>}
+          </TabsList>
+        </div>
+        <TabsContent value="dia">
+          <DailyReport />
+        </TabsContent>
         <TabsContent value="operativo">
           <OperativeSummary />
         </TabsContent>
@@ -59,6 +97,210 @@ export default function AdminReports() {
           </TabsContent>
         )}
       </Tabs>
+    </div>
+  );
+}
+
+/* ─── PESTAÑA 0: INFORME DEL DÍA ─── */
+
+function DailyReport() {
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const dateStr = format(selectedDate, "yyyy-MM-dd");
+  const dateLabel = format(selectedDate, "d 'de' MMMM 'de' yyyy", { locale: es });
+
+  // Entregas del día
+  const { data: pickups } = useQuery({
+    queryKey: ["daily-pickups", dateStr],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("reservations")
+        .select("reservation_number, pickup_time, pickup_location, customers(first_name, last_name), vehicles(plate, brand, model), vehicle_categories(name)")
+        .eq("start_date", dateStr)
+        .in("status", ["pending", "confirmed", "active"])
+        .order("pickup_time", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  // Devoluciones del día
+  const { data: returns } = useQuery({
+    queryKey: ["daily-returns", dateStr],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("reservations")
+        .select("reservation_number, return_time, return_location, customers(first_name, last_name), vehicles(plate, brand, model), vehicle_categories(name)")
+        .eq("end_date", dateStr)
+        .in("status", ["active", "confirmed"])
+        .order("return_time", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  // Reservas nuevas del día
+  const { data: newReservations } = useQuery({
+    queryKey: ["daily-new-reservations", dateStr],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("reservations")
+        .select("reservation_number, total_price, payment_method, customers(first_name, last_name), vehicle_categories(name)")
+        .gte("created_at", dateStr + "T00:00:00")
+        .lte("created_at", dateStr + "T23:59:59")
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const totalRevenue = useMemo(() => {
+    return (newReservations ?? []).reduce((s: number, r: any) => s + (Number(r.total_price) || 0), 0);
+  }, [newReservations]);
+
+  const handleExcel = () => {
+    const pickupRows = (pickups ?? []).map((r: any) => ({
+      "Nº Reserva": r.reservation_number,
+      "Cliente": `${r.customers?.first_name ?? ""} ${r.customers?.last_name ?? ""}`.trim(),
+      "Vehículo": r.vehicles ? `${r.vehicles.brand} ${r.vehicles.model} (${r.vehicles.plate})` : (r.vehicle_categories?.name ?? "–"),
+      "Hora recogida": r.pickup_time ?? "–",
+      "Lugar recogida": r.pickup_location ?? "–",
+    }));
+    const returnRows = (returns ?? []).map((r: any) => ({
+      "Nº Reserva": r.reservation_number,
+      "Cliente": `${r.customers?.first_name ?? ""} ${r.customers?.last_name ?? ""}`.trim(),
+      "Vehículo": r.vehicles ? `${r.vehicles.brand} ${r.vehicles.model} (${r.vehicles.plate})` : (r.vehicle_categories?.name ?? "–"),
+      "Hora devolución": r.return_time ?? "–",
+      "Lugar devolución": r.return_location ?? "–",
+    }));
+    const newRows = (newReservations ?? []).map((r: any) => ({
+      "Nº Reserva": r.reservation_number,
+      "Cliente": `${r.customers?.first_name ?? ""} ${r.customers?.last_name ?? ""}`.trim(),
+      "Categoría": r.vehicle_categories?.name ?? "–",
+      "Total": Number(r.total_price) || 0,
+      "Forma de pago": r.payment_method ?? "–",
+    }));
+    exportToExcel(
+      [
+        { name: "Entregas", data: pickupRows.length ? pickupRows : [{ Info: "Sin datos" }] },
+        { name: "Devoluciones", data: returnRows.length ? returnRows : [{ Info: "Sin datos" }] },
+        { name: "Reservas nuevas", data: newRows.length ? newRows : [{ Info: "Sin datos" }] },
+      ],
+      `informe-dia-${dateStr}.xlsx`
+    );
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <DatePick label="" date={selectedDate} setDate={(d) => d && setSelectedDate(d)} />
+          <h2 className="text-lg font-semibold text-primary">
+            Informe del día — {dateLabel}
+          </h2>
+        </div>
+        <ExportButtons onExcel={handleExcel} />
+      </div>
+
+      {/* Resumen KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <KpiCard icon={TrendingUp} title="Ingresos del día" value={`${totalRevenue.toLocaleString("es-ES", { minimumFractionDigits: 2 })} €`} />
+        <KpiCard icon={ArrowUpRight} title="Entregas" value={pickups?.length ?? 0} />
+        <KpiCard icon={ArrowDownRight} title="Devoluciones" value={returns?.length ?? 0} />
+        <KpiCard icon={FileText} title="Reservas nuevas" value={newReservations?.length ?? 0} />
+      </div>
+
+      {/* Entregas */}
+      <Card>
+        <CardHeader><CardTitle>Entregas del día</CardTitle></CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nº Reserva</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Vehículo</TableHead>
+                <TableHead>Hora recogida</TableHead>
+                <TableHead>Lugar recogida</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {pickups && pickups.length > 0 ? pickups.map((r: any) => (
+                <TableRow key={r.reservation_number}>
+                  <TableCell className="font-mono">{r.reservation_number}</TableCell>
+                  <TableCell>{`${r.customers?.first_name ?? ""} ${r.customers?.last_name ?? ""}`.trim() || "–"}</TableCell>
+                  <TableCell>{r.vehicles ? `${r.vehicles.brand} ${r.vehicles.model} (${r.vehicles.plate})` : (r.vehicle_categories?.name ?? "–")}</TableCell>
+                  <TableCell>{r.pickup_time ?? "–"}</TableCell>
+                  <TableCell>{r.pickup_location ?? "–"}</TableCell>
+                </TableRow>
+              )) : (
+                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">Sin entregas</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Devoluciones */}
+      <Card>
+        <CardHeader><CardTitle>Devoluciones del día</CardTitle></CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nº Reserva</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Vehículo</TableHead>
+                <TableHead>Hora devolución</TableHead>
+                <TableHead>Lugar devolución</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {returns && returns.length > 0 ? returns.map((r: any) => (
+                <TableRow key={r.reservation_number}>
+                  <TableCell className="font-mono">{r.reservation_number}</TableCell>
+                  <TableCell>{`${r.customers?.first_name ?? ""} ${r.customers?.last_name ?? ""}`.trim() || "–"}</TableCell>
+                  <TableCell>{r.vehicles ? `${r.vehicles.brand} ${r.vehicles.model} (${r.vehicles.plate})` : (r.vehicle_categories?.name ?? "–")}</TableCell>
+                  <TableCell>{r.return_time ?? "–"}</TableCell>
+                  <TableCell>{r.return_location ?? "–"}</TableCell>
+                </TableRow>
+              )) : (
+                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">Sin devoluciones</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Reservas nuevas */}
+      <Card>
+        <CardHeader><CardTitle>Reservas nuevas del día</CardTitle></CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nº Reserva</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Categoría</TableHead>
+                <TableHead className="text-right">Total</TableHead>
+                <TableHead>Forma de pago</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {newReservations && newReservations.length > 0 ? newReservations.map((r: any) => (
+                <TableRow key={r.reservation_number}>
+                  <TableCell className="font-mono">{r.reservation_number}</TableCell>
+                  <TableCell>{`${r.customers?.first_name ?? ""} ${r.customers?.last_name ?? ""}`.trim() || "–"}</TableCell>
+                  <TableCell>{r.vehicle_categories?.name ?? "–"}</TableCell>
+                  <TableCell className="text-right">{(Number(r.total_price) || 0).toLocaleString("es-ES", { minimumFractionDigits: 2 })} €</TableCell>
+                  <TableCell>{r.payment_method ?? "–"}</TableCell>
+                </TableRow>
+              )) : (
+                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">Sin reservas nuevas</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -144,8 +386,27 @@ function OperativeSummary() {
     reservation_count: { label: "Reservas", color: "hsl(var(--cta))" },
   };
 
+  const handleExcel = () => {
+    const upcomingRows = (upcoming ?? []).map((r: any) => ({
+      "Nº Reserva": r.reservation_number,
+      "Cliente": r.customer_name,
+      "Categoría": r.category_name,
+      "Fecha recogida": r.pickup_date ? format(new Date(r.pickup_date), "dd/MM/yyyy") : "–",
+      "Oficina": r.branch_name ?? r.pickup_branch ?? "–",
+      "Estado": STATUS_MAP[r.status]?.label ?? r.status,
+    }));
+    exportToExcel(
+      [{ name: "Próximas reservas", data: upcomingRows.length ? upcomingRows : [{ Info: "Sin datos" }] }],
+      `resumen-operativo-${format(now, "yyyy-MM-dd")}.xlsx`
+    );
+  };
+
   return (
     <div className="space-y-6">
+      <div className="flex justify-end print:hidden">
+        <ExportButtons onExcel={handleExcel} />
+      </div>
+
       {/* KPIs del día */}
       <div>
         <h2 className="text-lg font-semibold text-primary mb-3">Hoy</h2>
@@ -276,29 +537,39 @@ function DetailedReports() {
     }
   }, [period, customFrom, customTo]);
 
+  const handleExcel = () => {
+    exportToExcel(
+      [{ name: "Info", data: [{ Período: `${dateFrom} a ${dateTo}` }] }],
+      `informes-detallados-${dateFrom}-${dateTo}.xlsx`
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Period selector */}
-      <div className="flex flex-wrap items-end gap-4">
-        <div>
-          <label className="text-sm font-medium text-muted-foreground mb-1 block">Período</label>
-          <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="current_month">Mes actual</SelectItem>
-              <SelectItem value="previous_month">Mes anterior</SelectItem>
-              <SelectItem value="current_quarter">Trimestre actual</SelectItem>
-              <SelectItem value="current_year">Año actual</SelectItem>
-              <SelectItem value="custom">Rango personalizado</SelectItem>
-            </SelectContent>
-          </Select>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex flex-wrap items-end gap-4">
+          <div>
+            <label className="text-sm font-medium text-muted-foreground mb-1 block">Período</label>
+            <Select value={period} onValueChange={setPeriod}>
+              <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="current_month">Mes actual</SelectItem>
+                <SelectItem value="previous_month">Mes anterior</SelectItem>
+                <SelectItem value="current_quarter">Trimestre actual</SelectItem>
+                <SelectItem value="current_year">Año actual</SelectItem>
+                <SelectItem value="custom">Rango personalizado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {period === "custom" && (
+            <>
+              <DatePick label="Desde" date={customFrom} setDate={setCustomFrom} />
+              <DatePick label="Hasta" date={customTo} setDate={setCustomTo} />
+            </>
+          )}
         </div>
-        {period === "custom" && (
-          <>
-            <DatePick label="Desde" date={customFrom} setDate={setCustomFrom} />
-            <DatePick label="Hasta" date={customTo} setDate={setCustomTo} />
-          </>
-        )}
+        <ExportButtons onExcel={handleExcel} />
       </div>
 
       <SalesByChannel dateFrom={dateFrom} dateTo={dateTo} />
@@ -312,7 +583,7 @@ function DetailedReports() {
 function DatePick({ label, date, setDate }: { label: string; date?: Date; setDate: (d?: Date) => void }) {
   return (
     <div>
-      <label className="text-sm font-medium text-muted-foreground mb-1 block">{label}</label>
+      {label && <label className="text-sm font-medium text-muted-foreground mb-1 block">{label}</label>}
       <Popover>
         <PopoverTrigger asChild>
           <Button variant="outline" className={cn("w-[160px] justify-start text-left font-normal", !date && "text-muted-foreground")}>
