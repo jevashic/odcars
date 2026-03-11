@@ -9,7 +9,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { getVehicleTranslation } from '@/utils/vehicleTranslation';
 import { createReservation, type ReservationPayload } from '@/integrations/supabase/createReservation';
-import { Elements, useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
+import { Elements, useStripe, useElements, CardNumberElement } from '@stripe/react-stripe-js';
 import { stripePromise } from '@/integrations/stripe/client';
 import StripeCardInput from '@/components/stripe/StripeCardInput';
 import { toast } from '@/hooks/use-toast';
@@ -132,7 +132,7 @@ function ModalInner({ categoryId, category, onClose }: Props) {
 
       if (paymentMode === 'office') {
         if (!stripe || !elements) return;
-        const cardElement = elements.getElement(CardElement);
+        const cardElement = elements.getElement(CardNumberElement);
         if (!cardElement) throw new Error(t('booking.card_not_found'));
         const { error: pmError, paymentMethod } = await stripe.createPaymentMethod({ type: 'card', card: cardElement });
         if (pmError) throw new Error(pmError.message);

@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { Elements, CardNumberElement, CardExpiryElement, CardCvcElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { stripePromise } from '@/integrations/stripe/client';
 
 interface Props {
@@ -203,7 +203,7 @@ function ModifyFormInner({ reservation, onUpdated, onCancel }: Props) {
           setSaving(false);
           return;
         }
-        const cardElement = elements.getElement(CardElement);
+        const cardElement = elements.getElement(CardNumberElement);
         if (!cardElement) {
           toast({ title: 'Error', description: 'Introduce los datos de la tarjeta.', variant: 'destructive' });
           setSaving(false);
@@ -449,11 +449,18 @@ function ModifyFormInner({ reservation, onUpdated, onCancel }: Props) {
                 <CreditCard className="h-4 w-4 text-primary" />
                 <span>Introduce tu tarjeta para abonar la diferencia</span>
               </div>
-              <div className="border border-border rounded-lg p-4 bg-background">
-                <CardElement
-                  options={CARD_OPTIONS}
-                  onChange={(e) => setCardComplete(e.complete)}
-                />
+              <div className="flex flex-col gap-3">
+                <div className="border border-border rounded-lg p-4 bg-background">
+                  <CardNumberElement options={CARD_OPTIONS} onChange={(e) => setCardComplete(e.complete)} />
+                </div>
+                <div className="flex flex-row gap-3">
+                  <div className="w-1/2 border border-border rounded-lg p-4 bg-background">
+                    <CardExpiryElement options={CARD_OPTIONS} />
+                  </div>
+                  <div className="w-1/2 border border-border rounded-lg p-4 bg-background">
+                    <CardCvcElement options={CARD_OPTIONS} />
+                  </div>
+                </div>
               </div>
             </div>
           )}

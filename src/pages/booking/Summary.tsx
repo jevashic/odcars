@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { format, differenceInDays } from 'date-fns';
 import { Lock, Check } from 'lucide-react';
-import { Elements, useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
+import { Elements, useStripe, useElements, CardNumberElement } from '@stripe/react-stripe-js';
 import PublicLayout from '@/components/layout/PublicLayout';
 import BookingTimer, { markBookingCompleted } from '@/components/booking/BookingTimer';
 import { useLang } from '@/contexts/LanguageContext';
@@ -74,7 +74,7 @@ function SummaryForm() {
       if (!accepted || !stripe || !elements) return;
       setLoading(true);
       try {
-        const cardElement = elements.getElement(CardElement);
+        const cardElement = elements.getElement(CardNumberElement);
         if (!cardElement) throw new Error(t('booking.card_not_found'));
         const { error: pmError, paymentMethod } = await stripe.createPaymentMethod({
           type: 'card',
