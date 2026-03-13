@@ -118,37 +118,50 @@ export default function Navbar() {
           </Link>
         </div>
 
-        {/* Mobile hamburger */}
-        <Sheet>
-          <SheetTrigger asChild>
-            <button className={`md:hidden ${textColor}`}>
-              <Menu className="h-6 w-6" />
+        {/* Mobile: language + hamburger */}
+        <div className="flex md:hidden items-center gap-2">
+          <div className="relative">
+            <button
+              onClick={() => setLangOpen(!langOpen)}
+              className={`flex items-center gap-1 text-sm font-medium transition-colors hover:text-cta ${textColor}`}
+            >
+              <Globe className="h-4 w-4" />
+              {lang.toUpperCase()}
             </button>
-          </SheetTrigger>
-          <SheetContent side="right" className="w-72 p-6">
-            <div className="flex flex-col gap-4 mt-8">
-              {NAV_LINKS.map((l) => (
-                <Link key={l.to} to={lp(l.to)} className="text-base font-medium text-foreground hover:text-cta py-2">
-                  {t(l.key)}
-                </Link>
-              ))}
-              <Link to={lp('/mis-reservas')} className="bg-cta text-cta-foreground font-bold text-sm px-5 py-2.5 rounded-lg text-center mt-2">
-                {t('nav.my_reservations')}
-              </Link>
-              <div className="flex gap-2 mt-4">
+            {langOpen && (
+              <div className="absolute top-full right-0 mt-1 bg-white rounded-lg shadow-lg border py-1 min-w-[80px] z-50">
                 {langs.map((l) => (
                   <button
                     key={l.code}
-                    onClick={() => setLang(l.code)}
-                    className={`px-3 py-1.5 rounded-md text-sm font-medium ${lang === l.code ? 'bg-cta text-cta-foreground' : 'border text-foreground'}`}
+                    onClick={() => { setLang(l.code); setLangOpen(false); }}
+                    className={`block w-full text-left px-4 py-2 text-sm hover:bg-accent ${lang === l.code ? 'font-bold text-cta' : 'text-foreground'}`}
                   >
                     {l.label}
                   </button>
                 ))}
               </div>
-            </div>
-          </SheetContent>
-        </Sheet>
+            )}
+          </div>
+          <Sheet>
+            <SheetTrigger asChild>
+              <button className={textColor}>
+                <Menu className="h-6 w-6" />
+              </button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-72 p-6">
+              <div className="flex flex-col gap-4 mt-8">
+                {NAV_LINKS.map((l) => (
+                  <Link key={l.to} to={lp(l.to)} className="text-base font-medium text-foreground hover:text-cta py-2">
+                    {t(l.key)}
+                  </Link>
+                ))}
+                <Link to={lp('/mis-reservas')} className="bg-cta text-cta-foreground font-bold text-sm px-5 py-2.5 rounded-lg text-center mt-2">
+                  {t('nav.my_reservations')}
+                </Link>
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
       </nav>
     </header>
   );
