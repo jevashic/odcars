@@ -67,7 +67,7 @@ export default function Navbar() {
             </button>
           )}
           <Link to={lp('/')} className="shrink-0">
-            <img src={logoHorizontal} alt="Ocean Drive Rent a Car" className="h-[60px] md:h-[72px]" />
+            <img src={logoHorizontal} alt="Ocean Drive Rent a Car" className="h-[42px] md:h-[58px]" />
           </Link>
         </div>
 
