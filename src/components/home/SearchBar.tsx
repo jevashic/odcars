@@ -122,7 +122,7 @@ export default function SearchBar({ onSearch, initialParams }: SearchBarProps) {
           <div>
             <label className="text-xs text-white/60 mb-1 block">{t('search.pickup_location')}</label>
             <div className="relative">
-              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50" />
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50 pointer-events-none" />
               <select
                 value={pickup}
                 onChange={(e) => setPickup(e.target.value)}
